@@ -70,7 +70,7 @@ if sys.platform.startswith('win'):
 else:
     # compiler to use
     cpp_path = 'gcc'
-    libraries = []
+    libraries = ['SDL2']
     library_dirs = []
     include_dirs = []
 
