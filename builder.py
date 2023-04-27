@@ -64,6 +64,7 @@ if sys.platform.startswith('win'):
     include_dirs = [sdl_include_path]
     library_dirs = [sdl_lib_path]
     libraries = ['SDL2', 'SDL2main']
+    cpp_args = ['-std:c11']
 
     os.environ['INCLUDE'] += ';' + sdl_include_path
     os.environ['LIB'] += ';' + sdl_lib_path
@@ -73,6 +74,7 @@ else:
     libraries = ['SDL2']
     library_dirs = []
     include_dirs = []
+    cpp_args = ['-std=c11']
 
 
 # file/directory paths
@@ -153,7 +155,7 @@ ast = pycparser.parse_file(
     lvgl_header_path,
     use_cpp=True,
     cpp_path=cpp_path,
-    cpp_args=['-E', '-std:c11', '-DCPYTHON_SDL', '-DPYCPARSER', '-Ifake_libc_include'],
+    cpp_args=['-E', '-DCPYTHON_SDL', '-DPYCPARSER', '-Ifake_libc_include'] + cpp_args,
     parser=None
 )
 
