@@ -175,7 +175,7 @@ def visit(self, node):
 
     method = 'visit_' + node.__class__.__name__
     ret = getattr(self, method, self.generic_visit)(node)
-    if res.strip() == ';':
+    if ret.strip() == ';':
         return ''
 
     return ret
