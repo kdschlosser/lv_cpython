@@ -232,7 +232,7 @@ ffibuilder.cdef(cdef)
 
 # set the name of the c extension and also tell cffi what we need to compile
 ffibuilder.set_source(
-    "lvgl",
+    "_lib_lvgl",
     '#include "lvgl.h"',
     sources=iter_sources(lvgl_src_path),
     define_macros=[('CPYTHON_SDL', 1)],
