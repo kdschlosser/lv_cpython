@@ -262,7 +262,13 @@ class _lvgl(object):
         if item in self.__dict__:
             return self.__dict__[item]
 
-        if hasattr(_lib_lvgl.lib, 'lv_' + item):
+        if item.is_upper():
+            if hasattr(_lib_lvgl.lib, 'LV_' + item):
+                res = getattr(_lib_lvgl.lib, 'LV_' + item)
+            else:
+                raise AttributeError(item)
+
+        elif hasattr(_lib_lvgl.lib, 'lv_' + item):
             res = _Function(getattr(_lib_lvgl.lib, 'lv_' + item))
 
         elif hasattr(_lib_lvgl.ffi, item):
