@@ -1,6 +1,7 @@
 import lvgl as lv
 import time
 
+
 lv.init()
 print('LVGL initilized')
 
@@ -28,6 +29,8 @@ lv.obj_set_pos(btn, 10, 10)
 lv.obj_set_size(btn, 120, 50)
 
 label = lv.label_create(btn)
+lv.obj_center(btn)
+
 lv.label_set_text(label, "Button")
 lv.obj_center(label)
 

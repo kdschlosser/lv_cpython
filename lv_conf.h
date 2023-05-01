@@ -41,7 +41,7 @@
  *=========================*/
 
 /*Enable and configure the built-in memory manager*/
-#define LV_USE_BUILTIN_MALLOC 0
+#define LV_USE_BUILTIN_MALLOC 1
 #if LV_USE_BUILTIN_MALLOC
     /*Size of the memory available for `lv_malloc()` in bytes (>= 2kB)*/
     #define LV_MEM_SIZE (48U * 1024U)          /*[bytes]*/
@@ -59,7 +59,7 @@
 #endif  /*LV_USE_BUILTIN_MALLOC*/
 
 /*Enable lv_memcpy_builtin, lv_memset_builtin, lv_strlen_builtin, lv_strncpy_builtin*/
-#define LV_USE_BUILTIN_MEMCPY 0
+#define LV_USE_BUILTIN_MEMCPY 1
 
 /*Enable and configure the built-in (v)snprintf */
 #define LV_USE_BUILTIN_SNPRINTF 1
@@ -70,15 +70,15 @@
 #define LV_STDLIB_INCLUDE <stdint.h>
 #define LV_STDIO_INCLUDE  <stdint.h>
 #define LV_STRING_INCLUDE <stdint.h>
-#define LV_MALLOC       malloc
-#define LV_REALLOC      realloc
-#define LV_FREE         free
-#define LV_MEMSET       memset
-#define LV_MEMCPY       memcpy
+#define LV_MALLOC       lv_malloc_builtin
+#define LV_REALLOC      lv_realloc_builtin
+#define LV_FREE         lv_free_builtin
+#define LV_MEMSET       lv_memset_builtin
+#define LV_MEMCPY       lv_memcpy_builtin
 #define LV_SNPRINTF     lv_snprintf_builtin
 #define LV_VSNPRINTF    lv_vsnprintf_builtin
-#define LV_STRLEN       strlen
-#define LV_STRNCPY      strncpy
+#define LV_STRLEN       lv_strlen_builtin
+#define LV_STRNCPY      lv_strncpy_builtin
 #define LV_STRCPY       strcpy
 
 #define LV_COLOR_EXTERN_INCLUDE <stdint.h>

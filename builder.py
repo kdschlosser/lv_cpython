@@ -1,8 +1,21 @@
 import os
 import sys
+import shutil
 
+
+#  path to where thgis script is located
 base_path = os.path.dirname(__file__)
+
+# make sure we are in the correct directory
 os.chdir(base_path)
+
+# set the output folder for the so/pyd and any other files.
+build_path = os.path.join(base_path, 'build')
+
+if os.path.exists(build_path):
+    shutil.rmtree(build_path)
+
+os.mkdir(build_path)
 
 if sys.platform.startswith('win'):
     # this library is what make building on Windows possible. both
@@ -30,8 +43,6 @@ if sys.platform.startswith('win'):
     sdl_include_path = os.path.join(base_path, 'sdl_temp')
     if not os.path.exists('sdl_temp'):
         os.mkdir('sdl_temp')
-
-    import shutil
 
     sdl_dst_path = os.path.join(sdl_include_path, 'SDL2')
     if not os.path.exists(sdl_dst_path):
@@ -61,13 +72,17 @@ if sys.platform.startswith('win'):
         _iter_copy(sdl_src_path, sdl_dst_path)
 
     sdl_lib_path = os.path.join(base_path, 'SDL2', 'lib', 'x64')
+    sdl_dll = os.path.join(sdl_lib_path, 'SDL2.dll')
+
+    shutil.copyfile(sdl_dll, os.path.join(build_path, 'SDL2.dll'))
+
     include_dirs = [sdl_include_path]
     library_dirs = [sdl_lib_path]
-    libraries = ['SDL2', 'SDL2main']
+    libraries = ['SDL2']
     cpp_args = ['-std:c11']
 
-    os.environ['INCLUDE'] += ';' + sdl_include_path
-    os.environ['LIB'] += ';' + sdl_lib_path
+    # os.environ['INCLUDE'] += ';' + sdl_include_path
+    # os.environ['LIB'] += ';' + sdl_lib_path
 else:
     # compiler to use
     cpp_path = 'gcc'
@@ -88,7 +103,6 @@ if not os.path.exists(lvgl_path):
         'folder as this script in order to compile the binding.'
     )
 
-# make sure we are in the correct directory
 os.chdir(base_path)
 # technically we do not need to package pycparser with the builder.
 # The fake lib c files are not included if pycparser is installed into python
@@ -116,7 +130,7 @@ except ImportError:
         '"cffi" needs to be installed into Python to compile the binding'
     )
 
-from pycparser import c_generator  # NOQA
+from pycparser import c_generator, c_ast  # NOQA
 
 # some paths/files we do not need to compile the source files for.
 IGNORE_DIRS = ('disp', 'arm2d', 'gd32_ipa', 'nxp', 'stm32_dma2d', 'swm341_dma2d')
@@ -159,6 +173,26 @@ ast = pycparser.parse_file(
     parser=None
 )
 
+log = open('log.txt', 'w')
+
+callback_template = '''\
+@_lib_lvgl.ffi.def_extern(name='py_lv_{func_name}')
+def __{func_name}_callback_func(*args):
+    return {func_name}._callback_func(*args)
+
+
+class _{func_name}(_CallbackWrapper):
+
+    def __call__(self, func):
+        return _{func_name}(self.ctype, func)
+
+
+{func_name} = _{func_name}('lv_{func_name}', None)
+
+'''
+
+callbacks = []
+
 
 # monkeypatched functions in pycparser.c_generator.CGenerator
 # I used the CGenerator to output declarations that CFFI uses to make
@@ -187,23 +221,51 @@ def visit(self, node):
 def visit_FuncDef(self, n):
     decl = self.visit(n.decl)
     self.indent_level = 0
-    # body = self.visit(n.body)
     if n.param_decls:
         knrdecls = ';\n'.join(self.visit(p) for p in n.param_decls)
-        return decl + '\n' + knrdecls + ';\n'  # + body + '\n'
+        res = decl + '\n' + knrdecls + ';\n'  # + body + '\n'
     else:
-        return decl + ';\n'  # + body + '\n'
+        res = decl + ';\n'
+
+    return res
+
+
+def visit_Typedef(self, n):
+    s = ''
+    if n.storage:
+        s += ' '.join(n.storage) + ' '
+
+    s += self._generate_type(n.type)
+
+    if isinstance(n.type, c_ast.PtrDecl):
+        if isinstance(n.type.type, c_ast.FuncDecl):
+            if isinstance(n.type.type.type, c_ast.TypeDecl):
+                name = n.type.type.type.declname
+                for item in ('_cb_t', '_cb', '_f_t', '_xcb_t'):
+                    if name.endswith(item):
+                        s = s.replace('(*' + name + ')', 'py_' + name).replace('(* ' + name + ')', 'py_' + name) + ';\n' + s
+                        if s.startswith('typedef'):
+                            s = '\n\nextern "Python"' + s[7:]
+                        else:
+                            s = '\n\nextern "Python"' + s
+
+                        callbacks.append(callback_template.format(func_name=name.lstrip('lv_')))
+                        break
+    return s
 
 
 # saving the old generator functions so they can be put back in place before
 # cffi runs. cffi uses pycparser and I do not know if it uses the generator at
 # all. so better safe then sorry
 old_visit = c_generator.CGenerator.visit
-old_visit_FuncDef = c_generator.CGenerator.visit_FuncDef
+old_visit_FuncDecl = c_generator.CGenerator.visit_FuncDecl
+old_visit_Typedef = c_generator.CGenerator.visit_Typedef
 
 # putting the updated functions in place
 setattr(c_generator.CGenerator, 'visit', visit)
 setattr(c_generator.CGenerator, 'visit_FuncDef', visit_FuncDef)
+setattr(c_generator.CGenerator, 'visit_Typedef', visit_Typedef)
+
 
 generator = c_generator.CGenerator()
 ffibuilder = FFI()
@@ -215,9 +277,12 @@ typedef char* va_list;
 
 {ast}
 
+
 """
 cdef = cdef.format(ast=str(generator.visit(ast)))
-
+log.write('\n\n\n**************************************\n\n')
+log.write(cdef)
+log.close()
 # my monkey patchs were not perfect and when I removed all of the
 # typedefs put in place from the fake lib c header files I was not able to
 # remove the trailing semicolon. So thaat is what is being done here.
@@ -225,7 +290,8 @@ cdef = '\n'.join(line for line in cdef.split('\n') if line.strip() != ';')
 
 # putting the old functions back in place
 setattr(c_generator.CGenerator, 'visit', old_visit)
-setattr(c_generator.CGenerator, 'visit_FuncDef', old_visit_FuncDef)
+setattr(c_generator.CGenerator, 'visit_FuncDecl', old_visit_FuncDecl)
+setattr(c_generator.CGenerator, 'visit_Typedef', old_visit_Typedef)
 
 # set the definitions into cffi
 ffibuilder.cdef(cdef)
@@ -238,7 +304,9 @@ ffibuilder.set_source(
     define_macros=[('CPYTHON_SDL', 1)],
     library_dirs=library_dirs,
     libraries=libraries,
-    include_dirs=include_dirs
+    include_dirs=include_dirs,
+    extra_compile_args=cpp_args,
+    language='c'
 )
 
 # change the path into the lvgl directory
@@ -252,4 +320,20 @@ except:
     traceback.print_exc()
     sys.exit(1)
 
-print('extension module is located here: "' + res + '"')
+
+os.chdir(base_path)
+
+with open('lvgl.py.template', 'r') as f:
+    lvgl_template = f.read()
+
+with open('lvgl.py', 'w') as f:
+    f.write(lvgl_template.replace('~!~!CALLBACKS!~!~', '\n'.join(callbacks)))
+
+
+out_file_name = os.path.split(res)[-1]
+
+shutil.copyfile(res, os.path.join(build_path, out_file_name))
+shutil.copyfile('lvgl.py', os.path.join(build_path, 'lvgl.py'))
+
+
+print('extension module is located here: "' + build_path + '"')
