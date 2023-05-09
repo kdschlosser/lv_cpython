@@ -57,17 +57,30 @@ typedef struct _lv_draw_layer_ctx_t {
 } lv_draw_layer_ctx_t;
 
 
-typedef struct _lv_draw_ctx_t lv_draw_ctx_t;
+typedef void (*lv_draw_ctx_init_buf_cb_t)(struct _lv_draw_ctx_t * draw_ctx);
+
+typedef void (*lv_draw_ctx_draw_rect_cb_t)(struct _lv_draw_ctx_t * draw_ctx, const lv_draw_rect_dsc_t * dsc, const lv_area_t * coords);
+
+typedef void (*lv_draw_ctx_draw_arc_cb_t)(struct _lv_draw_ctx_t * draw_ctx, const lv_draw_arc_dsc_t * dsc, const lv_point_t * center,
+                 uint16_t radius,  uint16_t start_angle, uint16_t end_angle);
+
+typedef void (*lv_draw_ctx_draw_img_decoded_cb_t)(struct _lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t * dsc, const lv_area_t * coords,
+                         const uint8_t * map_p, const lv_draw_img_sup_t * sup, lv_color_format_t color_format);
+
+typedef lv_res_t (*lv_draw_ctx_draw_img_cb_t)(struct _lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t * draw_dsc,
+                     const lv_area_t * coords, const void * src);
+
+typedef void (*lv_draw_ctx_draw_letter_cb_t)(struct _lv_draw_ctx_t * draw_ctx, const lv_draw_label_dsc_t * dsc,  const lv_point_t * pos_p,
+                    uint32_t letter);
 
 
-typedef void (*lv_draw_ctx_init_buf_cb_t)(lv_draw_ctx_t * draw_ctx);
-typedef void (*lv_draw_ctx_draw_rect_cb_t)(lv_draw_ctx_t * draw_ctx, const lv_draw_rect_dsc_t * dsc, const lv_area_t * coords);
-typedef void (*lv_draw_ctx_draw_arc_cb_t)(lv_draw_ctx_t * draw_ctx, const lv_draw_arc_dsc_t * dsc, const lv_point_t * center, uint16_t radius,  uint16_t start_angle, uint16_t end_angle);
-typedef void (*lv_draw_ctx_draw_img_decoded_cb_t)(lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t * dsc, const lv_area_t * coords, const uint8_t * map_p, const lv_draw_img_sup_t * sup, lv_color_format_t color_format);
-typedef lv_res_t (*lv_draw_ctx_draw_img_cb_t)(lv_draw_ctx_t * draw_ctx, const lv_draw_img_dsc_t * draw_dsc, const lv_area_t * coords, const void * src);
-typedef void (*lv_draw_ctx_draw_letter_cb_t)(lv_draw_ctx_t * draw_ctx, const lv_draw_label_dsc_t * dsc,  const lv_point_t * pos_p, uint32_t letter);
-typedef void (*lv_draw_ctx_draw_line_cb_t)(lv_draw_ctx_t * draw_ctx, const lv_draw_line_dsc_t * dsc, const lv_point_t * point1, const lv_point_t * point2);
-typedef void (*lv_draw_ctx_draw_polygon_cb_t)(lv_draw_ctx_t * draw_ctx, const lv_draw_rect_dsc_t * draw_dsc, const lv_point_t points[], uint16_t point_cnt);
+typedef void (*lv_draw_ctx_draw_line_cb_t)(struct _lv_draw_ctx_t * draw_ctx, const lv_draw_line_dsc_t * dsc, const lv_point_t * point1,
+                  const lv_point_t * point2);
+
+
+typedef void (*lv_draw_ctx_draw_polygon_cb_t)(struct _lv_draw_ctx_t * draw_ctx, const lv_draw_rect_dsc_t * draw_dsc,
+                     const lv_point_t points[], uint16_t point_cnt);
+
 
 /**
  * Get an area of a transformed image (zoomed and/or rotated)
@@ -82,7 +95,7 @@ typedef void (*lv_draw_ctx_draw_polygon_cb_t)(lv_draw_ctx_t * draw_ctx, const lv
  * @param cbuf          place the colors of the pixels on `dest_area` here in RGB format
  * @param abuf          place the opacity of the pixels on `dest_area` here
  */
-typedef void (*lv_draw_ctx_draw_transform_cb_t)(lv_draw_ctx_t * draw_ctx, const lv_area_t * dest_area, const void * src_buf,
+typedef void (*lv_draw_ctx_draw_transform_cb_t)(struct _lv_draw_ctx_t * draw_ctx, const lv_area_t * dest_area, const void * src_buf,
                        lv_coord_t src_w, lv_coord_t src_h, lv_coord_t src_stride,
                        const lv_draw_img_dsc_t * draw_dsc, const lv_draw_img_sup_t * sup, lv_color_format_t cf, lv_color_t * cbuf,
                        lv_opa_t * abuf);
@@ -90,7 +103,7 @@ typedef void (*lv_draw_ctx_draw_transform_cb_t)(lv_draw_ctx_t * draw_ctx, const 
 /**
  * Wait until all background operations are finished. (E.g. GPU operations)
  */
-typedef void (*lv_draw_ctx_wait_for_finish_cb_t)(lv_draw_ctx_t * draw_ctx);
+typedef void (*lv_draw_ctx_wait_for_finish_cb_t)(struct _lv_draw_ctx_t * draw_ctx);
 
 /**
  * Copy an area from buffer to an other
@@ -106,7 +119,8 @@ typedef void (*lv_draw_ctx_wait_for_finish_cb_t)(lv_draw_ctx_t * draw_ctx);
  *       but can have different x and y position.
  * @note dest_area and src_area must be clipped to the real dimensions of the buffers
  */
-typedef void (*lv_draw_ctx_buffer_copy_cb_t)(lv_draw_ctx_t * draw_ctx, void * dest_buf, lv_coord_t dest_stride,
+
+typedef void (*lv_draw_ctx_buffer_copy_cb_t)(struct _lv_draw_ctx_t * draw_ctx, void * dest_buf, lv_coord_t dest_stride,
                     const lv_area_t * dest_area,
                     void * src_buf, lv_coord_t src_stride, const lv_area_t * src_area);
 
@@ -114,9 +128,9 @@ typedef void (*lv_draw_ctx_buffer_copy_cb_t)(lv_draw_ctx_t * draw_ctx, void * de
  * Convert the content of `draw_ctx->buf` to `draw_ctx->color_format`
  * @param draw_ctx
  */
-typedef void (*lv_draw_ctx_buffer_convert_cb_t)(lv_draw_ctx_t * draw_ctx);
+typedef void (*lv_draw_ctx_buffer_convert_cb_t)(struct _lv_draw_ctx_t * draw_ctx);
 
-typedef void (*lv_draw_ctx_buffer_clear_cb_t)(lv_draw_ctx_t * draw_ctx);
+typedef void (*lv_draw_ctx_buffer_clear_cb_t)(struct _lv_draw_ctx_t * draw_ctx);
 
 /**
  * Initialize a new layer context.
@@ -126,7 +140,7 @@ typedef void (*lv_draw_ctx_buffer_clear_cb_t)(lv_draw_ctx_t * draw_ctx);
  * @param flags         OR-ed flags from @lv_draw_layer_flags_t
  * @return              pointer to the layer context, or NULL on error
  */
-typedef struct _lv_draw_layer_ctx_t * (*lv_draw_ctx_layer_init_cb_t)(lv_draw_ctx_t * draw_ctx, lv_draw_layer_ctx_t * layer_ctx,
+typedef struct _lv_draw_layer_ctx_t * (*lv_draw_ctx_layer_init_cb_t)(struct _lv_draw_ctx_t * draw_ctx, struct _lv_draw_layer_ctx_t * layer_ctx,
                                             lv_draw_layer_flags_t flags);
 
 /**
@@ -136,7 +150,7 @@ typedef struct _lv_draw_layer_ctx_t * (*lv_draw_ctx_layer_init_cb_t)(lv_draw_ctx
  * @param layer_ctx     pointer to a layer context
  * @param flags         OR-ed flags from @lv_draw_layer_flags_t
  */
-typedef void (*lv_draw_ctx_layer_adjust_cb_t)(lv_draw_ctx_t * draw_ctx, lv_draw_layer_ctx_t * layer_ctx,
+typedef void (*lv_draw_ctx_layer_adjust_cb_t)(struct _lv_draw_ctx_t * draw_ctx, struct _lv_draw_layer_ctx_t * layer_ctx,
                      lv_draw_layer_flags_t flags);
 
 /**
@@ -145,7 +159,7 @@ typedef void (*lv_draw_ctx_layer_adjust_cb_t)(lv_draw_ctx_t * draw_ctx, lv_draw_
  * @param layer_ctx     pointer to a layer context
  * @param draw_dsc      pointer to an image draw descriptor
  */
-typedef void (*lv_draw_ctx_layer_blend_cb_t)(lv_draw_ctx_t * draw_ctx, lv_draw_layer_ctx_t * layer_ctx,
+typedef void (*lv_draw_ctx_layer_blend_cb_t)(struct _lv_draw_ctx_t * draw_ctx, struct _lv_draw_layer_ctx_t * layer_ctx,
                     const lv_draw_img_dsc_t * draw_dsc);
 
 /**
@@ -154,10 +168,9 @@ typedef void (*lv_draw_ctx_layer_blend_cb_t)(lv_draw_ctx_t * draw_ctx, lv_draw_l
  * @param draw_ctx      pointer to the current draw context
  * @param layer_ctx     pointer to a layer context
  */
-typedef void (*lv_draw_ctx_layer_destroy_cb_t)(lv_draw_ctx_t * draw_ctx, lv_draw_layer_ctx_t * layer_ctx);
+typedef void (*lv_draw_ctx_layer_destroy_cb_t)(struct _lv_draw_ctx_t * draw_ctx, lv_draw_layer_ctx_t * layer_ctx);
 
-
-struct _lv_draw_ctx_t  {
+typedef struct _lv_draw_ctx_t  {
     /**
      *  Pointer to a buffer to draw into
      */
@@ -180,14 +193,20 @@ struct _lv_draw_ctx_t  {
     lv_color_format_t color_format;
 
     lv_draw_ctx_init_buf_cb_t init_buf;
-    lv_draw_ctx_draw_rect_cb_t draw_rect;
-    lv_draw_ctx_draw_arc_cb_t draw_arc;
-    lv_draw_ctx_draw_img_decoded_cb_t draw_img_decoded;
-    lv_draw_ctx_draw_img_cb_t draw_img;
-    lv_draw_ctx_draw_letter_cb_t draw_letter;
-    lv_draw_ctx_draw_line_cb_t draw_line;
-    lv_draw_ctx_draw_polygon_cb_t draw_polygon;
 
+    lv_draw_ctx_draw_rect_cb_t draw_rect;
+
+    lv_draw_ctx_draw_arc_cb_t draw_arc;
+
+    lv_draw_ctx_draw_img_decoded_cb_t draw_img_decoded;
+
+    lv_draw_ctx_draw_img_cb_t draw_img;
+
+    lv_draw_ctx_draw_letter_cb_t draw_letter;
+
+    lv_draw_ctx_draw_line_cb_t draw_line;
+
+    lv_draw_ctx_draw_polygon_cb_t draw_polygon;
 
     /**
      * Get an area of a transformed image (zoomed and/or rotated)
@@ -240,7 +259,7 @@ struct _lv_draw_ctx_t  {
     size_t layer_instance_size;
 
     void * user_data;
-};
+} lv_draw_ctx_t;
 
 /**********************
  * GLOBAL PROTOTYPES

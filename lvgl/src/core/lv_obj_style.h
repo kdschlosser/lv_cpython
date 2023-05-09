@@ -29,8 +29,14 @@ extern "C" {
 struct _lv_obj_t;
 
 #ifndef LV_OBJ_H
+/// @cond
+/**
+ *  Tells Doxygen to ignore a duplicate declaration
+ */
 typedef uint32_t lv_part_t;
 typedef uint16_t lv_state_t;
+/// @endcond
+
 #endif
 
 typedef enum {
@@ -39,6 +45,7 @@ typedef enum {
     _LV_STYLE_STATE_CMP_DIFF_DRAW_PAD,  /*The differences can be shown with a simple redraw*/
     _LV_STYLE_STATE_CMP_DIFF_LAYOUT,    /*The differences can be shown with a simple redraw*/
 } _lv_style_state_cmp_t;
+
 
 typedef uint32_t lv_style_selector_t;
 
@@ -302,7 +309,11 @@ static inline lv_coord_t lv_obj_get_style_space_bottom(const struct _lv_obj_t * 
 
 lv_text_align_t lv_obj_calculate_style_text_align(const struct _lv_obj_t * obj, lv_part_t part, const char * txt);
 
-
+static inline lv_coord_t lv_obj_get_style_transform_zoom_safe(const struct _lv_obj_t * obj, uint32_t part)
+{
+    int16_t zoom = lv_obj_get_style_transform_zoom(obj, part);
+    return zoom != 0 ? zoom : 1;
+}
 /**********************
  *      MACROS
  **********************/

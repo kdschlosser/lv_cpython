@@ -13,7 +13,6 @@ extern "C" {
 /*********************
  *      INCLUDES
  *********************/
-#include "../core/lv_disp_private.h"
 #include "../misc/lv_timer.h"
 #include "../misc/lv_event.h"
 #include "../misc/lv_area.h"
@@ -34,7 +33,8 @@ extern "C" {
 struct _lv_obj_t;
 struct _lv_theme_t;
 struct _lv_draw_ctx_t;
-
+struct _lv_disp_t;
+typedef struct _lv_disp_t lv_disp_t;
 
 typedef enum {
     LV_DISP_ROTATION_0 = 0,
@@ -43,6 +43,26 @@ typedef enum {
     LV_DISP_ROTATION_270
 } lv_disp_rotation_t;
 
+typedef enum {
+    /**
+     * Use the buffer(s) to render the screen is smaller parts.
+     * This way the buffers can be smaller then the display to save RAM. At least 1/10 sceen size buffer(s) are recommended.
+     */
+    LV_DISP_RENDER_MODE_PARTIAL,
+
+    /**
+     * The buffer(s) has to be screen sized and LVGL will render into the correct location of the buffer.
+     * This way the buffer always contain the whole image. Only the changed ares will be updated.
+     * With 2 buffers the buffers' content are kept in sync automatically and in flush_cb only address change is required.
+     */
+    LV_DISP_RENDER_MODE_DIRECT,
+
+    /**
+     * Always redraw the whole screen even if only one pixel has been changed.
+     * With 2 buffers in flush_cb only and address change is required.
+     */
+    LV_DISP_RENDER_MODE_FULL,
+} lv_disp_render_mode_t;
 
 
 typedef enum {
@@ -63,6 +83,13 @@ typedef enum {
     LV_SCR_LOAD_ANIM_OUT_TOP,
     LV_SCR_LOAD_ANIM_OUT_BOTTOM,
 } lv_scr_load_anim_t;
+
+
+typedef void (*lv_disp_flush_cb_t)(struct _lv_disp_t * disp, const lv_area_t * area, lv_color_t * px_map);
+typedef void (*lv_disp_draw_ctx_init_cb_t)(struct _lv_disp_t * disp, struct _lv_draw_ctx_t * draw_ctx);
+typedef void (*lv_disp_draw_ctx_deinit_cb_t)(struct _lv_disp_t * disp, struct _lv_draw_ctx_t * draw_ctx);
+
+typedef void (*lv_disp_wait_cb_t)(struct _lv_disp_t * disp_drv);
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -222,7 +249,6 @@ lv_coord_t lv_disp_get_dpi(const lv_disp_t * disp);
 void lv_disp_set_draw_buffers(lv_disp_t * disp, void * buf1, void * buf2, uint32_t buf_size_byte,
                               lv_disp_render_mode_t render_mode);
 
-
 /**
  * Set the flush callback whcih will be called to copy the rendered image to the display.
  * @param disp      pointer to a display
@@ -296,9 +322,10 @@ bool lv_disp_is_double_buffered(lv_disp_t * disp);
  * @param draw_ctx_size     size of the draw context instance
  */
 void lv_disp_set_draw_ctx(lv_disp_t * disp,
-                          void (*draw_ctx_init)(lv_disp_t * disp, struct _lv_draw_ctx_t * draw_ctx),
-                          void (*draw_ctx_deinit)(lv_disp_t * disp, struct _lv_draw_ctx_t * draw_ctx),
+                          lv_disp_draw_ctx_init_cb_t draw_ctx_init,
+                          lv_disp_draw_ctx_deinit_cb_t draw_ctx_deinit,
                           size_t draw_ctx_size);
+
 
 /*---------------------
  * SCREENS
@@ -544,7 +571,7 @@ static inline lv_coord_t lv_dpx(lv_coord_t n)
  * considering the DPI of the given display.
  * It ensures that e.g. `lv_dpx(100)` will have the same physical size regardless to the
  * DPI of the display.
- * @param obj   a display whose dpi should be considered
+ * @param disp   a display whose dpi should be considered
  * @param n     the number of pixels to scale
  * @return      `n x current_dpi/160`
  */

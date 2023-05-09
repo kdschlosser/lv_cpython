@@ -27,17 +27,7 @@ extern "C" {
 /**
  * Type for async callback.
  */
-
- typedef struct _lv_async_info_t lv_async_info_t;
-
- typedef void (*lv_async_cb_t)(lv_async_info_t * info);
-
-
-struct _lv_async_info_t {
-    lv_async_cb_t cb;
-    void * user_data;
-};
-
+typedef void (*lv_async_cb_t)(void *);
 
 /**********************
  * GLOBAL PROTOTYPES

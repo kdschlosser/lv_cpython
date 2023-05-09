@@ -15,9 +15,6 @@ extern "C" {
  *********************/
 #include "lv_obj.h"
 #include "../draw/lv_draw.h"
-#include "../misc/lv_event.h"
-#include "../misc/lv_timer.h"
-
 
 /*********************
  *      DEFINES
@@ -26,34 +23,17 @@ extern "C" {
 #define LV_INV_BUF_SIZE 32 /*Buffer size for invalid areas*/
 #endif
 
-typedef enum {
-    /**
-     * Use the buffer(s) to render the screen is smaller parts.
-     * This way the buffers can be smaller then the display to save RAM. At least 1/10 sceen size buffer(s) are recommended.
-     */
-    LV_DISP_RENDER_MODE_PARTIAL,
-
-    /**
-     * The buffer(s) has to be screen sized and LVGL will render into the correct location of the buffer.
-     * This way the buffer always contain the whole image. Only the changed ares will be updated.
-     * With 2 buffers the buffers' content are kept in sync automatically and in flush_cb only address change is required.
-     */
-    LV_DISP_RENDER_MODE_DIRECT,
-
-    /**
-     * Always redraw the whole screen even if only one pixel has been changed.
-     * With 2 buffers in flush_cb only and address change is required.
-     */
-    LV_DISP_RENDER_MODE_FULL,
-} lv_disp_render_mode_t;
-
-typedef struct _lv_disp_t lv_disp_t;
-
-typedef void (*lv_disp_flush_cb_t)(lv_disp_t* disp, const lv_area_t* area, lv_color_t* px_map);
-
 /**********************
  *      TYPEDEFS
  **********************/
+typedef void (*lv_disp_flush_cb_t)(struct _lv_disp_t * disp, const lv_area_t * area, lv_color_t * px_map);
+
+typedef void (*lv_disp_draw_ctx_init_cb_t)(struct _lv_disp_t * disp, lv_draw_ctx_t * draw_ctx);
+typedef void (*lv_disp_draw_ctx_deinit_cb_t)(struct _lv_disp_t * disp, lv_draw_ctx_t * draw_ctx);
+
+typedef void (*lv_disp_wait_cb_t)(struct _lv_disp_t * disp_drv);
+
+
 struct _lv_disp_t {
 
     /*---------------------
@@ -126,14 +106,16 @@ struct _lv_disp_t {
      * Draw context
      *--------------------*/
 
+
     lv_draw_ctx_t * draw_ctx;
-    void (*draw_ctx_init)(struct _lv_disp_t * disp, lv_draw_ctx_t * draw_ctx);
-    void (*draw_ctx_deinit)(struct _lv_disp_t * disp, lv_draw_ctx_t * draw_ctx);
+    lv_disp_draw_ctx_init_cb_t draw_ctx_init;
+    lv_disp_draw_ctx_deinit_cb_t draw_ctx_deinit;
     size_t draw_ctx_size;
 
     /*---------------------
      * Screens
      *--------------------*/
+
 
     /** Screens of the display*/
     struct _lv_obj_t ** screens;    /**< Array of screen objects.*/
@@ -155,7 +137,7 @@ struct _lv_disp_t {
 
     void * user_data; /**< Custom user data*/
 
-    struct _lv_event_list_t event_list;
+    lv_event_list_t event_list;
 
     uint32_t sw_rotate : 1; /**< 1: use software rotation (slower)*/
     uint32_t rotation  : 2; /**< Element of  @lv_disp_rotation_t*/
@@ -174,12 +156,13 @@ struct _lv_disp_t {
     /** OPTIONAL: Called periodically while lvgl waits for operation to be completed.
      * For example flushing or GPU
      * User can execute very simple tasks here or yield the task*/
-    void (*wait_cb)(struct _lv_disp_t * disp_drv);
+    lv_disp_wait_cb_t wait_cb;
 
     /** On CHROMA_KEYED images this color will be transparent.
      * `LV_COLOR_CHROMA_KEY` by default. (lv_conf.h) */
     lv_color_t color_chroma_key;
 };
+
 
 /**********************
  * GLOBAL PROTOTYPES

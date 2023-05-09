@@ -19,6 +19,10 @@
  *      TYPEDEFS
  **********************/
 
+typedef struct _lv_async_info_t {
+    lv_async_cb_t cb;
+    void * user_data;
+} lv_async_info_t;
 
 /**********************
  *  STATIC PROTOTYPES

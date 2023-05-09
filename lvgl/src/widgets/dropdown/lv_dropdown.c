@@ -146,7 +146,7 @@ void lv_dropdown_set_options(lv_obj_t * obj, const char * options)
     if(dropdown->options == NULL) return;
 
 #if LV_USE_ARABIC_PERSIAN_CHARS == 0
-    lv_strncpy(dropdown->options, options, len);
+    lv_strcpy(dropdown->options, options);
 #else
     _lv_txt_ap_proc(options, dropdown->options);
 #endif
@@ -203,7 +203,7 @@ void lv_dropdown_add_option(lv_obj_t * obj, const char * option, uint32_t pos)
         LV_ASSERT_MALLOC(dropdown->options);
         if(dropdown->options == NULL) return;
 
-        lv_strncpy(dropdown->options, static_options, len);
+        lv_strcpy(dropdown->options, static_options);
         dropdown->static_txt = 0;
     }
 
@@ -243,7 +243,7 @@ void lv_dropdown_add_option(lv_obj_t * obj, const char * option, uint32_t pos)
     LV_ASSERT_MALLOC(ins_buf);
     if(ins_buf == NULL) return;
 #if LV_USE_ARABIC_PERSIAN_CHARS == 0
-    lv_strncpy(ins_buf, option, new_len + 1);
+    lv_strcpy(ins_buf, option);
 #else
     _lv_txt_ap_proc(option, ins_buf);
 #endif
@@ -404,11 +404,13 @@ int32_t lv_dropdown_get_option_index(lv_obj_t * obj, const char * option)
     uint32_t char_i = 0;
     uint32_t opt_i = 0;
     const char * start = opts;
+    const size_t option_len = lv_strlen(option); /*avoid recomputing this multiple times in the loop*/
 
     while(start[0] != '\0') {
         for(char_i = 0; (start[char_i] != '\n') && (start[char_i] != '\0'); char_i++);
 
-        if(memcmp(start, option, LV_MIN(lv_strlen(option), char_i)) == 0) return opt_i;
+        if(option_len == char_i &&
+           memcmp(start, option, option_len) == 0) return opt_i; /*cannot match exactly unless they are the same length*/
         start = &start[char_i];
         if(start[0] == '\n') start++;
         opt_i++;

@@ -51,22 +51,29 @@ typedef struct {
 } lv_font_glyph_dsc_t;
 
 /** The bitmaps might be upscaled by 3 to achieve subpixel rendering.*/
-enum {
+enum _lv_font_subpx_t {
     LV_FONT_SUBPX_NONE,
     LV_FONT_SUBPX_HOR,
     LV_FONT_SUBPX_VER,
     LV_FONT_SUBPX_BOTH,
 };
 
+#ifdef DOXYGEN
+typedef _lv_font_subpx_t lv_font_subpx_t;
+#else
 typedef uint8_t lv_font_subpx_t;
+#endif /*DOXYGEN*/
+
+typedef bool (*lv_font_get_glyph_dsc_cb_t)(const struct _lv_font_t *, lv_font_glyph_dsc_t *, uint32_t letter, uint32_t letter_next);
+typedef const uint8_t * (*lv_font_get_glyph_bitmap_cb_t)(const struct _lv_font_t *, uint32_t);
 
 /** Describe the properties of a font*/
 typedef struct _lv_font_t {
     /** Get a glyph's descriptor from a font*/
-    bool (*get_glyph_dsc)(const struct _lv_font_t *, lv_font_glyph_dsc_t *, uint32_t letter, uint32_t letter_next);
+    lv_font_get_glyph_dsc_cb_t get_glyph_dsc;
 
     /** Get a glyph's bitmap from a font*/
-    const uint8_t * (*get_glyph_bitmap)(const struct _lv_font_t *, uint32_t);
+    lv_font_get_glyph_bitmap_cb_t get_glyph_bitmap;
 
     /*Pointer to the font in a font pack (must have the same line height)*/
     lv_coord_t line_height;         /**< The real line height where any text fits*/

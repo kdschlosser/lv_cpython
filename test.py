@@ -1,7 +1,6 @@
 import lvgl as lv
 import time
 
-
 lv.init()
 print('LVGL initilized')
 
@@ -23,16 +22,6 @@ lv.indev_set_group(keyboard, group)
 print('lv_indev_set_group')
 
 screen = lv.scr_act()
-
-btn = lv.btn_create(screen)
-lv.obj_set_pos(btn, 10, 10)
-lv.obj_set_size(btn, 120, 50)
-
-label = lv.label_create(btn)
-lv.obj_center(btn)
-
-lv.label_set_text(label, "Button")
-lv.obj_center(label)
 
 start = time.time()
 

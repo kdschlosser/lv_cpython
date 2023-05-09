@@ -6,7 +6,6 @@
 /*********************
  *      INCLUDES
  ********************/
-#include "../misc/lv_area.h"
 #include "lv_indev.h"
 #include "lv_indev_private.h"
 #include "lv_disp.h"
@@ -15,7 +14,6 @@
 #include "lv_indev_scroll.h"
 #include "lv_group.h"
 #include "lv_refr.h"
-
 
 #include "../hal/lv_hal_tick.h"
 #include "../misc/lv_timer.h"
@@ -251,7 +249,7 @@ void lv_indev_set_type(lv_indev_t * indev, lv_indev_type_t indev_type)
     indev->reset_query = 1;
 }
 
-void lv_indev_set_read_cb(lv_indev_t * indev, lv_indev_read_cb_t read_cb)
+void lv_indev_set_read_cb(lv_indev_t * indev,  lv_indev_read_cb_t read_cb)
 {
     if(indev == NULL) return;
 
@@ -1175,7 +1173,8 @@ static void indev_proc_release(lv_indev_t * indev)
             lv_obj_t * parent = scroll_obj;
             while(parent) {
                 angle += lv_obj_get_style_transform_angle(parent, 0);
-                zoom *= (lv_obj_get_style_transform_zoom(parent, 0) / 256);
+                int32_t zoom_act = lv_obj_get_style_transform_zoom_safe(parent, 0);
+                zoom = (zoom * zoom_act) >> 8;
                 parent = lv_obj_get_parent(parent);
             }
 

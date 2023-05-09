@@ -31,7 +31,7 @@ extern "C" {
 /**
  * Errors in the file system module.
  */
-enum {
+enum _lv_fs_res_t {
     LV_FS_RES_OK = 0,
     LV_FS_RES_HW_ERR,     /*Low level hardware error*/
     LV_FS_RES_FS_ERR,     /*Error in the file system structure*/
@@ -46,16 +46,27 @@ enum {
     LV_FS_RES_INV_PARAM,  /*Invalid parameter among arguments*/
     LV_FS_RES_UNKNOWN,    /*Other unknown error*/
 };
+
+#ifdef DOXYGEN
+typedef _lv_fs_res_t lv_fs_res_t;
+#else
 typedef uint8_t lv_fs_res_t;
+#endif /*DOXYGEN*/
+
 
 /**
  * File open mode.
  */
-enum {
+enum _lv_fs_mode_t {
     LV_FS_MODE_WR = 0x01,
     LV_FS_MODE_RD = 0x02,
 };
+
+#ifdef DOXYGEN
+typedef _lv_fs_mode_t lv_fs_mode_t;
+#else
 typedef uint8_t lv_fs_mode_t;
+#endif /*DOXYGEN*/
 
 
 /**
@@ -67,21 +78,37 @@ typedef enum {
     LV_FS_SEEK_END = 0x02,      /**< Set the position from the end of the file*/
 } lv_fs_whence_t;
 
+typedef bool (*lv_fs_drv_ready_cb_t)(struct _lv_fs_drv_t * drv);
 
-typedef struct _lv_fs_drv_t lv_fs_drv_t;
+typedef void * (*lv_fs_drv_open_cb_t)(struct _lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode);
+typedef lv_fs_res_t (*lv_fs_drv_close_cb_t)(struct _lv_fs_drv_t * drv, void * file_p);
+typedef lv_fs_res_t (*lv_fs_drv_read_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, void * buf, uint32_t btr, uint32_t * br);
+typedef lv_fs_res_t (*lv_fs_drv_write_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, const void * buf, uint32_t btw, uint32_t * bw);
+typedef lv_fs_res_t (*lv_fs_drv_seek_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t pos, lv_fs_whence_t whence);
+typedef lv_fs_res_t (*lv_fs_drv_tell_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t * pos_p);
 
+typedef void * (*lv_fs_drv_dir_open_cb_t)(struct _lv_fs_drv_t * drv, const char * path);
+typedef lv_fs_res_t (*lv_fs_drv_dir_read_cb_t)(struct _lv_fs_drv_t * drv, void * rddir_p, char * fn);
+typedef lv_fs_res_t (*lv_fs_drv_dir_close_cb_t)(struct _lv_fs_drv_t * drv, void * rddir_p);
 
-typedef bool (*lv_fs_ready_cb_t)(lv_fs_drv_t * drv);
-typedef void * (*lv_fs_open_cb_t)(lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode);
-typedef lv_fs_res_t (*lv_fs_close_cb_t)(lv_fs_drv_t * drv, void * file_p);
-typedef lv_fs_res_t (*lv_fs_read_cb_t)(lv_fs_drv_t * drv, void * file_p, void * buf, uint32_t btr, uint32_t * br);
-typedef lv_fs_res_t (*lv_fs_write_cb_t)(lv_fs_drv_t * drv, void * file_p, const void * buf, uint32_t btw, uint32_t * bw);
-typedef lv_fs_res_t (*lv_fs_seek_cb_t)(lv_fs_drv_t * drv, void * file_p, uint32_t pos, lv_fs_whence_t whence);
-typedef lv_fs_res_t (*lv_fs_tell_cb_t)(lv_fs_drv_t * drv, void * file_p, uint32_t * pos_p);
-typedef void * (* lv_fs_dir_open_cb_t)(lv_fs_drv_t * drv, const char * path);
-typedef lv_fs_res_t (*lv_fs_dir_read_cb_t)(lv_fs_drv_t * drv, void * rddir_p, char * fn);
-typedef lv_fs_res_t (*lv_fs_dir_close_cb_t)(lv_fs_drv_t * drv, void * rddir_p);
+typedef struct _lv_fs_drv_t {
+    char letter;
+    uint16_t cache_size;
+    lv_fs_drv_ready_cb_t ready_cb;
 
+    lv_fs_drv_open_cb_t open_cb;
+    lv_fs_drv_close_cb_t close_cb;
+    lv_fs_drv_read_cb_t read_cb;
+    lv_fs_drv_write_cb_t write_cb;
+    lv_fs_drv_seek_cb_t seek_cb;
+    lv_fs_drv_tell_cb_t tell_cb;
+
+    lv_fs_drv_dir_open_cb_t dir_open_cb;
+    lv_fs_drv_dir_read_cb_t dir_read_cb;
+    lv_fs_drv_dir_close_cb_t dir_close_cb;
+
+    void * user_data; /**< Custom file user data*/
+} lv_fs_drv_t;
 
 typedef struct {
     uint32_t start;
@@ -100,27 +127,6 @@ typedef struct {
     void * dir_d;
     lv_fs_drv_t * drv;
 } lv_fs_dir_t;
-
-
-
-struct _lv_fs_drv_t {
-    char letter;
-    uint16_t cache_size;
-    lv_fs_ready_cb_t ready_cb;
-
-    lv_fs_open_cb_t open_cb;
-    lv_fs_close_cb_t close_cb;
-    lv_fs_read_cb_t read_cb;
-    lv_fs_write_cb_t write_cb;
-    lv_fs_seek_cb_t seek_cb;
-    lv_fs_tell_cb_t tell_cb;
-
-    lv_fs_dir_open_cb_t dir_open_cb;
-    lv_fs_dir_read_cb_t dir_read_cb;
-    lv_fs_dir_close_cb_t dir_close_cb;
-
-    void * user_data; /**< Custom file user data*/
-};
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -210,7 +216,7 @@ lv_fs_res_t lv_fs_seek(lv_fs_file_t * file_p, uint32_t pos, lv_fs_whence_t whenc
 /**
  * Give the position of the read write pointer
  * @param file_p    pointer to a lv_fs_file_t variable
- * @param pos_p     pointer to store the position of the read write pointer
+ * @param pos       pointer to store the position of the read write pointer
  * @return          LV_FS_RES_OK or any error from 'fs_res_t'
  */
 lv_fs_res_t lv_fs_tell(lv_fs_file_t * file_p, uint32_t * pos);

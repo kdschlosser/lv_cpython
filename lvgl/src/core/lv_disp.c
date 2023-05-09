@@ -9,8 +9,8 @@
 #include "lv_disp.h"
 #include "../misc/lv_math.h"
 #include "../core/lv_refr.h"
-// #include "../core/lv_disp.h"
-// #include "../core/lv_disp_private.h"
+#include "../core/lv_disp.h"
+#include "../core/lv_disp_private.h"
 #include "../misc/lv_gc.h"
 
 #if LV_USE_DRAW_SW

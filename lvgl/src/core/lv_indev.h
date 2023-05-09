@@ -13,7 +13,6 @@ extern "C" {
 /*********************
  *      INCLUDES
  *********************/
-#include "lv_indev_private.h"
 #include "lv_group.h"
 #include "../misc/lv_area.h"
 #include "../misc/lv_timer.h"
@@ -28,9 +27,37 @@ extern "C" {
 struct _lv_obj_t;
 struct _lv_disp_t;
 struct _lv_group_t;
+struct _lv_indev_t;
 struct _lv_disp_t;
+typedef struct _lv_indev_t lv_indev_t;
 
+/** Possible input device types*/
+typedef enum {
+    LV_INDEV_TYPE_NONE,    /**< Uninitialized state*/
+    LV_INDEV_TYPE_POINTER, /**< Touch pad, mouse, external button*/
+    LV_INDEV_TYPE_KEYPAD,  /**< Keypad or keyboard*/
+    LV_INDEV_TYPE_BUTTON,  /**< External (hardware button) which is assigned to a specific point of the screen*/
+    LV_INDEV_TYPE_ENCODER, /**< Encoder with only Left, Right turn and a Button*/
+} lv_indev_type_t;
 
+/** States for input devices*/
+typedef enum {
+    LV_INDEV_STATE_RELEASED = 0,
+    LV_INDEV_STATE_PRESSED
+} lv_indev_state_t;
+
+/** Data structure passed to an input driver to fill*/
+typedef struct {
+    lv_point_t point; /**< For LV_INDEV_TYPE_POINTER the currently pressed point*/
+    uint32_t key;     /**< For LV_INDEV_TYPE_KEYPAD the currently pressed key*/
+    uint32_t btn_id;  /**< For LV_INDEV_TYPE_BUTTON the currently pressed button*/
+    int16_t enc_diff; /**< For LV_INDEV_TYPE_ENCODER number of steps since the previous read*/
+
+    lv_indev_state_t state; /**< LV_INDEV_STATE_REL or LV_INDEV_STATE_PR*/
+    bool continue_reading;  /**< If set to true, the read callback is invoked again*/
+} lv_indev_data_t;
+
+typedef void (*lv_indev_read_cb_t)(struct _lv_indev_t * indev, lv_indev_data_t * data);
 
 /**********************
  * GLOBAL PROTOTYPES
@@ -134,7 +161,7 @@ void lv_indev_set_cursor(lv_indev_t * indev, struct _lv_obj_t * cur_obj);
 /**
  * Set a destination group for a keypad input device (for LV_INDEV_TYPE_KEYPAD)
  * @param indev pointer to an input device
- * @param group point to a group
+ * @param group pointer to a group
  */
 void lv_indev_set_group(lv_indev_t * indev, lv_group_t * group);
 
@@ -142,7 +169,7 @@ void lv_indev_set_group(lv_indev_t * indev, lv_group_t * group);
  * Set the an array of points for LV_INDEV_TYPE_BUTTON.
  * These points will be assigned to the buttons to press a specific point on the screen
  * @param indev pointer to an input device
- * @param group point to a group
+ * @param points array of points
  */
 void lv_indev_set_button_points(lv_indev_t * indev, const lv_point_t points[]);
 

@@ -24,31 +24,53 @@ class _Function(object):
     def __call__(self, *args):
         args = list(args)
 
+        last_arg_null = False
+
+        new_args = []
         for i, arg in enumerate(args):
+            if last_arg_null and i == len(args) - 1:
+                new_args.append(_lib_lvgl.ffi.NULL)
+                break
+
             if isinstance(arg, _CallbackWrapper):
                 if i == 0:
                     raise RuntimeError(
                         'callback functions cannot be the '
                         'first parameter in a function call'
                     )
+                if isinstance(args[0], _StructWrapper):
+                    if not args[0].has_user_data:
+                        raise RuntimeError(
+                            'first parameter has no user_data field'
+                        )
 
-                try:
-                    args[0].user_data = arg.py_obj
-                except:
+                    cb_store = args[0].cb_store
+
+                    if cb_store is None:
+                        cb_store = _CBStore()
+                        cb_store_handle = _lib_lvgl.ffi.new_handle(cb_store)
+                        args[0].user_data = cb_store_handle
+                        args[0].cb_store = (cb_store, cb_store_handle)
+                        cb_store[arg.ctype] = arg
+                    else:
+                        cb_store[0][arg.ctype] = arg
+
+                    last_arg_null = True
+                else:
                     raise ValueError(
                         'the first parameter must be a structure and it must '
                         'have a field named "user_data" when passing a '
                         'callback to a function'
                     )
 
-                args[i] = arg.c_func
+                new_args.append(arg.c_func)
 
             elif isinstance(arg, str):
                 arg = arg.encode('utf-8')
-                args[i] = arg
+                new_args.append(arg)
 
             elif isinstance(arg, _StructWrapper):
-                args[i] = arg._obj
+                new_args.append(arg._obj)
 
             elif isinstance(arg, (list, tuple)):
                 array = []
@@ -73,9 +95,9 @@ class _Function(object):
                 if struct_initilizer is not None:
                     array = _lib_lvgl.ffi.new(struct_initilizer, array)
 
-                args[i] = array
+                new_args.append(array)
 
-        res = self.__func(*args)
+        res = self.__func(*new_args)
         if isinstance(res, bytes):
             return res.decode('utf-8')
 
@@ -168,9 +190,16 @@ def _get_py_type(obj):
         return cls()
 
 
+class _CBStore(dict):
+    pass
+
+
 class _StructWrapper(object):
     _initilizer = ''
     _obj = None
+
+    def __dir__(self):
+        return dir(self._obj)
 
     def __init__(self, **kwargs):
         if self._obj is None:
@@ -207,33 +236,69 @@ class _StructWrapper(object):
 
         return obj
 
+    @property
+    def cb_store(self):
+        return self.__dict__.get('__cb_store__', None)
+
+    @cb_store.setter
+    def cb_store(self, value):
+        if not isinstance(value, _CBStore):
+            raise ValueError('incorrect data type')
+
+        self.__dict__['__cb_store__'] = value
+
+    @property
+    def has_user_data(self):
+        try:
+            _ = self.user_data
+            return True
+        except AttributeError:
+            return False
+
     def __setattr__(self, key, value):
         try:
             obj = getattr(self._obj, key)
             cdata = str(_lib_lvgl.ffi.typeof(obj)).replace("'", '')
 
-            for item in ('_cb_t', '_cb', '_f_t', '_xcb_t'):
+            for item in ('_cb_t', '_f_t'):
                 if item in cdata:
+                    if not self.has_user_data:
+                        raise RuntimeError(
+                            'no user_data field avaailable for structure "{0}"'.format(
+                                self.__name__
+                            )
+                        )
+
+                    type_name = ''
+
+                    for item in cdata.split(' '):
+                        if '*' in item:
+                            break
+
+                        type_name = item
+
+                    type_name = type_name.lstrip('lv_')
+
                     if not isinstance(value, _CallbackWrapper):
-                        name = ''
-
-                        for item in cdata.split(' '):
-                            if '*' in item:
-                                break
-
-                            name = item
-
                         glob = globals()
 
-                        name = name.lstrip('lv_')
-
-                        if name not in glob:
+                        if type_name not in glob:
                             raise RuntimeError('Sanity Check')
 
-                        value = glob[name](value)
+                        value = glob[type_name](value)
 
 
-                    self.user_data = value.py_obj
+                    cb_store = self.cb_store
+
+                    if cb_store is None:
+                        cb_store = _CBStore()
+                        cb_store_handle = _lib_lvgl.ffi.new_handle(cb_store)
+                        self.user_data = cb_store_handle
+                        self.cb_store = (cb_store, cb_store_handle)
+                    else:
+                        cb_store = cb_store[0]
+
+                    cb_store[type_name] = value
                     setattr(self._obj, key, value.c_func)
 
                     self.__dict__[key] = value
@@ -356,8 +421,7 @@ class _CallbackWrapper(object):
         self.func = func
 
     @staticmethod
-    def _callback_func(*args):
-        func_wrapper = _lib_lvgl.ffi.from_handle(args[0].user_data)
+    def _callback_func(func_wrapper, *args):
         new_args = []
 
         for arg in args:
@@ -441,6 +505,8 @@ class _lvgl(object):
         elif item.isupper():
             if hasattr(_lib_lvgl.lib, 'LV_' + item):
                 res = getattr(_lib_lvgl.lib, 'LV_' + item)
+            elif hasattr('ENUM_LV_' + item):
+                res = getattr(_lib_lvgl.lib, 'ENUM_LV_' + item)
             else:
                 raise AttributeError(item)
 

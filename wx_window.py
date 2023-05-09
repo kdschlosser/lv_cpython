@@ -2,6 +2,7 @@ import lvgl as lv
 import _lib_lvgl
 import wx
 import threading
+import math
 import win_precise_time as wpt
 
 
@@ -141,22 +142,14 @@ class Frame(wx.Frame):
     def flush_lvgl(self, disp, area, px_map):
         width = area.x2 - area.x1 + 1
         height = area.y2 - area.y1 + 1
-
         size = width * height
-        color_buf = bytearray(size * 3)
-        alpha_buf = bytearray(size)
 
-        for i in range(size):
-            c = px_map[i]
-            j = i * 3
-            color_buf[j] = c.red
-            color_buf[j + 1] = c.green
-            color_buf[j + 2] = c.blue
-            alpha_buf[i] = c.alpha
 
-        img = wx.Image(width, height, color_buf)
-        img.SetAlpha(alpha_buf)
-        bmp = img.ConvertToBitmap()
+        px_data = _lib_lvgl.ffi.cast('uint8_t[{0}]'.format(size * 4), px_map)
+        dbuf = _lib_lvgl.ffi.buffer(px_data)[:]
+
+        bmp = wx.Bitmap(width, height)
+        bmp.CopyFromBuffer(dbuf, wx.BitmapBufferFormat_RGBA)
         dc = wx.ClientDC(self)
         dc.DrawBitmap(bmp, area.x1, area.y1)
         dc.Destroy()
@@ -177,6 +170,192 @@ def mouse_cb(_, data):
     frame.get_mouse_state(data)
 
 
+# this is a python version of lv_point_t.
+# a structure will need to be made to represent this class.
+# This version accepts float values which is needed for the circle math.
+# there is a function that converts this point into lv_point_t
+class PyPoint:
+
+    def __init__(self, x, y):
+        self.x = x
+        self.y = y
+
+
+# function to convery point structure that holds float values to lv_point_t
+def py_point_to_lv_point(py_point):
+    return lv.point_t(x=int(py_point.x), y=int(py_point.y))
+
+
+# remap a value from one value range to another value range. This function accepts floats as the inputs and returns a float
+def float_remap(value, old_min, old_max, new_min, new_max):
+        return ((float(value - old_min) * float(new_max - new_min)) / float(old_max - old_min)) + new_min
+
+
+# same thing as above except it returns an integer
+def int_remap(value, old_min, old_max, new_min, new_max):
+    return int(float_remap(value, old_min, old_max, new_min, new_max))
+
+
+# *** circle math ***
+pi2 = 2.0 * math.pi
+
+
+class Ellipse:
+
+    def __init__(
+            self,
+            x,
+            y,
+            radius_horizontal,
+            radius_vertical
+    ):
+        self.x = x
+        self.y = y
+        self.radius_horizontal = radius_horizontal
+        self.radius_vertical = radius_vertical
+
+
+def get_ellipse_center(ellipse: Ellipse) -> PyPoint:
+        return PyPoint(ellipse.x, ellipse.y)
+
+
+def get_ellipse_angle_from_point(ellipse: Ellipse, point: PyPoint) -> float:
+    return math.degrees(math.atan2(ellipse.y - point.y, ellipse.x - point.x)) + 180
+
+
+def get_ellipse_point_from_angle(ellipse: Ellipse, degrees: float) -> PyPoint:
+    rh = ellipse.radius_horizontal
+    rv = ellipse.radius_vertical
+    x = ellipse.x
+    y = ellipse.y
+
+    ang = math.radians(degrees)
+    cos = math.cos(ang)  # axis direction at angle ang
+    sin = math.sin(ang)
+    aa = x * x
+    bb = y * y  # intersection between ellipse and axis
+    t = aa * bb / ((cos * cos * bb) + (sin * sin * aa))
+    cos *= t
+    sin *= t
+    sin *= x / y  # convert to circle
+    ea = math.atan2(sin, cos)  # compute elliptic angle
+    if ea < 0.0:
+        ea += pi2  # normalize to <0,pi2>
+
+    cos = math.cos(ea)
+    sin = math.sin(ea)
+    ta = sin / cos  # tan(a)
+    tt = ta * rh / rv  # tan(t)
+    d = 1.0 / math.sqrt(1.0 + tt * tt)
+    x += math.copysign(rh * d, cos)
+    y += math.copysign(rv * tt * d, sin)
+    return PyPoint(x, y)
+
+
+def ellipse_contains_point(ellipse: Ellipse, point: PyPoint) -> bool:
+        # checking the equation of
+        # ellipse with the given point
+        p = (
+                (((point.x - ellipse.x) ** 2) / (
+                        ellipse.radius_horizontal ** 2)) +
+                (((point.y - ellipse.y) ** 2) / (ellipse.radius_vertical ** 2))
+        )
+
+        return p > 1
+
+
+def get_distance(point1: PyPoint, point2: PyPoint) -> int:
+    return math.sqrt((point2.x - point1.x) ** 2 + (point2.y - point1.y) ** 2)
+
+
+
+class ellipse_dsc_t:
+
+    def __init__(self, color: "lv_color_t", width: "lv_coord_t", start_angle: "uint16_t", end_angle: "uint16_t", img_src: "void*:, opa: uint8_t, blend_mode: "lv_blend_mode_t",  rounded: "int8_t"):   
+    
+"""
+typedef struct {
+    lv_color_t color;
+    lv_coord_t width;
+    uint16_t start_angle;
+    uint16_t end_angle;
+    const void * img_src;
+    lv_opa_t opa;
+    lv_blend_mode_t blend_mode  : 2;
+    uint8_t rounded : 1;
+} lv_draw_arc_dsc_t;"""
+
+def render_ellipse(ctx, ellipse: Ellipse, color: "lv_color_t", width: "uint16_t"):
+    point = get_ellipse_center(ellipse)
+    radius = min(ellipse.radius_vertical, ellipse.radius_horizontal)
+
+    ellipse_dsc = lv.draw_arc_dsc_t()
+    lv.draw_arc_dsc_init(ellipse_dsc)
+
+    ellipse_dsc.start_angle = 0
+    ellipse_dsc.end_angle = 3590
+
+    ellipse_dsc.color.red = color.red
+    ellipse_dsc.green.red = color.green
+    ellipse_dsc.color.blue = color.blue
+    ellipse_dsc.opa = color.alpha
+    ellipse_dsc.width = width
+
+
+# draw_line_dsc_t create_separator(lv_color_t color, lv_opa_t opa, lv_coord_t width);
+def create_separator(color, opa, width):
+    separator_dsc = lv.draw_line_dsc_t()
+    lv.draw_line_dsc_init(separator_dsc)
+
+    separator_dsc.color = color
+    separator_dsc.width = width
+    separator_dsc.opa = opa
+    separator_dsc.round_start = False
+    separator_dsc.round_end = False
+
+    return separator_dsc
+
+
+separator1_dsc = create_separator(lv.color_hex(0xFF0000), 125, 3)
+separator2_dsc = create_separator(lv.color_hex(0x00FF00), 125, 3)
+separator3_dsc = create_separator(lv.color_hex(0x0000FF), 125, 3)
+
+
+class meter_phase:
+
+    def __init__(self, amps_value=0, volts_value=0):
+        self.amps_value = amps_value
+        self.volts_value = volts_value
+
+
+class meter_gauge:
+
+    def __init__(self, ):
+
+
+
+
+    293
+
+
+
+
+
+
+
+
+
+def gui(screen):
+
+
+
+
+
+
+
+
+
+
 def run():
     lv.init()
     print('LVGL initilized')
@@ -189,32 +368,22 @@ def run():
 
     _buf1 = _lib_lvgl.ffi.new('lv_color_t[{0}]'.format(100 * 100))
 
-    lv.disp_set_draw_buffers(
-        disp,
-        _buf1,
-        lv.NULL,
-        100 * 100,
-        lv.DISP_RENDER_MODE_PARTIAL
-        )
+    lv.disp_set_draw_buffers(disp, _buf1,  lv.NULL, 100 * 100, lv.DISP_RENDER_MODE_PARTIAL)
 
     group = lv.group_create()
     lv.group_set_default(group)
 
     mouse = lv.indev_create()
     lv.indev_set_type(mouse, lv.INDEV_TYPE_POINTER)
-
-    mouse_cb_t = lv.lv_indev_read_cb_t(mouse_cb)
-
-    mouse_userdata = _lib_lvgl.ffi.new_handle(mouse_cb)
-    mouse.user_data = mouse_userdata
-
+    mouse_cb_t = lv.indev_read_cb_t(mouse_cb)
     lv.indev_set_read_cb(mouse, mouse_cb_t)
+    lv.timer_set_period(mouse.read_timer, 1)
 
     keyboard = lv.indev_create()
     lv.indev_set_type(keyboard, lv.INDEV_TYPE_KEYPAD)
-    keyboard_cb_t = lv.lv_indev_read_cb_t(keyboard_cb)
-
+    keyboard_cb_t = lv.indev_read_cb_t(keyboard_cb)
     lv.indev_set_read_cb(keyboard, keyboard_cb_t)
+    lv.timer_set_period(keyboard.read_timer, 1)
 
     lv.indev_set_group(keyboard, group)
 
@@ -222,17 +391,23 @@ def run():
 
     btn = lv.btn_create(screen)
 
-    lv.obj_set_size(btn, 150, 75)
+    lv.obj_set_size(btn, 150, 100)
     lv.obj_center(btn)
 
-    label = lv.label_create(btn)
-    lv.label_set_text(label, "Button")
-    lv.obj_center(label)
+    import time
+
+    start = time.time()
 
     while True:
-        wpt.sleep(0.001)
-        lv.tick_inc(1)
-        lv.task_handler()
+        stop = time.time()
+        diff = int((stop * 1000) - (start * 1000))
+        if diff >= 5:
+            start = stop
+            lv.refr_now(disp)
+            lv.tick_inc(diff)
+            lv.task_handler()
+        else:
+            wpt.sleep(0.005 - (diff / 1000))
 
 
 t = threading.Thread(target=run)

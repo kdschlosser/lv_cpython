@@ -59,7 +59,7 @@ void lv_refr_now(lv_disp_t * disp);
 
 /**
  * Redrawn on object an all its children using the passed draw context
- * @param draw  pointer to an initialized draw context
+ * @param draw_ctx  pointer to an initialized draw context
  * @param obj   the start object from the redraw should start
  */
 void lv_obj_redraw(lv_draw_ctx_t * draw_ctx, lv_obj_t * obj);
@@ -77,19 +77,6 @@ void _lv_inv_area(lv_disp_t * disp, const lv_area_t * area_p);
  * @return the display being refreshed
  */
 lv_disp_t * _lv_refr_get_disp_refreshing(void);
-
-#if LV_USE_PERF_MONITOR
-/**
- * Reset FPS counter
- */
-void lv_refr_reset_fps_counter(void);
-
-/**
- * Get the average FPS
- * @return the average FPS
- */
-uint32_t lv_refr_get_fps_avg(void);
-#endif
 
 /**
  * Called periodically to handle the refreshing

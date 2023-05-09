@@ -536,11 +536,19 @@ static void lv_btnmatrix_event(const lv_obj_class_t * class_p, lv_event_t * e)
             if(indev_type == LV_INDEV_TYPE_KEYPAD || (indev_type == LV_INDEV_TYPE_ENCODER && editing)) {
                 uint32_t b = 0;
                 if(btnm->one_check) {
-                    while(button_is_hidden(btnm->ctrl_bits[b]) || button_is_inactive(btnm->ctrl_bits[b]) ||
-                          button_is_checked(btnm->ctrl_bits[b]) == false) b++;
+                    while(b < btnm->btn_cnt &&
+                          (button_is_hidden(btnm->ctrl_bits[b]) ||
+                           button_is_inactive(btnm->ctrl_bits[b]) ||
+                           button_is_checked(btnm->ctrl_bits[b]) == false)) {
+                        b++;
+                    }
                 }
                 else {
-                    while(button_is_hidden(btnm->ctrl_bits[b]) || button_is_inactive(btnm->ctrl_bits[b])) b++;
+                    while(b < btnm->btn_cnt &&
+                          (button_is_hidden(btnm->ctrl_bits[b]) ||
+                           button_is_inactive(btnm->ctrl_bits[b]))) {
+                        b++;
+                    }
                 }
 
                 btnm->btn_id_sel = b;
@@ -564,9 +572,15 @@ static void lv_btnmatrix_event(const lv_obj_class_t * class_p, lv_event_t * e)
             else btnm->btn_id_sel++;
             if(btnm->btn_id_sel >= btnm->btn_cnt) btnm->btn_id_sel = 0;
 
+            uint16_t btn_id_start = btnm->btn_id_sel;
             while(button_is_hidden(btnm->ctrl_bits[btnm->btn_id_sel]) || button_is_inactive(btnm->ctrl_bits[btnm->btn_id_sel])) {
                 btnm->btn_id_sel++;
                 if(btnm->btn_id_sel >= btnm->btn_cnt) btnm->btn_id_sel = 0;
+
+                if(btnm->btn_id_sel == btn_id_start) {
+                    btnm->btn_id_sel = LV_BTNMATRIX_BTN_NONE;
+                    break;
+                }
             }
         }
         else if(c == LV_KEY_LEFT) {
@@ -575,9 +589,15 @@ static void lv_btnmatrix_event(const lv_obj_class_t * class_p, lv_event_t * e)
             if(btnm->btn_id_sel == 0) btnm->btn_id_sel = btnm->btn_cnt - 1;
             else if(btnm->btn_id_sel > 0) btnm->btn_id_sel--;
 
+            uint16_t btn_id_start = btnm->btn_id_sel;
             while(button_is_hidden(btnm->ctrl_bits[btnm->btn_id_sel]) || button_is_inactive(btnm->ctrl_bits[btnm->btn_id_sel])) {
                 if(btnm->btn_id_sel > 0) btnm->btn_id_sel--;
                 else btnm->btn_id_sel = btnm->btn_cnt - 1;
+
+                if(btnm->btn_id_sel == btn_id_start) {
+                    btnm->btn_id_sel = LV_BTNMATRIX_BTN_NONE;
+                    break;
+                }
             }
         }
         else if(c == LV_KEY_DOWN) {
@@ -587,7 +607,10 @@ static void lv_btnmatrix_event(const lv_obj_class_t * class_p, lv_event_t * e)
                 btnm->btn_id_sel = 0;
                 while(button_is_hidden(btnm->ctrl_bits[btnm->btn_id_sel]) || button_is_inactive(btnm->ctrl_bits[btnm->btn_id_sel])) {
                     btnm->btn_id_sel++;
-                    if(btnm->btn_id_sel >= btnm->btn_cnt) btnm->btn_id_sel = 0;
+                    if(btnm->btn_id_sel >= btnm->btn_cnt) {
+                        btnm->btn_id_sel = LV_BTNMATRIX_BTN_NONE;
+                        break;
+                    }
                 }
             }
             else {
@@ -615,7 +638,10 @@ static void lv_btnmatrix_event(const lv_obj_class_t * class_p, lv_event_t * e)
                 btnm->btn_id_sel = 0;
                 while(button_is_hidden(btnm->ctrl_bits[btnm->btn_id_sel]) || button_is_inactive(btnm->ctrl_bits[btnm->btn_id_sel])) {
                     btnm->btn_id_sel++;
-                    if(btnm->btn_id_sel >= btnm->btn_cnt) btnm->btn_id_sel = 0;
+                    if(btnm->btn_id_sel >= btnm->btn_cnt) {
+                        btnm->btn_id_sel = LV_BTNMATRIX_BTN_NONE;
+                        break;
+                    }
                 }
             }
             else {

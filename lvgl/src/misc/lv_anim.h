@@ -43,7 +43,7 @@ struct _lv_anim_t;
 struct _lv_timer_t;
 
 /** Get the current value during an animation*/
-typedef int32_t (*lv_anim_path_cb_t)(const struct _lv_anim_t * anim);
+typedef int32_t (*lv_anim_path_cb_t)(const struct _lv_anim_t *);
 
 /** Generic prototype of "animator" functions.
  * First parameter is the variable to animate.
@@ -51,23 +51,23 @@ typedef int32_t (*lv_anim_path_cb_t)(const struct _lv_anim_t * anim);
  * Compatible with `lv_xxx_set_yyy(obj, value)` functions
  * The `x` in `_xcb_t` means it's not a fully generic prototype because
  * it doesn't receive `lv_anim_t *` as its first argument*/
-typedef void (*lv_anim_exec_xcb_t)(void * var, int32_t value);
+typedef void (*lv_anim_exec_xcb_t)(void *, int32_t);
 
 /** Same as `lv_anim_exec_xcb_t` but receives `lv_anim_t *` as the first parameter.
  * It's more consistent but less convenient. Might be used by binding generator functions.*/
-typedef void (*lv_anim_custom_exec_cb_t)(struct _lv_anim_t * anim, int32_t value);
+typedef void (*lv_anim_custom_exec_cb_t)(struct _lv_anim_t *, int32_t);
 
 /** Callback to call when the animation is ready*/
-typedef void (*lv_anim_ready_cb_t)(struct _lv_anim_t * anim);
+typedef void (*lv_anim_ready_cb_t)(struct _lv_anim_t *);
 
 /** Callback to call when the animation really stars (considering `delay`)*/
-typedef void (*lv_anim_start_cb_t)(struct _lv_anim_t * anim);
+typedef void (*lv_anim_start_cb_t)(struct _lv_anim_t *);
 
 /** Callback used when the animation values are relative to get the current value*/
-typedef int32_t (*lv_anim_get_value_cb_t)(struct _lv_anim_t * anim);
+typedef int32_t (*lv_anim_get_value_cb_t)(struct _lv_anim_t *);
 
 /** Callback used when the animation is deleted*/
-typedef void (*lv_anim_deleted_cb_t)(struct _lv_anim_t *anim);
+typedef void (*lv_anim_deleted_cb_t)(struct _lv_anim_t *);
 
 /** Describes an animation*/
 typedef struct _lv_anim_t {

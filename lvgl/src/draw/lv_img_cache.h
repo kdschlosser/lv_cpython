@@ -34,8 +34,11 @@ typedef struct {
 } _lv_img_cache_entry_t;
 
 
+typedef _lv_img_cache_entry_t * (*lv_img_cache_manager_open_xcb_t)(const void * src, lv_color_t color, int32_t frame_id);
+
+
 typedef struct {
-    _lv_img_cache_entry_t * (*open_cb)(const void * src, lv_color_t color, int32_t frame_id);
+    lv_img_cache_manager_open_xcb_t open_cb;
     void (*set_size_cb)(uint16_t new_entry_cnt);
     void (*invalidate_src_cb)(const void * src);
 } lv_img_cache_manager_t;
