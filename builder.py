@@ -15,9 +15,15 @@ os.chdir(base_path)
 build_path = os.path.join(base_path, 'build')
 
 if os.path.exists(build_path):
-    shutil.rmtree(build_path)
+    try:
+        shutil.rmtree(build_path)
+    except:
+        pass
 
-os.mkdir(build_path)
+try:
+    os.mkdir(build_path)
+except:
+    pass
 
 if sys.platform.startswith('win'):
     # this library is what make building on Windows possible. both

@@ -2,36 +2,24 @@ import lvgl as lv
 import time
 
 lv.init()
-print('LVGL initilized')
-
 disp = lv.sdl_window_create(480, 320)
-print('disp:', disp)
-
 group = lv.group_create()
-print('group:', group)
-
 lv.group_set_default(group)
-
 mouse = lv.sdl_mouse_create()
-print('mouse:', mouse)
-
 keyboard = lv.sdl_keyboard_create()
-print('keyboard:', keyboard)
-
 lv.indev_set_group(keyboard, group)
-print('lv_indev_set_group')
 
 
-btn = lv.btn_create(lv.scr_act())
-lv.obj_set_size(btn, 75, 30)
-lv.obj_center(btn)
+style = lv.style_t()
+lv.style_init(style)
 
-def on_click(e):
-    print('clicked')
+lv.style_set_arc_color(style, lv.palette_main(lv.PALETTE_RED))
+lv.style_set_arc_width(style, 4)
 
-event_cb = lv.event_cb_t(on_click)
-
-lv.obj_add_event(btn, event_cb, lv.EVENT_CLICKED, None)
+# Create an object with the new style
+obj = lv.arc_create(lv.scr_act())
+lv.obj_add_style(obj, style, 0)
+lv.obj_center(obj)
 
 start = time.time()
 

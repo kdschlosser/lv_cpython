@@ -310,7 +310,7 @@ void lv_obj_scroll_by(lv_obj_t * obj, lv_coord_t dx, lv_coord_t dy, lv_anim_enab
         lv_anim_t a;
         lv_anim_init(&a);
         lv_anim_set_var(&a, obj);
-        lv_anim_set_ready_cb(&a, scroll_anim_ready_cb);
+        lv_anim_set_ready_cb(&a, scroll_anim_ready_cb, NULL);
 
         if(dx) {
             uint32_t t = lv_anim_speed_to_time((lv_disp_get_hor_res(d) * 2) >> 2, 0, dx);
@@ -320,7 +320,7 @@ void lv_obj_scroll_by(lv_obj_t * obj, lv_coord_t dx, lv_coord_t dy, lv_anim_enab
             lv_coord_t sx = lv_obj_get_scroll_x(obj);
             lv_anim_set_values(&a, -sx, -sx + dx);
             lv_anim_set_exec_cb(&a, scroll_x_anim);
-            lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+            lv_anim_set_path_cb(&a, lv_anim_path_ease_out, NULL);
 
             lv_res_t res;
             res = lv_obj_send_event(obj, LV_EVENT_SCROLL_BEGIN, &a);
@@ -336,7 +336,7 @@ void lv_obj_scroll_by(lv_obj_t * obj, lv_coord_t dx, lv_coord_t dy, lv_anim_enab
             lv_coord_t sy = lv_obj_get_scroll_y(obj);
             lv_anim_set_values(&a, -sy, -sy + dy);
             lv_anim_set_exec_cb(&a,  scroll_y_anim);
-            lv_anim_set_path_cb(&a, lv_anim_path_ease_out);
+            lv_anim_set_path_cb(&a, lv_anim_path_ease_out, NULL);
 
             lv_res_t res;
             res = lv_obj_send_event(obj, LV_EVENT_SCROLL_BEGIN, &a);

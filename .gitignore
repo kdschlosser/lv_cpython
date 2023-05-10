@@ -168,3 +168,6 @@ cython_debug/
 /yacctab.py
 /lvgl/_lib_lvgl.c
 /lvgl/Release/
+/sdl_temp/
+/SDL2/
+/SDL2/
