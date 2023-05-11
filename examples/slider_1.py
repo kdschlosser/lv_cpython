@@ -1,4 +1,14 @@
-import lvgl as lv
+try:
+    import lvgl as lv
+except ImportError:
+    import os
+    import sys
+
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
+    import lvgl as lv
+
 import time
 
 lv.init()
@@ -22,7 +32,7 @@ slider = lv.slider_create(lv.scr_act())
 lv.obj_set_width(slider, 200)
 lv.obj_center(slider)
 event_cb = lv.event_cb_t(slider_event_cb)
-lv.obj_add_event(slider, event_cb, lv.EVENT_VALUE_CHANGED, None)
+lv.obj_add_event(slider, event_cb, lv.EVENT_VALUE_CHANGED)
 
 # Create a label above the slider
 label = lv.label_create(lv.scr_act())

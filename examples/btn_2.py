@@ -1,4 +1,14 @@
-import lvgl as lv
+try:
+    import lvgl as lv
+except ImportError:
+    import os
+    import sys
+
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
+    import lvgl as lv
+
 import time
 
 lv.init()
@@ -59,7 +69,7 @@ lv.style_transition_dsc_init(trans, props, lv.anim_path_cb_t(lv.anim_path_linear
 lv.style_set_transition(style_pr, trans)
 
 btn1 = lv.btn_create(lv.scr_act())
-lv.obj_remove_style_all(btn1)                          # Remove the style coming from the theme
+lv.obj_remove_style_all(btn1)  # Remove the style coming from the theme
 lv.obj_add_style(btn1, style, 0)
 lv.obj_add_style(btn1, style_pr, lv.STATE_PRESSED)
 lv.obj_set_size(btn1, lv.SIZE_CONTENT, lv.SIZE_CONTENT)

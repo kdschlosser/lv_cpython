@@ -1,4 +1,14 @@
-import lvgl as lv
+try:
+    import lvgl as lv
+except ImportError:
+    import os
+    import sys
+
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
+    import lvgl as lv
+
 import time
 
 lv.init()

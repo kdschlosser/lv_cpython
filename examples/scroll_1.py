@@ -1,4 +1,14 @@
-import lvgl as lv
+try:
+    import lvgl as lv
+except ImportError:
+    import os
+    import sys
+
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
+    import lvgl as lv
+
 import time
 
 lv.init()
@@ -59,7 +69,7 @@ cont = lv.obj_create(lv.scr_act())
 lv.obj_set_size(cont, 200, 200)
 lv.obj_center(cont)
 lv.obj_set_flex_flow(cont, lv.FLEX_FLOW_COLUMN)
-lv.obj_add_event(cont, scroll_event_cb, lv.EVENT_SCROLL, None)
+lv.obj_add_event(cont, scroll_event_cb, lv.EVENT_SCROLL)
 lv.obj_set_style_radius(cont, lv.RADIUS_CIRCLE, 0)
 lv.obj_set_style_clip_corner(cont, True, 0)
 lv.obj_set_scroll_dir(cont, lv.DIR_VER)
@@ -77,12 +87,10 @@ for i in range(20):
     lv.label_set_text(label, "Button " + str(i))
 
     # Update the buttons position manually for first*
-    # lv.obj_send_event(cont, lv.EVENT_SCROLL, None)
+    lv.obj_send_event(cont, lv.EVENT_SCROLL, None)
 
     # Be sure the fist button is in the middle
-    lv.obj.scroll_to_view(cont.get_child(0), lv.ANIM.OFF)
-    child = lv.obj_get_child(cont, 0)
-    lv.obj_scroll_to_view(child, lv.ANIM_OFF)
+    lv.obj_scroll_to_view(lv.obj_get_child(cont, 0), lv.ANIM_OFF)
 
 
 start = time.time()

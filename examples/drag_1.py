@@ -1,4 +1,14 @@
-import lvgl as lv
+try:
+    import lvgl as lv
+except ImportError:
+    import os
+    import sys
+
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
+    import lvgl as lv
+
 import time
 
 lv.init()
@@ -26,7 +36,7 @@ def drag_event_handler(e):
 
 obj = lv.obj_create(lv.scr_act())
 lv.obj_set_size(obj, 150, 100)
-lv.obj_add_event(obj, lv.event_cb_t(drag_event_handler), lv.EVENT_PRESSING, None)
+lv.obj_add_event(obj, lv.event_cb_t(drag_event_handler), lv.EVENT_PRESSING)
 
 label = lv.label_create(obj)
 lv.label_set_text(label, "Drag me")

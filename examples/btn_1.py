@@ -1,4 +1,14 @@
-import lvgl as lv
+try:
+    import lvgl as lv
+except ImportError:
+    import os
+    import sys
+
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
+    import lvgl as lv
+
 import time
 
 lv.init()
@@ -20,7 +30,8 @@ lv.label_set_text(label1, "Normal")
 lv.obj_center(label1)
 
 # Set opacity
-# The button and the label is rendered to a layer first and that layer is blended
+# The button and the label is rendered
+# to a layer first and that layer is blended
 btn2 = lv.btn_create(lv.scr_act())
 lv.obj_set_size(btn2, 100, 40)
 lv.obj_set_style_opa(btn2, lv.OPA_50, 0)
@@ -31,7 +42,8 @@ lv.label_set_text(label2, "Opa:50%")
 lv.obj_center(label2)
 
 # Set transformations
-# The button and the label is rendered to a layer first and that layer is transformed
+# The button and the label is rendered to
+# a layer first and that layer is transformed
 btn3 = lv.btn_create(lv.scr_act())
 lv.obj_set_size(btn3, 100, 40)
 lv.obj_set_style_transform_angle(btn3, 150, 0)             # 15 deg

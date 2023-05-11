@@ -1,4 +1,14 @@
-import lvgl as lv
+try:
+    import lvgl as lv
+except ImportError:
+    import os
+    import sys
+
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
+    import lvgl as lv
+
 import time
 
 lv.init()
@@ -16,7 +26,6 @@ def set_temp(bar, temp):
 #
 # A temperature meter example
 #
-
 
 style_indic = lv.style_t()
 
@@ -39,7 +48,7 @@ lv.anim_set_playback_time(a, 3000)
 lv.anim_set_var(a, bar)
 lv.anim_set_values(a, -20, 40)
 lv.anim_set_repeat_count(a, lv.ANIM_REPEAT_INFINITE)
-lv.anim_set_custom_exec_cb(a, lv.anim_custom_exec_cb_t(lambda a, val: set_temp(bar,val)), None)
+lv.anim_set_custom_exec_cb(a, lv.anim_custom_exec_cb_t(lambda a, val: set_temp(bar,val)))
 lv.anim_start(a)
 
 
