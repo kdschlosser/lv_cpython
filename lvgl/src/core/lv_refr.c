@@ -225,6 +225,23 @@ lv_disp_t * _lv_refr_get_disp_refreshing(void)
     return disp_refr;
 }
 
+
+void refr_clean_up(void) {
+    lv_memzero(disp_refr->inv_areas, sizeof(disp_refr->inv_areas));
+    lv_memzero(disp_refr->inv_area_joined, sizeof(disp_refr->inv_area_joined));
+    disp_refr->inv_p = 0;
+}
+
+void refr_cache_clean_up(void) {
+    _lv_font_clean_up_fmt_txt();
+}
+
+void draw_mask_cleanup(void) {
+#if LV_USE_DRAW_MASKS
+    _lv_draw_mask_cleanup();
+#endif
+}
+
 /**
  * Called periodically to handle the refreshing
  * @param tmr pointer to the timer itself
@@ -281,26 +298,40 @@ void _lv_disp_refr_timer(lv_timer_t * tmr)
     if(disp_refr->act_scr == NULL) {
         disp_refr->inv_p = 0;
         LV_LOG_WARN("there is no active screen");
-        goto refr_finish;
+        REFR_TRACE("finished");
+        return;
     }
 
     if(disp_refr->render_mode == LV_DISP_RENDER_MODE_DIRECT &&
        disp_refr->draw_ctx->color_format != LV_COLOR_FORMAT_NATIVE) {
         LV_LOG_WARN("In direct_mode only LV_COLOR_FORMAT_NATIVE color format is supported");
-        goto refr_finish;
+        REFR_TRACE("finished");
+        return;
     }
 
     lv_refr_join_area();
 
     refr_invalid_areas();
 
-    if(disp_refr->inv_p == 0) goto refr_cache_clean_up;
+    if(disp_refr->inv_p == 0) {
+        refr_cache_clean_up();
+        draw_mask_cleanup();
+        REFR_TRACE("finished");
+        return;
+    }
 
     /*If refresh happened ...*/
     /*Call monitor cb if present*/
     lv_disp_send_event(disp_refr, LV_EVENT_RENDER_READY, NULL);
 
-    if(!lv_disp_is_double_buffered(disp_refr) || disp_refr->render_mode != LV_DISP_RENDER_MODE_DIRECT) goto refr_clean_up;
+    if(!lv_disp_is_double_buffered(disp_refr) || disp_refr->render_mode != LV_DISP_RENDER_MODE_DIRECT) {
+        refr_clean_up();
+        refr_cache_clean_up();
+        draw_mask_cleanup();
+        lv_disp_send_event(disp_refr, LV_EVENT_REFR_FINISH, NULL);
+        REFR_TRACE("finished");
+        return;
+    }
 
     /*With double buffered direct mode synchronize the rendered areas to the other buffer*/
     /*We need to wait for ready here to not mess up the active screen*/
@@ -325,23 +356,13 @@ void _lv_disp_refr_timer(lv_timer_t * tmr)
         );
     }
 
-refr_clean_up:
-    lv_memzero(disp_refr->inv_areas, sizeof(disp_refr->inv_areas));
-    lv_memzero(disp_refr->inv_area_joined, sizeof(disp_refr->inv_area_joined));
-    disp_refr->inv_p = 0;
-
-refr_cache_clean_up:
-    _lv_font_clean_up_fmt_txt();
-
-#if LV_USE_DRAW_MASKS
-    _lv_draw_mask_cleanup();
-#endif
-
-refr_finish:
+    refr_clean_up();
+    refr_cache_clean_up();
+    draw_mask_cleanup();
     lv_disp_send_event(disp_refr, LV_EVENT_REFR_FINISH, NULL);
-
     REFR_TRACE("finished");
 }
+
 
 /**********************
  *   STATIC FUNCTIONS

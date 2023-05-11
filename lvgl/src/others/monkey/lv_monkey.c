@@ -75,8 +75,7 @@ lv_monkey_t * lv_monkey_create(const lv_monkey_config_t * config)
 
     monkey->indev = lv_indev_create();
     lv_indev_set_type(monkey->indev, config->type);
-    lv_indev_set_read_cb(monkey->indev, lv_monkey_read_cb);
-    lv_indev_set_user_data(monkey->indev, monkey);
+    lv_indev_set_read_cb(monkey->indev, lv_monkey_read_cb, monkey);
     return monkey;
 }
 

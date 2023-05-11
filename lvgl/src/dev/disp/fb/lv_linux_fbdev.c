@@ -96,7 +96,7 @@ lv_disp_t * lv_linux_fbdev_create(void)
     }
     dsc->fbfd = -1;
     lv_disp_set_driver_data(disp, dsc);
-    lv_disp_set_flush_cb(disp, flush_cb);
+    lv_disp_set_flush_cb(disp, flush_cb. NULL);
 
     return disp;
 }

@@ -28,10 +28,6 @@ class _Function(object):
 
         new_args = []
         for i, arg in enumerate(args):
-            if last_arg is not None and i == len(args) - 1:
-                new_args.append(last_arg)
-                break
-
             if isinstance(arg, _CallbackWrapper):
                 if i == 0:
                     raise RuntimeError(
@@ -67,8 +63,13 @@ class _Function(object):
 
                 new_args.append(arg._obj)
 
+            elif arg is None:
+                new_args.append(_lib_lvgl.ffi.NULL)
             else:
                 new_args.append(_get_c_obj(arg))
+
+        if last_arg is not None:
+            new_args.append(last_arg)
 
         self.__dict__['__c_args__'] = new_args
         self.__dict__['__py_args__'] = args
@@ -89,19 +90,9 @@ def _get_py_object(c_obj):
         return c_obj.decode('utf-8')
 
     try:
-        cdata = str(_lib_lvgl.ffi.typeof(c_obj)).replace("'", '')
+        c_type = _get_c_type(c_obj)
     except:
         return c_obj
-
-    c_type = ''
-
-    for itm in cdata.split(' '):
-        if '*' in itm:
-            break
-
-        c_type = itm
-
-    c_type = c_type.replace('>', '').strip()
 
     if '[' in c_type and ']' in c_type:
         size = c_type.split('[', 1)[-1].split(']', 1)[0]
@@ -113,10 +104,9 @@ def _get_py_object(c_obj):
         cls = type(c_type, (_ArrayWrapper,))
         return cls(c_obj, size)
 
-    num_star = cdata.count('*')
+    num_star = str(_lib_lvgl.ffi.typeof(c_obj)).count('*')
 
     if num_star > 1:
-
         cls = type(c_type + ' ' + ('*' * num_star), (_ArrayWrapper,))
         return cls(c_obj)
 
@@ -147,25 +137,31 @@ def _get_c_obj(py_obj):
         for item in py_obj:
             c_obj = _get_c_obj(item)
             if isinstance(item, _StructWrapper) and c_type is None:
-                cdata = str(_lib_lvgl.ffi.typeof(c_obj)).replace("'", '')
-                c_type = ''
-
-                for itm in cdata.split(' '):
-                    if '*' in itm:
-                        break
-
-                    c_type = itm
-
-                c_type = c_type.replace('>', '').strip()
+                c_type = _get_c_type(c_obj)
 
             array.append(c_obj)
 
         if c_type is not None:
-            array = _lib_lvgl.ffi.new(c_type + '[{0}]'.format(len(array), array))
+            array = _lib_lvgl.ffi.new(c_type + '[{0}]'.format(len(array)), array)
 
         return array
 
     return py_obj
+
+
+def _get_c_type(c_obj):
+    cdata = str(_lib_lvgl.ffi.typeof(c_obj)).replace("'", '')
+    c_type = ''
+
+    for itm in cdata.split(' '):
+        if '*' in itm:
+            break
+
+        c_type = itm
+
+    c_type = c_type.replace('>', '').strip()
+
+    return c_type
 
 
 class _CBStore(dict):
@@ -244,10 +240,11 @@ class _StructWrapper(object):
 
         try:
             obj = getattr(self._obj, key)
-            cdata = str(_lib_lvgl.ffi.typeof(obj)).replace("'", '')
+
+            c_type = _get_c_type(obj)
 
             for item in ('_cb_t', '_f_t'):
-                if item in cdata:
+                if item in c_type:
                     if not self.has_user_data:
                         raise RuntimeError(
                             'no user_data field avaailable for structure "{0}"'.format(
@@ -255,15 +252,7 @@ class _StructWrapper(object):
                             )
                         )
 
-                    type_name = ''
-
-                    for item in cdata.split(' '):
-                        if '*' in item:
-                            break
-
-                        type_name = item
-
-                    type_name = type_name.lstrip('lv_')
+                    type_name = c_type.lstrip('lv_')
 
                     if not isinstance(value, _CallbackWrapper):
                         glob = globals()
@@ -294,7 +283,7 @@ class _StructWrapper(object):
             setattr(self._obj, key, c_obj)
 
 
-class _StructFactory(object):
+class _Factory(object):
 
     def __init__(self, initilizer):
         self.name = ''
@@ -302,11 +291,28 @@ class _StructFactory(object):
         for item in initilizer.split(' '):
             if '*' in item:
                 break
+
             self.name = item
 
         self.__initilizer = initilizer
 
-    def __call__(self, **kwargs):
+    def __call__(self, args=None, **kwargs):
+        if args is not None:
+            if isinstance(args, (list, tuple)):
+                size = len(args)
+                c_type = self.name + '[' + str(size) + ']'
+
+                obj = _lib_lvgl.ffi.new(c_type)
+
+                cls = type(
+                    c_type,
+                    (_ArrayWrapper, ),
+                    {'_initilizer': c_type}
+                )
+                return cls(obj=obj, size=size, array=args)
+            else:
+                return args
+
         cls = type(
             self.name,
             (_StructWrapper,),
@@ -316,11 +322,30 @@ class _StructFactory(object):
 
 
 class _ArrayWrapper(object):
+    _initilizer = ''
 
-    def __init__(self, obj, size=None):
+    def __init__(self, obj, size=None, array=None):
         self._obj = obj
         self._size = size
-        self.__array = None
+
+        if array is not None:
+            new_array = bytes()
+
+            for item in array:
+                cast = _lib_lvgl.ffi.cast('uint8_t *', _get_c_obj(item))
+                new_array += _lib_lvgl.ffi.buffer(cast)
+
+            obj = _lib_lvgl.ffi.from_buffer(
+                self._initilizer + '[{0}]'.format(size),
+                new_array,
+                require_writable=True
+            )
+
+            self._obj = obj
+
+            self.__array = array
+        else:
+            self.__array = None
 
     def __len__(self):
         if self._size is None:
@@ -382,53 +407,11 @@ class _CallbackWrapper(object):
     @staticmethod
     def _callback_func(func_wrapper, *args):
         new_args = []
-
         for arg in args:
-            if isinstance(arg, (int, float)):
-                new_args.append(arg)
-                continue
-
-            if isinstance(arg, bytes):
-                new_args.append(arg.decode('utf-8'))
-                continue
-
-            try:
-                cdata = str(_lib_lvgl.ffi.typeof(arg)).replace("'", '')
-            except:
-                new_args.append(arg)
-                continue
-            else:
-                num_star = cdata.count('*')
-                if num_star > 1:
-                    name = ''
-
-                    for itm in cdata.split(' '):
-                        if '*' in itm:
-                            break
-
-                        name = itm
-
-                    name += ' ' + ('*' * num_star)
-
-                    cls = type(name, (_ArrayWrapper,))
-                    array = cls(arg)
-
-                    new_args.append(array)
-                    continue
-
-                name = ''
-
-                for item in cdata.split(' '):
-                    if '*' in item:
-                        break
-
-                    name = item
-
-                cls = type(name, (_StructWrapper,), {'_obj': arg})
-                obj = cls()
-                new_args.append(obj)
+            new_args.append(_get_py_object(arg))
 
         return func_wrapper.func(*new_args)
+
 
 ~!~!CALLBACKS!~!~
 
@@ -480,7 +463,7 @@ class _lvgl(object):
                 except:
                     raise AttributeError(item)
                 else:
-                    res = _StructFactory('_lv_' + item + ' *')
+                    res = _Factory('_lv_' + item + ' *')
 
         elif item.isupper():
             if hasattr(_lib_lvgl.lib, 'LV_' + item):
@@ -491,18 +474,55 @@ class _lvgl(object):
                 raise AttributeError(item)
 
         elif hasattr(_lib_lvgl.lib, 'lv_' + item):
-            res = _Function(getattr(_lib_lvgl.lib, 'lv_' + item))
+            func = getattr(_lib_lvgl.lib, 'lv_' + item)
+            c_type = str(func)
+
+            if 'struct' in c_type:
+                if '&' in c_type:
+                    c_type = c_type.split("'", 1)[-1].split('&', 1)[0].strip()
+                    res = _lib_lvgl.ffi.new(c_type + ' *')
+
+                    # cls = type(
+                    #     c_type.replace('_lv_', '').replace('lv_', ''),
+                    #     (_StructWrapper,),
+                    #     {'_initilizer': c_type + ' *', '_obj': c_obj}
+                    # )
+                    #
+                    # res = cls()
+
+                    for attr in dir(func):
+                        setattr(res, attr, getattr(func, attr))
+                else:
+                    c_type = c_type.split("'", 1)[-1].split('&', 1)[0].strip()
+                    c_obj = _lib_lvgl.ffi.new(c_type + ' *')
+
+                    cls = type(
+                        c_type.replace('_lv_', '').replace('lv_', ''),
+                        (_StructWrapper,),
+                        {'_initilizer': c_type + ' *', '_obj': c_obj}
+                    )
+
+                    res = cls()
+
+                    return res
+            else:
+                res = _Function(func)
 
         elif hasattr(_lib_lvgl.ffi, item):
             return getattr(_lib_lvgl.ffi, item)
 
         else:
             try:
+                return _lib_lvgl.ffi.new('lv_' + item)
+            except:
+                pass
+
+            try:
                 _lib_lvgl.ffi.new('lv_' + item + ' *')
             except:
                 raise AttributeError(item)
             else:
-                res = _StructFactory('lv_' + item + ' *')
+                res = _Factory('lv_' + item + ' *')
 
         object.__setattr__(self, item, res)
 

@@ -54,7 +54,7 @@ lv_indev_t * lv_sdl_keyboard_create(void)
     }
 
     lv_indev_set_type(indev, LV_INDEV_TYPE_KEYPAD);
-    lv_indev_set_read_cb(indev, sdl_keyboard_read);
+    lv_indev_set_read_cb(indev, sdl_keyboard_read, NULL);
     lv_indev_set_driver_data(indev, dsc);
 
     return indev;

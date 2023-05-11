@@ -113,7 +113,7 @@ lv_indev_t * lv_indev_get_act(void);
  */
 void lv_indev_set_type(lv_indev_t * indev, lv_indev_type_t indev_type);
 
-void lv_indev_set_read_cb(lv_indev_t * indev,  lv_indev_read_cb_t read_cb);
+void lv_indev_set_read_cb(lv_indev_t * indev,  lv_indev_read_cb_t read_cb, void * user_data);
 
 void lv_indev_set_user_data(lv_indev_t * indev, void * user_data);
 

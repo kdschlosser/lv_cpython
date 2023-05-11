@@ -49,7 +49,7 @@ lv_indev_t * lv_sdl_mousewheel_create(void)
     }
 
     lv_indev_set_type(indev, LV_INDEV_TYPE_ENCODER);
-    lv_indev_set_read_cb(indev, sdl_mousewheel_read);
+    lv_indev_set_read_cb(indev, sdl_mousewheel_read, NULL);
     lv_indev_set_driver_data(indev, dsc);
 
     return indev;

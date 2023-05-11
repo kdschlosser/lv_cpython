@@ -125,7 +125,12 @@ class Typedef:
         self.storage = storage
 
     def get_ast(self):
-        return c_ast.Typedef(self.name, self.quals, self.storage, self.type.get_ast())
+        return c_ast.Typedef(
+            self.name, 
+            self.quals, 
+            self.storage, 
+            self.type.get_ast()
+        )
 
     def gen_pyi(self):
         s_name = format_name(self.name)
@@ -168,6 +173,10 @@ class Typedef:
         return ''
 
 
+py_enums = []
+py_enum_names = []
+
+
 class Enumerator:
     def __init__(self, name, value):  # NOQA
         self.name = name
@@ -179,7 +188,10 @@ class Enumerator:
     def gen_pyi(self):
         name = format_name(self.name)
 
-        return name, 'int', name + ': int = ...'
+        if name not in py_enum_names:
+            py_enums.append('{0} = _lib_lvgl.lib.{1}'.format(name, self.name))
+
+        return name, 'int', '{0}: int = ...'.format(name)
 
 
 class EnumeratorList:
@@ -204,10 +216,7 @@ class EnumeratorList:
                 yield item
 
 
-pyi_enum_template = """\
-class {enum_name}(int):
-    ...
-"""
+pyi_enum_template = '{enum_name} = int'
 
 
 class Enum:
@@ -313,29 +322,6 @@ class TypeDecl:
 
             return name, type_, code
 
-        '''
-
-
-        name, type_, code = self.type.gen_pyi()
-        if name is None and type_ is None:
-            return self.declname, code, None
-
-        if type_ is None and code:
-            code = code.replace('class None', 'class ' + self.declname, 1)
-
-        if name and self.declname and name != self.declname and code:
-            code += '\n\n\n'
-            code += 'class {0}({1}):\n    pass'.format(self.declname, name)
-
-        if name and type_ and not code:
-            if self.declname and self.declname == name:
-                return name, type_, None
-
-            return self.declname, name, type_
-
-        return self.declname, name, code
-        
-        '''
         raise RuntimeError(str(declname) + ' : ' + str(type(self.type)))
 
     def __str__(self):
@@ -389,7 +375,6 @@ class ParamList:
         return c_ast.ParamList(params)
 
 
-
 class EllipsisParam:
 
     def __init__(self, **_):
@@ -400,6 +385,7 @@ pyi_funcdecl_param_template = '{param_name}: {param_type}'
 pyi_funcdecl_template = """\
 def {func_name}({params}) -> {ret_type}:
     ..."""
+
 
 class FuncDecl:
     def __init__(self, args, type):  # NOQA
@@ -448,6 +434,9 @@ class FuncDecl:
             if param_name is None:
                 continue
 
+            if param_name == 'user_data':
+                continue
+
             params.append(
                 pyi_funcdecl_param_template.format(
                     param_name=p_name,
@@ -465,7 +454,7 @@ class FuncDecl:
 
 
 class Typename:
-    def __init__(self, name, quals, align, type):
+    def __init__(self, name, quals, align, type):  # NOQA
         self.name = name
         self.type = type
         self.quals = quals
@@ -475,7 +464,12 @@ class Typename:
         return self.type.declname
 
     def get_ast(self):
-        return c_ast.Typename(self.name, self.quals, self.align, self.type.get_ast())
+        return c_ast.Typename(
+            self.name, 
+            self.quals, 
+            self.align, 
+            self.type.get_ast()
+        )
 
     def gen_pyi(self):
 
@@ -582,9 +576,6 @@ class {func_name}:
         ...'''
 
 
-struct_field_replacements = {}
-
-
 class Struct:
     def __init__(self, name, decls):
         self.name = name
@@ -659,70 +650,6 @@ class Struct:
 
             else:
                 raise RuntimeError(str(type(field)))
-        #
-        # if 'user_data' in field_names:
-        #     for callback in callbacks:
-        #         arg = callback.type.type[0]
-        #         func_name, ret_val, code = callback.gen_pyi()
-        #         fp_type_name = arg.get_type()
-        #
-        #         if fp_type_name.endswith('_t'):
-        #             fp_type_name = fp_type_name[:-2]
-        #
-        #         c_decl = generator.visit(callback.get_ast())
-        #
-        #         py_func_name = fp_type_name + '_' + func_name + '_cb_t'
-        #         c_py_func_name = 'py_' + py_func_name
-        #
-        #         py_c_decl = 'extern "Python" ' + c_decl.replace('(*' + func_name + ')', c_py_func_name).replace('(* ' + func_name + ')', c_py_func_name) + ';'
-        #         c_decl = 'typedef ' + c_decl.replace('(*' + func_name + ')', py_func_name).replace('(* ' + func_name + ')', py_func_name) + ';'
-        #
-        #         if py_c_decl.startswith('typedef'):
-        #             py_c_decl = + py_c_decl[7:]
-        #         else:
-        #             py_c_decl = 'extern "Python"' + py_c_decl
-        #
-        #         c_decl += '\n' + py_c_decl
-        #
-        #         index = self.decls.index(callback)
-        #
-        #         struct_field_replacements[(func_name + ')')] = (
-        #                 c_decl,
-        #         )
-        #
-        #         # void (*draw_rect)(struct _lv_draw_ctx_t * draw_ctx, const lv_draw_rect_dsc_t * dsc, const lv_area_t * coords)
-        #
-        #         # void (*draw_rect)(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const lv_area_t *coords)
-        #         # typedef void (*lv_indev_read_cb_t)(struct _lv_indev_t * indev, lv_indev_data_t * data);
-        #         # void                    (*read_cb)(struct _lv_indev_t *indev, lv_indev_data_t *data)
-        #
-        #         # void (*draw_rect)(struct _lv_draw_ctx_t *draw_ctx, const lv_draw_rect_dsc_t *dsc, const lv_area_t *coords)
-        #
-        #
-        #         params[index] = pyi_struct_param_template.format(
-        #             field_name=func_name,
-        #             field_type=py_func_name
-        #         )
-        #
-        #         fields[index] = pyi_struct_field_template.format(
-        #             field_name=func_name,
-        #             field_type=py_func_name
-        #         )
-        #
-        #         pyi_callbacks.append(
-        #             pyi_callback_template.format(
-        #                 func_name=py_func_name,
-        #                 param_types='[' + (', '.join(callback.get_types())) + ']',
-        #                 ret_type=ret_val
-        #             )
-        #         )
-        #
-        #         # extern "Python" void py_lv_timer_cb_t(struct _lv_timer_t *);
-        #         # typedef void (*lv_timer_cb_t)(struct _lv_timer_t *);
-        #
-        #         callbacks.append(
-        #             callback_template.format(func_name=func_name)
-        #         )
 
         if fields:
             fields = '\n' + ('\n'.join(fields)) + '\n'
@@ -841,8 +768,109 @@ class CatchAll:
 
     def __str__(self):
         return ''
+    
+
+used_classes = {}
+#C_AST NODES
 
 
+class ArrayRef(c_ast.ArrayRef):
+    def __init__(self, name, subscript):
+        used_classes['ArrayRef'] = True
+        c_ast.ArrayRef.__init__(self, name, subscript)
+
+
+class Assignment(c_ast.Assignment):
+    def __init__(self, op, lvalue, rvalue):
+        used_classes['Assignment'] = True
+        c_ast.Assignment.__init__(self, op, lvalue, rvalue)
+
+
+class BinaryOp(c_ast.BinaryOp):
+    def __init__(self, op, left, right):
+        used_classes['BinaryOp'] = True
+        c_ast.BinaryOp.__init__(self, op, left, right)
+        
+
+class Compound(c_ast.Compound):
+    def __init__(self, block_items):
+        used_classes['Compound'] = True
+        c_ast.Compound.__init__(self, block_items)
+
+
+class CompoundLiteral(c_ast.CompoundLiteral):
+    def __init__(self, type, init):
+        used_classes['CompoundLiteral'] = True
+        c_ast.CompoundLiteral.__init__(self, type, init)
+
+
+class Constant(c_ast.Constant):
+    def __init__(self, type, value):
+        used_classes['Constant'] = True
+        c_ast.Constant.__init__(self, type, value)
+
+
+class EllipsisParam(c_ast.EllipsisParam):
+    def __init__(self):
+        used_classes['EllipsisParam'] = True
+        c_ast.EllipsisParam.__init__(self)
+
+
+class EmptyStatement(c_ast.EmptyStatement):
+    def __init__(self):
+        used_classes['EmptyStatement'] = True
+        c_ast.EmptyStatement.__init__(self)
+
+
+class ExprList(c_ast.ExprList):
+    def __init__(self, exprs):
+        used_classes['ExprList'] = True
+        c_ast.ExprList.__init__(self, exprs)
+
+
+class FuncCall(c_ast.FuncCall):
+    def __init__(self, name, args):
+        used_classes['FuncCall'] = True
+        c_ast.FuncCall.__init__(self, name, args)
+
+
+class ID(c_ast.ID):
+    def __init__(self, name):
+        used_classes['ID'] = True
+        c_ast.ID.__init__(self, name)
+
+        
+class InitList(c_ast.InitList):
+    def __init__(self, exprs):
+        used_classes['InitList'] = True
+        c_ast.InitList.__init__(self, exprs)
+
+        
+class Return(c_ast.Return):
+    def __init__(self, expr):
+        used_classes['Return'] = True
+        c_ast.Return.__init__(self, expr)
+
+
+class StructRef(c_ast.StructRef):
+    def __init__(self, name, type, field):
+        used_classes['StructRef'] = True
+        c_ast.StructRef.__init__(self, name, type, field)
+
+
+class TernaryOp(c_ast.TernaryOp):
+    def __init__(self, cond, iftrue, iffalse):
+        used_classes['TernaryOp'] = True
+        c_ast.TernaryOp.__init__(self, cond, iftrue, iffalse)
+
+
+class UnaryOp(c_ast.UnaryOp):
+    def __init__(self, op, expr):
+        used_classes['UnaryOp'] = True
+        c_ast.UnaryOp.__init__(self, op, expr)
+
+        
+        
 class RootTypedef(Typedef):
 
     def gen_pyi(self):
@@ -850,7 +878,6 @@ class RootTypedef(Typedef):
 
         if isinstance(self.type, TypeDecl):
             name, type_, code = self.type.gen_pyi()
-
 
             if name and t_name and name == t_name and type_ and not code:
                 if t_name not in pyi_typedef_names:
@@ -981,9 +1008,7 @@ class RootDecl(Decl):
         elif isinstance(self.type, FuncDecl):
             name, type_, code = self.type.gen_pyi()
             if code:
-                if not d_name and name:
-                    d_name = name
-                elif not name and d_name:
+                if not name and d_name:
                     name = d_name
 
                 if name not in pyi_callback_names + pyi_func_names:
@@ -994,9 +1019,7 @@ class RootDecl(Decl):
             name, type_, code = self.type.gen_pyi()
 
             if code:
-                if not d_name and name:
-                    d_name = name
-                elif not name and d_name:
+                if not name and d_name:
                     name = d_name
 
                 code = '{name}: {type} = ...'.format(name=name, type=code)
@@ -1008,9 +1031,7 @@ class RootDecl(Decl):
         elif isinstance(self.type, PtrDecl):
             name, type_, code = self.type.gen_pyi()
             if code:
-                if not d_name and name:
-                    d_name = name
-                elif not name and d_name:
+                if not name and d_name:
                     name = d_name
 
                 if name not in pyi_callback_names + pyi_func_names:
@@ -1020,9 +1041,7 @@ class RootDecl(Decl):
         elif isinstance(self.type, Struct):
             name, type_, code = self.type.gen_pyi()
             if code:
-                if not d_name and name:
-                    d_name = name
-                elif not name and d_name:
+                if not name and d_name:
                     name = d_name
 
                 if name not in pyi_struct_names:
@@ -1095,12 +1114,13 @@ def setup():
 
         return result
 
-    c_ast = sys.modules['pycparser.c_ast']
+    ast = sys.modules['pycparser.c_ast']
 
-    setattr(c_ast.Node, '__repr__', cls_repr)  # NOQA
+    setattr(ast.Node, '__repr__', cls_repr)  # NOQA
 
 
 class _Module(dict):
+    py_enums = py_enums
     pyi_callback_names = pyi_callback_names
     pyi_callbacks = pyi_callbacks
     pyi_typedefs = pyi_typedefs
@@ -1108,6 +1128,7 @@ class _Module(dict):
     pyi_enums = pyi_enums
     pyi_structs = pyi_structs
     pyi_types = pyi_types
+    used_nodes = used_classes
 
     @staticmethod
     def setup():

@@ -497,6 +497,7 @@ for child in ast:
 
 
 with open('lvgl.pyi', 'w') as f:
+    f.write('import _lib_lvgl\n\n')
     f.write('from typing import List, Optional, Callable, Any\n\n\n')
     f.write('class va_list(list):\n    pass\n\n\n')
     f.write('# ****************  ENUMERATIONS  ****************\n')
@@ -552,8 +553,13 @@ os.chdir(base_path)
 with open('lvgl.py.template', 'r') as f:
     lvgl_template = f.read()
 
+
+py_code = '\n'.join(pyi_builder.py_enums)
+py_code += '\n\n'
+py_code += '\n'.join(callbacks)
+
 with open('lvgl.py', 'w') as f:
-    f.write(lvgl_template.replace('~!~!CALLBACKS!~!~', '\n'.join(callbacks)))
+    f.write(lvgl_template.replace('~!~!CALLBACKS!~!~', py_code))
 
 out_file_name = os.path.split(res)[-1]
 
@@ -562,3 +568,5 @@ shutil.copyfile('lvgl.py', os.path.join(build_path, 'lvgl.py'))
 shutil.copyfile('lvgl.pyi', os.path.join(build_path, 'lvgl.pyi'))
 
 print('extension module is located here: "' + build_path + '"')
+
+

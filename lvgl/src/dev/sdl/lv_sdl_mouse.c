@@ -54,7 +54,7 @@ lv_indev_t * lv_sdl_mouse_create(void)
     }
 
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
-    lv_indev_set_read_cb(indev, sdl_mouse_read);
+    lv_indev_set_read_cb(indev, sdl_mouse_read, NULL);
     lv_indev_set_driver_data(indev, dsc);
 
     return indev;

@@ -399,12 +399,13 @@ void lv_disp_set_draw_buffers(lv_disp_t * disp, void * buf1, void * buf2, uint32
     disp->render_mode = render_mode;
 }
 
-void lv_disp_set_flush_cb(lv_disp_t * disp, lv_disp_flush_cb_t flush_cb)
+void lv_disp_set_flush_cb(lv_disp_t * disp, lv_disp_flush_cb_t flush_cb, void * user_data)
 {
     if(disp == NULL) disp = lv_disp_get_default();
     if(disp == NULL) return;
 
     disp->flush_cb = flush_cb;
+    disp->user_data = user_data;
 }
 
 void lv_disp_set_color_format(lv_disp_t * disp, lv_color_format_t color_format)

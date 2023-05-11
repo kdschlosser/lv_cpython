@@ -14,8 +14,6 @@ def anim_x(a, v):
     lv.obj_set_x(label, v)
 
 
-anim_x_cb = lv.anim_custom_exec_cb_t(anim_x)
-
 anim = None
 
 
@@ -30,17 +28,14 @@ def sw_event_cb(e, label):
 
     if lv.obj_has_state(sw, lv.STATE_CHECKED):
         lv.anim_set_values(anim, lv.obj_get_x(label), 100)
-        lv.anim_set_path_cb(anim, overshoot_cb, None)
+        lv.anim_set_path_cb(anim, lv.anim_path_cb_t(lv.anim_path_overshoot))
     else:
         lv.anim_set_values(anim, lv.obj_get_x(label), -lv.obj_get_width(label))
-        lv.anim_set_path_cb(anim, ease_in_cb, None)
+        lv.anim_set_path_cb(anim, lv.anim_path_cb_t(lv.anim_path_ease_in))
 
-    lv.anim_set_custom_exec_cb(anim, anim_x_cb, None)
+    lv.anim_set_custom_exec_cb(anim, lv.anim_custom_exec_cb_t(anim_x))
     lv.anim_start(anim)
 
-
-overshoot_cb = lv.anim_path_cb_t(lv.anim_path_overshoot)
-ease_in_cb = lv.anim_path_cb_t(lv.anim_path_ease_in)
 
 label = lv.label_create(lv.scr_act())
 lv.label_set_text(label, "Hello animations!")
@@ -50,9 +45,7 @@ lv.obj_set_pos(label, 100, 10)
 sw = lv.switch_create(lv.scr_act())
 lv.obj_center(sw)
 lv.obj_add_state(sw, lv.STATE_CHECKED)
-event_cb = lv.event_cb_t(lambda e: sw_event_cb(e, label))
-
-lv.obj_add_event(sw, event_cb, lv.EVENT_VALUE_CHANGED, None)
+lv.obj_add_event(sw, lv.event_cb_t(lambda e: sw_event_cb(e, label)), lv.EVENT_VALUE_CHANGED)
 
 
 start = time.time()

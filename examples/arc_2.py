@@ -20,15 +20,16 @@ def value_changed_event_cb(e, label):
 
 
 label = lv.label_create(lv.scr_act())
-
+lv.obj_set_style_text_color(label, lv.color_hex(0x00FF00), 0)
 # Create an Arc
 arc = lv.arc_create(lv.scr_act())
+lv.obj_set_style_arc_color(arc, lv.color_hex(0xFF0000), lv.PART_INDICATOR)
 lv.obj_set_size(arc, 150, 150)
 lv.arc_set_rotation(arc, 135)
 lv.arc_set_bg_angles(arc, 0, 270)
 lv.arc_set_value(arc, 10)
 lv.obj_center(arc)
-lv.obj_add_event(arc, lv.event_cb_t(lambda e: value_changed_event_cb(e, label)), lv.EVENT_VALUE_CHANGED, None)
+lv.obj_add_event(arc, lv.event_cb_t(lambda e: value_changed_event_cb(e, label)), lv.EVENT_VALUE_CHANGED)
 
 # Manually update the label for the first time
 lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)

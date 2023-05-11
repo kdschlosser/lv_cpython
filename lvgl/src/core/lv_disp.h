@@ -85,7 +85,7 @@ typedef enum {
 } lv_scr_load_anim_t;
 
 
-typedef void (*lv_disp_flush_cb_t)(struct _lv_disp_t * disp, const lv_area_t * area, lv_color_t * px_map);
+typedef void (*lv_disp_flush_cb_t)(struct _lv_disp_t * disp, const lv_area_t * area, lv_color_t px_map[]);
 typedef void (*lv_disp_draw_ctx_init_cb_t)(struct _lv_disp_t * disp, struct _lv_draw_ctx_t * draw_ctx);
 typedef void (*lv_disp_draw_ctx_deinit_cb_t)(struct _lv_disp_t * disp, struct _lv_draw_ctx_t * draw_ctx);
 
@@ -254,7 +254,7 @@ void lv_disp_set_draw_buffers(lv_disp_t * disp, void * buf1, void * buf2, uint32
  * @param disp      pointer to a display
  * @param flush_cb  the flush callback (`px_map` contains the rendered image as raw pixel map and it should be copied to `area` on the display)
  */
-void lv_disp_set_flush_cb(lv_disp_t * disp, lv_disp_flush_cb_t flush_cb);
+void lv_disp_set_flush_cb(lv_disp_t * disp, lv_disp_flush_cb_t flush_cb, void * user_data);
 /**
  * Set the color format of the display.
  * If set to other than `LV_COLOR_FORMAT_NATIVE` the draw_ctx's `buffer_convert` function will be used

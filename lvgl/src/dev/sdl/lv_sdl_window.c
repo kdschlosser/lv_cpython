@@ -92,7 +92,7 @@ lv_disp_t * lv_sdl_window_create(lv_coord_t hor_res, lv_coord_t ver_res)
     lv_disp_set_driver_data(disp, dsc);
     window_create(disp);
 
-    lv_disp_set_flush_cb(disp, flush_cb);
+    lv_disp_set_flush_cb(disp, flush_cb, NULL);
 #if LV_SDL_PARTIAL_MODE
     uint8_t * buf = malloc(32 * 1024);
     lv_disp_set_draw_buffers(disp, buf, NULL,
