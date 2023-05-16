@@ -26,6 +26,34 @@ typedef void (*lv_indev_read_cb_t)(struct _lv_indev_t * indev, lv_indev_data_t *
 typedef void (*lv_indev_feedback_cb_t)(struct _lv_indev_t * indev, uint8_t event_code);
 
 
+typedef struct {
+    /*Pointer and button data*/
+    lv_point_t act_point; /**< Current point of input device.*/
+    lv_point_t last_point; /**< Last point of input device.*/
+    lv_point_t last_raw_point; /**< Last point read from read_cb. */
+    lv_point_t vect; /**< Difference between `act_point` and `last_point`.*/
+    lv_point_t scroll_sum; /*Count the dragged pixels to check LV_INDEV_DEF_SCROLL_LIMIT*/
+    lv_point_t scroll_throw_vect;
+    lv_point_t scroll_throw_vect_ori;
+    struct _lv_obj_t * act_obj;      /*The object being pressed*/
+    struct _lv_obj_t * last_obj;     /*The last object which was pressed*/
+    struct _lv_obj_t * scroll_obj;   /*The object being scrolled*/
+    struct _lv_obj_t * last_pressed; /*The lastly pressed object*/
+    lv_area_t scroll_area;
+    lv_point_t gesture_sum; /*Count the gesture pixels to check LV_INDEV_DEF_GESTURE_LIMIT*/
+
+    /*Flags*/
+    lv_dir_t scroll_dir : 4;
+    lv_dir_t gesture_dir : 4;
+    uint8_t gesture_sent : 1;
+} _lv_indev_pointer_t;
+
+typedef struct {
+    /*Keypad data*/
+    lv_indev_state_t last_state;
+    uint32_t last_key;
+} _lv_indev_keypad_t;
+
 struct _lv_indev_t {
     /**< Input device type*/
     lv_indev_type_t type;
@@ -75,32 +103,8 @@ struct _lv_indev_t {
     /**< Repeated trigger period in long press [ms]*/
     uint16_t long_press_repeat_time;
 
-    struct {
-        /*Pointer and button data*/
-        lv_point_t act_point; /**< Current point of input device.*/
-        lv_point_t last_point; /**< Last point of input device.*/
-        lv_point_t last_raw_point; /**< Last point read from read_cb. */
-        lv_point_t vect; /**< Difference between `act_point` and `last_point`.*/
-        lv_point_t scroll_sum; /*Count the dragged pixels to check LV_INDEV_DEF_SCROLL_LIMIT*/
-        lv_point_t scroll_throw_vect;
-        lv_point_t scroll_throw_vect_ori;
-        struct _lv_obj_t * act_obj;      /*The object being pressed*/
-        struct _lv_obj_t * last_obj;     /*The last object which was pressed*/
-        struct _lv_obj_t * scroll_obj;   /*The object being scrolled*/
-        struct _lv_obj_t * last_pressed; /*The lastly pressed object*/
-        lv_area_t scroll_area;
-        lv_point_t gesture_sum; /*Count the gesture pixels to check LV_INDEV_DEF_GESTURE_LIMIT*/
-
-        /*Flags*/
-        lv_dir_t scroll_dir : 4;
-        lv_dir_t gesture_dir : 4;
-        uint8_t gesture_sent : 1;
-    } pointer;
-    struct {
-        /*Keypad data*/
-        lv_indev_state_t last_state;
-        uint32_t last_key;
-    } keypad;
+    _lv_indev_pointer_t pointer;
+    _lv_indev_keypad_t keypad;
 
     struct _lv_obj_t * cursor;     /**< Cursor for LV_INPUT_TYPE_POINTER*/
     struct _lv_group_t * group;    /**< Keypad destination group*/

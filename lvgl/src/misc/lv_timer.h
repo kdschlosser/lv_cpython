@@ -36,7 +36,7 @@ struct _lv_timer_t;
 /**
  * Timers execute this type of functions.
  */
-typedef void (*lv_timer_cb_t)(struct _lv_timer_t *);
+typedef void (*lv_timer_cb_t)(struct _lv_timer_t * timer);
 
 /**
  * Descriptor of a lv_timer

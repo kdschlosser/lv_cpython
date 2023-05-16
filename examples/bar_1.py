@@ -48,7 +48,7 @@ lv.anim_set_playback_time(a, 3000)
 lv.anim_set_var(a, bar)
 lv.anim_set_values(a, -20, 40)
 lv.anim_set_repeat_count(a, lv.ANIM_REPEAT_INFINITE)
-lv.anim_set_custom_exec_cb(a, lv.anim_custom_exec_cb_t(lambda a, val: set_temp(bar,val)))
+lv.anim_set_custom_exec_cb(a, lambda a, val: set_temp(bar,val))
 lv.anim_start(a)
 
 

@@ -24,7 +24,7 @@ extern "C" {
  **********************/
 struct _lv_obj_t;
 
-typedef void (*lv_layout_update_cb_t)(struct _lv_obj_t *, void * user_data);
+typedef void (*lv_layout_update_cb_t)(struct _lv_obj_t * obj, void * user_data);
 typedef struct {
     lv_layout_update_cb_t cb;
     void * user_data;

@@ -55,8 +55,8 @@ typedef uint8_t lv_key_t;
 struct _lv_obj_t;
 struct _lv_group_t;
 
-typedef void (*lv_group_focus_cb_t)(struct _lv_group_t *);
-typedef void (*lv_group_edge_cb_t)(struct _lv_group_t *, bool);
+typedef void (*lv_group_focus_cb_t)(struct _lv_group_t * group);
+typedef void (*lv_group_edge_cb_t)(struct _lv_group_t * group, bool focus);
 
 /**
  * Groups can be used to logically hold objects so that they can be individually focused.

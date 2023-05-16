@@ -36,7 +36,7 @@ def drag_event_handler(e):
 
 obj = lv.obj_create(lv.scr_act())
 lv.obj_set_size(obj, 150, 100)
-lv.obj_add_event(obj, lv.event_cb_t(drag_event_handler), lv.EVENT_PRESSING)
+lv.obj_add_event(obj, drag_event_handler, lv.EVENT_PRESSING)
 
 label = lv.label_create(obj)
 lv.label_set_text(label, "Drag me")

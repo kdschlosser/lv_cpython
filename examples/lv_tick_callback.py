@@ -11,7 +11,30 @@ except ImportError:
 
 import time
 
+
+last_tick = time.time()
+
+
+def tick_cb(_):
+    global last_tick
+
+    curr_tick = time.time()
+    diff = (curr_tick * 1000) - (last_tick * 1000)
+
+    int_diff = int(diff)
+    remainder = diff - int_diff
+
+    curr_tick -= remainder / 1000
+    last_tick = curr_tick
+
+    lv.tick_inc(int_diff)
+
+
 lv.init()
+
+tick_dsc = lv.tick_dsc_t()
+lv.tick_set_cb(tick_dsc, tick_cb)
+
 disp = lv.sdl_window_create(480, 320)
 group = lv.group_create()
 lv.group_set_default(group)
@@ -63,13 +86,6 @@ lv.anim_set_path_cb(a2, lv.anim_path_ease_in_out)
 lv.anim_set_custom_exec_cb(a2, anim_x)
 lv.anim_start(a2)
 
-
-start = time.time()
-
 while True:
-    stop = time.time()
-    diff = int((stop * 1000) - (start * 1000))
-    start = stop
-    lv.tick_inc(diff)
+    time.sleep(0.001)
     lv.task_handler()
-

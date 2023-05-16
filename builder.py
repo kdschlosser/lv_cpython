@@ -17,12 +17,12 @@ build_path = os.path.join(base_path, 'build')
 if os.path.exists(build_path):
     try:
         shutil.rmtree(build_path)
-    except:
+    except OSError:
         pass
 
 try:
     os.mkdir(build_path)
-except:
+except OSError:
     pass
 
 if sys.platform.startswith('win'):
@@ -86,8 +86,13 @@ if sys.platform.startswith('win'):
 
     include_dirs = [sdl_include_path]
     library_dirs = [sdl_lib_path]
+    linker_args = []
     libraries = ['SDL2']
     cpp_args = ['-std:c11']
+
+    if '-debug' in sys.argv:
+        linker_args.append('/DEBUG')
+        cpp_args.append('/Zi')
 
     # os.environ['INCLUDE'] += ';' + sdl_include_path
     # os.environ['LIB'] += ';' + sdl_lib_path
@@ -97,7 +102,10 @@ else:
     libraries = ['SDL2']
     library_dirs = []
     include_dirs = []
+    linker_args = []
     cpp_args = ['-std=c11']
+    if '-debug' in sys.argv:
+        cpp_args.append('-ggdb')
 
 # file/directory paths
 lvgl_path = os.path.join(base_path, 'lvgl')
@@ -184,50 +192,6 @@ ast = pycparser.parse_file(
     parser=None
 )
 
-log = open('log.txt', 'w')
-
-
-callback_template = '''\
-@_lib_lvgl.ffi.def_extern(name='py_lv_{func_name}')
-def __{func_name}_callback_func(*args):
-    if len(args):
-        try:
-            cb_store = _lib_lvgl.ffi.from_handle(args[0].user_data)
-
-            if '{func_name}' in cb_store:
-                func = cb_store['{func_name}']
-                try:
-                    return {func_name}._callback_func(func, *args)  # NOQA
-                    
-                except Exception:
-                    import traceback
-
-                    traceback.print_exc()
-
-            else:
-                print('"{func_name}" is not registered')
-        
-        except AttributeError:
-            print('No "user_data" field available')
-    else:
-        print('No structure available')
-
-
-class _{func_name}(_CallbackWrapper):
-
-    def __call__(self, func):
-        return _{func_name}(self.ctype, func)
-
-
-{func_name} = _{func_name}('lv_{func_name}', None)
-
-'''
-
-pyi_callback_template = '''
-class {func_name}:
-    def __init__(self, func: Callable[{param_types}, {ret_type}]):
-        ...'''
-
 
 def is_lib_c_node(n):
     if hasattr(n, 'coord') and n.coord is not None:
@@ -271,7 +235,7 @@ def visit_FuncDef(self, n):
     return res
 
 
-callbacks = []
+callback_names = []
 
 
 def visit_Typedef(self, n):
@@ -286,17 +250,19 @@ def visit_Typedef(self, n):
             if isinstance(n.type.type.type, (c_ast.TypeDecl, c_ast.PtrDecl)):
                 if isinstance(n.type.type.type, c_ast.PtrDecl):
                     type_ = n.type.type.type.type
-                    ptr = True
+                    # ptr = True
                 else:
                     type_ = n.type.type.type
-                    ptr = False
+                    # ptr = False
 
                 name = type_.declname
                 for item in ('_cb_t', '_f_t'):
-                    if name.replace('lv_', '', 1) in pyi_builder.pyi_callback_names:
-                        return ''
-
                     if name.endswith(item):
+                        if 'py_' + name in callback_names:
+                            return ''
+                        
+                        callback_names.append('py_' + name)
+                    
                         s = s.replace('(*' + name + ')', 'py_' + name).replace(
                             '(* ' + name + ')',
                             'py_' + name
@@ -306,129 +272,6 @@ def visit_Typedef(self, n):
                         else:
                             s = '\n\nextern "Python"' + s
 
-                        callbacks.append(
-                            callback_template.format(
-                                func_name=name.replace('lv_', '', 1)
-                            )
-                        )
-
-                        try:
-                            ret_type = pyi_builder.get_py_type(type_.type.names[0])
-                            if ret_type == 'None' and ptr:
-                                ret_type = 'Any'
-                        except:
-                            ret_type = pyi_builder.get_py_type(type_.type.name)
-
-                        param_types = []
-
-                        params = n.type.type.args.params
-                        for param in params:
-                            if isinstance(param, c_ast.Typename):
-                                if isinstance(param.type, c_ast.PtrDecl):
-                                    if isinstance(
-                                        param.type.type.type,
-                                        c_ast.IdentifierType
-                                    ):
-                                        param_type = pyi_builder.get_py_type(
-                                            param.type.type.type.names[0]
-                                        )
-
-                                    elif isinstance(
-                                        param.type.type.type,
-                                        c_ast.Struct
-                                    ):
-                                        param_type = pyi_builder.get_py_type(
-                                            param.type.type.type.name
-                                        )
-                                    else:
-                                        raise RuntimeError(
-                                            str(type(param.type.type.type))
-                                        )
-
-                                elif isinstance(param.type, c_ast.TypeDecl):
-                                    param_type = pyi_builder.get_py_type(
-                                        param.type.type.names[0]
-                                    )
-                                else:
-                                    raise RuntimeError(str(type(param.type)))
-
-                            elif isinstance(param, c_ast.Decl):
-                                if isinstance(param.type, c_ast.PtrDecl):
-                                    if isinstance(
-                                        param.type.type,
-                                        c_ast.IdentifierType
-                                    ):
-                                        param_type = pyi_builder.get_py_type(
-                                            param.type.type.names[0]
-                                        )
-
-                                    elif isinstance(
-                                        param.type.type,
-                                        c_ast.TypeDecl
-                                    ):
-                                        if isinstance(
-                                            param.type.type.type,
-                                            c_ast.IdentifierType
-                                        ):
-                                            param_type = (
-                                                pyi_builder.get_py_type(
-                                                    param.type.type.type.names[0]  # NOQA
-                                                )
-                                            )
-
-                                        elif isinstance(
-                                            param.type.type.type,
-                                            c_ast.Struct
-                                        ):
-                                            param_type = (
-                                                pyi_builder.get_py_type(
-                                                    param.type.type.type.name
-                                                )
-                                            )
-                                        else:
-                                            raise RuntimeError(
-                                                str(type(param.type.type.type))
-                                            )
-                                    else:
-                                        raise RuntimeError(
-                                            str(type(param.type.type))
-                                        )
-
-                                elif isinstance(param.type, c_ast.TypeDecl):
-                                    param_type = pyi_builder.get_py_type(
-                                        param.type.type.names[0]
-                                    )
-
-                                elif isinstance(param.type, c_ast.ArrayDecl):
-                                    param_type = (
-                                        'list[' + pyi_builder.get_py_type(
-                                            param.type.type.type.names[0]
-                                        ) + ']'
-                                    )
-
-                                else:
-                                    raise RuntimeError(str(type(param.type)))
-                            else:
-                                raise RuntimeError(str(type(param)))
-
-                            param_types.append(param_type)
-
-                        if param_types:
-                            param_types = '[' + (', '.join(param_types)) + ']'
-                        else:
-                            param_types = '...'
-
-                        pyi_builder.pyi_callbacks.append(
-                            pyi_callback_template.format(
-                                func_name=name.replace('lv_', '', 1),
-                                param_types=param_types,
-                                ret_type=ret_type
-                            )
-                        )
-
-                        pyi_builder.pyi_callback_names.append(
-                            name.replace('lv_', '', 1)
-                        )
                         break
     return s
 
@@ -463,6 +306,7 @@ cdef = cdef.format(ast=str(generator.visit(ast)))
 # remove the trailing semicolon. So thaat is what is being done here.
 cdef = '\n'.join(line for line in cdef.split('\n') if line.strip() != ';')
 
+
 # putting the old functions back in place
 setattr(c_generator.CGenerator, 'visit', old_visit)
 setattr(c_generator.CGenerator, 'visit_FuncDecl', old_visit_FuncDecl)
@@ -496,29 +340,102 @@ for child in ast:
     test.gen_pyi()
 
 
-with open('lvgl.pyi', 'w') as f:
-    f.write('import _lib_lvgl\n\n')
-    f.write('from typing import List, Optional, Callable, Any\n\n\n')
-    f.write('class va_list(list):\n    pass\n\n\n')
-    f.write('# ****************  ENUMERATIONS  ****************\n')
-    f.write('\n\n\n'.join(pyi_builder.pyi_enums))
-    f.write('\n# ************************************************\n')
-    f.write('\n\n# ********************  TYPES  *******************\n')
-    f.write(('\n'.join(pyi_builder.pyi_types)))
-    f.write('\n# ************************************************\n')
-    f.write('\n\n# *****************  CALLBACKS  ******************\n')
-    f.write(('\n\n'.join(pyi_builder.pyi_callbacks)))
-    f.write('\n# ************************************************\n')
-    f.write('\n\n# ***************  STRUCTS/UNIONS  ***************\n')
-    f.write(('\n\n\n'.join(pyi_builder.pyi_structs)))
-    f.write('\n# ************************************************\n')
-    f.write('\n\n# ******************  TYPEDEFS  ******************\n')
-    f.write('\n\n'.join(pyi_builder.pyi_typedefs) + '\n')
-    f.write('\n# ************************************************\n')
-    f.write('\n\n# *****************  FUNCTIONS  ******************\n')
-    f.write('\n\n'.join(pyi_builder.pyi_funcs))
-    f.write('\n# ************************************************\n')
+template = '''\
+{py_template}
 
+# ****************  INTEGER_TYPES  ****************
+{int_types}
+# ************************************************
+
+
+# ****************  ENUMERATIONS  ****************
+{enums}
+# ************************************************
+
+
+# ***************  STRUCTS/UNIONS  ***************
+{structs}
+# ************************************************
+
+
+# **************  CALLBACK TYPES  ****************
+{callback_types}
+# ************************************************
+
+
+# *****************  CALLBACKS  ******************
+{callbacks}
+# ************************************************
+
+
+# ******************  TYPEDEFS  ******************
+{typedefs}
+# ************************************************
+
+
+# *****************  FUNCTIONS  ******************
+{functions}
+# ************************************************
+
+
+def __build_font(name):
+    try:
+        f = getattr(_lib_lvgl.lib, name)
+        
+        instance = font_t()
+        instance._obj = f
+        return instance
+        
+    except AttributeError:
+        class dummy_class:
+        
+            @property
+            def _obj(self):
+                raise RuntimeError(
+                    'LVGL was not compiled with this font ("{{0}}"'.format(name)
+                )
+        
+        return dummy_class()
+        
+  
+font_montserrat_12_subpx: font_t = __build_font(
+    'lv_font_montserrat_12_subpx'
+)
+
+font_montserrat_28_compressed: font_t = __build_font(
+    'lv_font_montserrat_28_compressed'
+)
+
+font_dejavu_16_persian_hebrew: font_t = __build_font(
+    'lv_font_dejavu_16_persian_hebrew'
+)
+
+font_simsun_16_cjk: font_t = __build_font(
+    'lv_font_simsun_16_cjk'
+)
+
+font_unscii_8: font_t = __build_font(
+    'lv_font_unscii_8'
+)
+
+font_unscii_16: font_t = __build_font(
+    'lv_font_unscii_16'
+)
+
+'''
+
+font_template = '''\
+font_montserrat_{0}: font_t = __build_font(
+    'lv_font_montserrat_{0}'
+)
+
+
+'''
+
+for i in range(8, 50, 2):
+    template += font_template.format(i)
+
+template += 'del __build_font\n'
 
 # set the definitions into cffi
 ffibuilder.cdef(cdef)
@@ -533,6 +450,7 @@ ffibuilder.set_source(
     libraries=libraries,
     include_dirs=include_dirs,
     extra_compile_args=cpp_args,
+    extra_link_args=linker_args,
     language='c'
 )
 
@@ -550,23 +468,21 @@ except:  # NOQA
 
 os.chdir(base_path)
 
-with open('lvgl.py.template', 'r') as f:
-    lvgl_template = f.read()
-
-
-py_code = '\n'.join(pyi_builder.py_enums)
-py_code += '\n\n'
-py_code += '\n'.join(callbacks)
-
 with open('lvgl.py', 'w') as f:
-    f.write(lvgl_template.replace('~!~!CALLBACKS!~!~', py_code))
+    f.write(template.format(
+        py_template=open('lvgl.template.py', 'r').read(),
+        int_types='\n\n'.join(pyi_builder.py_int_types),
+        enums='\n\n'.join(pyi_builder.py_enums),
+        structs='\n\n'.join(pyi_builder.py_structs),
+        callback_types='\n\n'.join(pyi_builder.py_callbacks),
+        callbacks='\n\n'.join(pyi_builder.callbacks),
+        typedefs='\n\n'.join(pyi_builder.py_typedefs),
+        functions='\n\n'.join(pyi_builder.py_funcs)
+    ))
 
 out_file_name = os.path.split(res)[-1]
 
 shutil.copyfile(res, os.path.join(build_path, out_file_name))
 shutil.copyfile('lvgl.py', os.path.join(build_path, 'lvgl.py'))
-shutil.copyfile('lvgl.pyi', os.path.join(build_path, 'lvgl.pyi'))
 
 print('extension module is located here: "' + build_path + '"')
-
-

@@ -38,12 +38,12 @@ def sw_event_cb(e, label):
 
     if lv.obj_has_state(sw, lv.STATE_CHECKED):
         lv.anim_set_values(anim, lv.obj_get_x(label), 100)
-        lv.anim_set_path_cb(anim, lv.anim_path_cb_t(lv.anim_path_overshoot))
+        lv.anim_set_path_cb(anim, lv.anim_path_overshoot)
     else:
         lv.anim_set_values(anim, lv.obj_get_x(label), -lv.obj_get_width(label))
-        lv.anim_set_path_cb(anim, lv.anim_path_cb_t(lv.anim_path_ease_in))
+        lv.anim_set_path_cb(anim, lv.anim_path_ease_in)
 
-    lv.anim_set_custom_exec_cb(anim, lv.anim_custom_exec_cb_t(anim_x))
+    lv.anim_set_custom_exec_cb(anim, anim_x)
     lv.anim_start(anim)
 
 
@@ -55,7 +55,7 @@ lv.obj_set_pos(label, 100, 10)
 sw = lv.switch_create(lv.scr_act())
 lv.obj_center(sw)
 lv.obj_add_state(sw, lv.STATE_CHECKED)
-lv.obj_add_event(sw, lv.event_cb_t(lambda e: sw_event_cb(e, label)), lv.EVENT_VALUE_CHANGED)
+lv.obj_add_event(sw, lambda e: sw_event_cb(e, label), lv.EVENT_VALUE_CHANGED)
 
 
 start = time.time()

@@ -39,7 +39,7 @@ lv.arc_set_rotation(arc, 135)
 lv.arc_set_bg_angles(arc, 0, 270)
 lv.arc_set_value(arc, 10)
 lv.obj_center(arc)
-lv.obj_add_event(arc, lv.event_cb_t(lambda e: value_changed_event_cb(e, label)), lv.EVENT_VALUE_CHANGED)
+lv.obj_add_event(arc, lambda e: value_changed_event_cb(e, label), lv.EVENT_VALUE_CHANGED)
 
 # Manually update the label for the first time
 lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)

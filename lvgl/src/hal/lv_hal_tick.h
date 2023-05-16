@@ -29,6 +29,14 @@ extern "C" {
  *      TYPEDEFS
  **********************/
 
+ typedef void (*lv_tick_cb_t)(struct _lv_tick_dsc_t * tick_dsc);
+
+ typedef struct _lv_tick_dsc_t {
+     lv_tick_cb_t tick_cb;
+     void * user_data;
+ } lv_tick_dsc_t;
+
+
 /**********************
  * GLOBAL PROTOTYPES
  **********************/
@@ -42,8 +50,10 @@ extern "C" {
  */
 LV_ATTRIBUTE_TICK_INC void lv_tick_inc(uint32_t tick_period);
 #endif
-
 //! @endcond
+
+
+void lv_tick_set_cb(lv_tick_dsc_t * tick_dsc, lv_tick_cb_t tick_cb, void * user_data);
 
 /**
  * Get the elapsed milliseconds since start up

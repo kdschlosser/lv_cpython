@@ -64,8 +64,8 @@ typedef _lv_font_subpx_t lv_font_subpx_t;
 typedef uint8_t lv_font_subpx_t;
 #endif /*DOXYGEN*/
 
-typedef bool (*lv_font_get_glyph_dsc_cb_t)(const struct _lv_font_t *, lv_font_glyph_dsc_t *, uint32_t letter, uint32_t letter_next);
-typedef const uint8_t * (*lv_font_get_glyph_bitmap_cb_t)(const struct _lv_font_t *, uint32_t);
+typedef bool (*lv_font_get_glyph_dsc_cb_t)(const struct _lv_font_t * font, lv_font_glyph_dsc_t * dsc, uint32_t letter, uint32_t letter_next);
+typedef const uint8_t * (*lv_font_get_glyph_bitmap_cb_t)(const struct _lv_font_t * font, uint32_t letter);
 
 /** Describe the properties of a font*/
 typedef struct _lv_font_t {

@@ -42,18 +42,22 @@ typedef struct {
     void * user_data;
 } lv_draw_mask_t;
 
+
+typedef struct {
+    const lv_area_t * clip_area;
+    lv_area_t * buf_area;
+    void * buf;
+    lv_color_format_t color_format;
+} lv_draw_layer_ctx_original_t;
+
+
 typedef struct _lv_draw_layer_ctx_t {
     lv_area_t area_full;
     lv_area_t area_act;
     lv_coord_t max_row_with_alpha;
     lv_coord_t max_row_with_no_alpha;
     void * buf;
-    struct {
-        const lv_area_t * clip_area;
-        lv_area_t * buf_area;
-        void * buf;
-        lv_color_format_t color_format;
-    } original;
+    lv_draw_layer_ctx_original_t original;
 } lv_draw_layer_ctx_t;
 
 

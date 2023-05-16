@@ -26,7 +26,7 @@ extern "C" {
 struct _lv_theme_t;
 struct _lv_disp_t;
 
-typedef void (*lv_theme_apply_cb_t)(struct _lv_theme_t *, lv_obj_t *);
+typedef void (*lv_theme_apply_cb_t)(struct _lv_theme_t * theme, lv_obj_t * obj);
 
 typedef struct _lv_theme_t {
     lv_theme_apply_cb_t apply_cb;

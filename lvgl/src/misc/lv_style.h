@@ -355,6 +355,14 @@ typedef struct {
 /**
  * Descriptor of a style (a collection of properties and values).
  */
+
+typedef union {
+    lv_style_value_t value1;
+    uint8_t * values_and_props;
+    const lv_style_const_prop_t * const_props;
+} lv_style_v_p_t;
+
+
 typedef struct {
 
 #if LV_USE_ASSERT_STYLE
@@ -363,11 +371,7 @@ typedef struct {
 
     /*If there is only one property store it directly.
      *For more properties allocate an array*/
-    union {
-        lv_style_value_t value1;
-        uint8_t * values_and_props;
-        const lv_style_const_prop_t * const_props;
-    } v_p;
+    lv_style_v_p_t v_p;
 
     uint16_t prop1;
     uint8_t has_group;

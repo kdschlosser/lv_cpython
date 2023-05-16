@@ -85,7 +85,7 @@ typedef enum {
 } lv_scr_load_anim_t;
 
 
-typedef void (*lv_disp_flush_cb_t)(struct _lv_disp_t * disp, const lv_area_t * area, lv_color_t px_map[]);
+typedef void (*lv_disp_flush_cb_t)(struct _lv_disp_t * disp, const lv_area_t * area, lv_color_t * px_map);
 typedef void (*lv_disp_draw_ctx_init_cb_t)(struct _lv_disp_t * disp, struct _lv_draw_ctx_t * draw_ctx);
 typedef void (*lv_disp_draw_ctx_deinit_cb_t)(struct _lv_disp_t * disp, struct _lv_draw_ctx_t * draw_ctx);
 

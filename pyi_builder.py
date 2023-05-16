@@ -1,6 +1,6 @@
 import sys
 
-from pycparser import c_generator, c_ast
+from pycparser import c_generator
 
 generator = c_generator.CGenerator()
 
@@ -21,20 +21,12 @@ def get_py_type(name):
         else:
             return '"{0}"'.format(name[3:])
 
-    elif name.endswith('_t'):
-        if name.startswith('uint') or name.startswith('int'):
-            return 'int'
-        if name.startswith('size'):
-            return 'int'
-
     elif name.startswith('void'):
-        return 'None'
+        return None
     elif name.startswith('float'):
-        return 'float'
-    elif name.startswith('char'):
-        return 'str'
-
-    return name
+        return 'Float'
+    
+    return '"' + name + '"'
 
 
 def format_name(name):
@@ -75,18 +67,6 @@ class Decl:
     def get_type(self):
         return self.type.declname
 
-    def get_ast(self):
-        return c_ast.Decl(
-            self.name,
-            self.quals,
-            self.align,
-            self.storage,
-            self.funcspec,
-            self.type.get_ast(),
-            self.init,
-            self.bitsize
-        )
-
     def gen_pyi(self):
 
         s_name = format_name(self.name)
@@ -112,25 +92,17 @@ class Decl:
         return ''
 
 
-pyi_typedef_template = '''\
-class {typedef_name}({typedef_type}):
-    pass'''
-
-
 class Typedef:
+    template = '''\
+class {typedef_name}({typedef_type}):
+    pass
+'''
+    
     def __init__(self, name, quals, storage, type):  # NOQA
         self.name = name
         self.type = type
         self.quals = quals
         self.storage = storage
-
-    def get_ast(self):
-        return c_ast.Typedef(
-            self.name, 
-            self.quals, 
-            self.storage, 
-            self.type.get_ast()
-        )
 
     def gen_pyi(self):
         s_name = format_name(self.name)
@@ -142,6 +114,15 @@ class Typedef:
                 if s_name and code.startswith('class None'):
                     code = code.replace('class None', 'class ' + s_name, 1)
 
+                    nme = self.name
+                    if nme.startswith('_'):
+                        nme = nme[1:]
+
+                    code = code.replace(
+                        "_c_type = 'None",
+                        "_c_type = '" + nme
+                    )
+
                 type_ = name = s_name
 
             if name and s_name and s_name != name:
@@ -152,19 +133,6 @@ class Typedef:
 
             return name, type_, code
 
-        if code and ': int = ' in code:
-            if name:
-                code += '\n\n\nclass {0}(int):\n    pass'.format(name)
-
-                if s_name and s_name != name:
-                    code += '\n\n\nclass {0}({1}):\n    pass'.format(
-                        s_name,
-                        name
-                    )
-                    return s_name, name, code
-
-                return name, 'int', code
-
         return s_name, name, code
 
     def __str__(self):
@@ -173,42 +141,41 @@ class Typedef:
         return ''
 
 
-py_enums = []
-py_enum_names = []
-
-
 class Enumerator:
+    template1 = '''\
+{0}: {1} = (
+    {1}(
+        _lib_lvgl.lib.{2}  # NOQA
+    )
+)'''
+    template2 = '''\
+{0}: {{type}} = (
+    {{type}}(
+        _lib_lvgl.lib.{1}  # NOQA
+    )
+)'''
+    
     def __init__(self, name, value):  # NOQA
         self.name = name
         self.value = value
 
-    def get_ast(self):
-        return Enumerator(self.name, c_ast.Constant('int', 1))
-
     def gen_pyi(self):
         name = format_name(self.name)
 
-        if name not in py_enum_names:
-            py_enums.append('{0} = _lib_lvgl.lib.{1}'.format(name, self.name))
+        type_ = find_int_type(name)
 
-        return name, 'int', '{0}: int = ...'.format(name)
+        if type_:
+            code = self.template1.format(name, type_, self.name)
+            py_enums.append(code)
+
+            return name, type_, code
+
+        return name, type_, self.template2.format(name, self.name)
 
 
 class EnumeratorList:
     def __init__(self, enumerators):
         self.enumerators = enumerators
-
-    def get_ast(self):
-
-        if self.enumerators is None:
-            enumerators = None
-
-        else:
-            enumerators = []
-            for enumerator in self.enumerators:
-                enumerators.append(enumerator.get_ast())
-
-        return c_ast.EnumeratorList(enumerators)
 
     def __iter__(self):
         if self.enumerators is not None:
@@ -216,43 +183,43 @@ class EnumeratorList:
                 yield item
 
 
-pyi_enum_template = '{enum_name} = int'
-
-
 class Enum:
-
+    
     def __init__(self, name, values):
         self.name = name
         self.values = values
-
-    def get_ast(self):
-        if self.values is not None:
-
-            return c_ast.Enum(
-                self.name,
-                self.values.get_ast()
-            )
-
-        return c_ast.Enum(
-            self.name,
-            self.values
-        )
 
     def gen_pyi(self):
         name = format_name(self.name)
         enumerators = []
 
+        if name:
+            t_name = find_int_type(name)
+
+            if t_name is None:
+                if name.startswith('_'):
+                    t_name = name[1:]
+                else:
+                    t_name = name
+        else:
+            t_name = None
+        
         if self.values is not None:
             for enum_item in self.values:
-                enumerators.append(enum_item.gen_pyi()[-1])
+                e_name, e_type, e_code = enum_item.gen_pyi()
+
+                if e_type is None:
+                    if t_name is not None:
+                        e_code = e_code.format(type=t_name)
+
+                    elif name is not None:
+                        e_code = e_code.format(type=name)
+                
+                enumerators.append(e_code)
 
         code = '\n'.join(enumerators)
 
-        if name:
-            return name, 'int', code
-
-        else:
-            return None, None, code
+        return name, None, code
 
     def __str__(self):
         if self.name:
@@ -270,14 +237,6 @@ class TypeDecl:
     @property
     def declname(self):
         return str(self.type)
-
-    def get_ast(self):
-        return c_ast.TypeDecl(
-            self._declname,
-            self.quals,
-            self.align,
-            self.type.get_ast()
-        )
 
     def gen_pyi(self):
         declname = format_name(self._declname)
@@ -299,6 +258,15 @@ class TypeDecl:
                         1
                     )
 
+                    nme = self._declname
+                    if nme.startswith('_'):
+                        nme = nme[1:]
+
+                    code = code.replace(
+                        "_c_type = 'None",
+                        "_c_type = '" + nme
+                    )
+
                     return declname, None, code
 
                 if name and declname and name != declname:
@@ -312,13 +280,24 @@ class TypeDecl:
         if isinstance(self.type, Enum):
             name, type_, code = self.type.gen_pyi()
 
-            if declname:
-                if not name:
-                    name = declname
-                    type_ = 'int'
+            if '{type}' in code:
+                if declname:
+                    if not name:
+                        name = declname
+                    
+                    code = code.format(type=declname)
+
+                    if code not in py_enums:
+                        py_enums.append(code)
+
                 else:
-                    type_ = name
-                    name = declname
+                    raise RuntimeError
+         
+            type_ = name
+            name = declname
+
+            if name and type_ and name != type_ and name not in int_types:
+                int_types[name] = type_
 
             return name, type_, code
 
@@ -335,20 +314,21 @@ class IdentifierType:
     def __init__(self, names):
         self.names = names
 
-    def get_ast(self):
-        return c_ast.IdentifierType(self.names)
-
     def gen_pyi(self):
         if self.names is None:
             return None, None, None
 
         return None, None, str(self)
+    
+    def get_raw_type(self):
+        if self.names is not None:
+            return ' '.join(self.names) 
 
     def __str__(self):
         if self.names is not None:
             names = [get_py_type(name) for name in self.names]
 
-            return ' '.join(names)
+            return ' '.join(str(name) for name in names)
         return ''
 
 
@@ -364,30 +344,65 @@ class ParamList:
             for item in self.params:
                 yield item
 
-    def get_ast(self):
-        if self.params is None:
-            return c_ast.ParamList(None)
-
-        params = []
-        for param in self.params:
-            params.append(param.get_ast())
-
-        return c_ast.ParamList(params)
-
 
 class EllipsisParam:
-
+    
     def __init__(self, **_):
         pass
-
-
-pyi_funcdecl_param_template = '{param_name}: {param_type}'
-pyi_funcdecl_template = """\
-def {func_name}({params}) -> {ret_type}:
-    ..."""
-
+    
 
 class FuncDecl:
+    param_template = '{param_name}: {param_type}'
+    param_conv_template = (
+        '    {param_name} = _get_c_obj({param_name})'
+    )
+    template = '''\
+def {func_name}({params}) -> {ret_type}:{callback_code}
+{arg_conversions}
+    res = _lib_lvgl.lib.{o_func_name}({param_names}
+    return _get_py_obj(res, '{c_type}')
+'''
+
+    callback_code_user_data_struct_template = '''\
+    try:
+        cb_store = {first_param_name}.user_data
+    except:  # NOQA
+        raise RuntimeError(
+            'no user_data field available in the first parameter'
+        )
+
+    cb_store['{cb_type}'] = {param_name}
+
+    {param_name} = getattr(_lib_lvgl.lib, 'py_{full_cb_type}')
+    cb_store['{cb_type}.c_func'] = {param_name}'''
+
+    var_args_template = '''
+    args = list(args)
+    for i, arg in enumerate(args):
+        args[i] = _get_c_obj(arg)
+    '''
+
+    callback_code_user_data_param_template = '''\
+    cb_store = _global_cb_store
+    if '{cb_type}.{func_name}' in cb_store:
+        store = cb_store['{cb_type}.{func_name}']
+        if {param_name} in store:
+            del store[{param_name}]
+    else:
+        store = _CBStore()
+        store['{cb_type}.{func_name}'] = store
+
+    cb_store_handle = _lib_lvgl.ffi.new_handle(store)    
+    c_func = getattr(_lib_lvgl.lib, 'py_{full_cb_type}')
+    store[{param_name}] = cb_store_handle
+    store['{cb_type}'] = {param_name}
+    store['{cb_type}.c_func'] = c_func
+
+    cb_store['{cb_type}.{func_name}'] = store
+    {param_name} = c_func
+
+    user_data = cb_store_handle'''
+    
     def __init__(self, args, type):  # NOQA
         self.args = args
         self.type = type
@@ -405,12 +420,6 @@ class FuncDecl:
     def __getitem__(self, item):
         return self.args[item]
 
-    def get_ast(self):
-        if self.args is None:
-            return c_ast.FuncDecl(None, self.type.get_ast())
-
-        return c_ast.FuncDecl(self.args.get_ast(), self.type.get_ast())
-
     def gen_pyi(self):
         args = self.args or []
 
@@ -418,8 +427,24 @@ class FuncDecl:
             name, type_, code = self.type.gen_pyi()
         else:
             raise RuntimeError(str(type(self.type)))
+        
+        if isinstance(self.type, PtrDecl):
+            if type_ in ('None', None):
+                type_ = 'Any'
+
+            if isinstance(self.type.type, PtrDecl):
+                declname = self.type.type.type._declname  # NOQA
+            else:
+                declname = self.type.type._declname  # NOQA
+        else:
+            declname = self.type._declname  # NOQA
 
         params = []
+        param_names = []
+        param_conversions = []
+
+        callback_format_params = None
+        has_user_data = False
 
         for param in args:
             if isinstance(param, (Decl, Typename)):
@@ -427,6 +452,8 @@ class FuncDecl:
                 p_name, p_type, _ = param.gen_pyi()
             elif isinstance(param, EllipsisParam):
                 params.append('*args')
+                param_names.append('*args')
+                param_conversions.append(self.var_args_template)
                 break
             else:
                 raise RuntimeError(str(type(param)))
@@ -435,21 +462,88 @@ class FuncDecl:
                 continue
 
             if param_name == 'user_data':
+                has_user_data = True
                 continue
 
+            param_names.append(param_name)
+
+            if p_type is None:
+                p_type = 'Any'
+
             params.append(
-                pyi_funcdecl_param_template.format(
+                self.param_template.format(
                     param_name=p_name,
                     param_type=p_type
                 )
             )
+            
+            if '_cb_t' in p_type:
+                t = param.type
+                while isinstance(t, PtrDecl):
+                    t = t.type
 
-        params = ', '.join(params)
+                full_cb_type = t.type.get_raw_type()
 
-        return name, type_, pyi_funcdecl_template.format(
+                callback_format_params = dict(
+                    param_name=param_name,
+                    cb_type=p_type.replace('"', ''),
+                    full_cb_type=full_cb_type
+                )
+
+            else:
+                param_conversions.append(
+                    self.param_conv_template.format(
+                        param_name=param_name
+                    )
+                )   
+
+        if params:
+            params = '\n    ' + (',\n    '.join(params)) + '\n'
+        else:
+            params = ''
+
+        if param_conversions:
+            param_conversions = '\n' + ('\n'.join(param_conversions))
+        else:
+            param_conversions = ''
+
+        if callback_format_params is None:
+            callback_code = ''
+        elif has_user_data:
+            param_names.append('user_data')
+            callback_format_params['func_name'] = declname
+
+            callback_code = self.callback_code_user_data_param_template.format(
+                **callback_format_params
+            )
+        else:
+            callback_format_params['first_param_name'] = param_names[0]
+
+            callback_code = self.callback_code_user_data_struct_template.format(
+                **callback_format_params
+            )
+        
+        if callback_code:
+            callback_code = '\n' + callback_code + '\n'
+
+        if param_names:
+            param_names = (
+                '  # NOQA\n        ' + (',\n        '.join(param_names)) + '\n    )'
+            )
+        else:
+            param_names = ')  # NOQA'
+        
+        return name, type_, self.template.format(
+            o_func_name=declname, 
             func_name=name,
             params=params,
-            ret_type=type_
+            ret_type=type_,
+            c_type=type_.replace('"', '') 
+            if type_ and type_ != 'Any' 
+            else 'void' if type is not None else '',
+            arg_conversions=param_conversions,
+            param_names=param_names,
+            callback_code=callback_code
         )
 
 
@@ -462,14 +556,6 @@ class Typename:
 
     def get_type(self):
         return self.type.declname
-
-    def get_ast(self):
-        return c_ast.Typename(
-            self.name, 
-            self.quals, 
-            self.align, 
-            self.type.get_ast()
-        )
 
     def gen_pyi(self):
 
@@ -511,9 +597,6 @@ class PtrDecl:
             return self.type.get_types()
         return []
 
-    def get_ast(self):
-        return c_ast.PtrDecl(self.quals, self.type.get_ast())
-
     def gen_pyi(self):
         if isinstance(self.type, TypeDecl):
             return self.type.gen_pyi()
@@ -538,93 +621,136 @@ class FuncDef:
         self.param_decls = param_decls
         self.body = body
 
-    def get_ast(self):
-        return c_ast.FuncDef(self.decl.get_ast(), None, None)
-
     def gen_pyi(self):
         return self.decl.gen_pyi()
 
 
-pyi_struct_param_template = '{field_name}: Optional[{field_type}] = None'
-pyi_struct_field_template = '    {field_name}: {field_type} = ...'
-
-pyi_struct_template = '''\
-class {struct_name}:{fields}{nested_structs}
-    def __init__({params}):
-        ...'''
-
-
-callback_template = '''\
-@_lib_lvgl.ffi.def_extern(name='py_lv_{func_name}')
-def __{func_name}_callback_func(*args):
-    return {func_name}._callback_func(*args)
-
-
-class _{func_name}(_CallbackWrapper):
-
-    def __call__(self, func):
-        return _{func_name}(self.ctype, func)
-
-
-{func_name} = _{func_name}('lv_{func_name}', None)
-
-'''
-
-pyi_callback_template = '''
-class {func_name}:
-    def __init__(self, func: Callable[{param_types}, {ret_type}]):
-        ...'''
-
-
 class Struct:
+    property_template = '''\
+    @property
+    def {field_name}(self) -> {field_type}:
+        return self._get_field(
+            '{field_name}', 
+            '{c_type}'
+        )
+
+    @{field_name}.setter
+    def {field_name}(self, value: {field_type}):
+        self._set_field('{field_name}', value)'''
+
+    user_data_property_template = '''\
+    @property
+    def user_data(self) -> dict:
+        if '__cb_store__' not in self.__dict__:
+            cb_store = self.__dict__['__cb_store__'] = _CBStore()
+            cb_store_handle = _lib_lvgl.ffi.new_handle(cb_store)
+            self.__dict__['__cb_store_handle__'] = cb_store_handle
+            self._obj.user_data = cb_store_handle
+
+        return self.__dict__['__cb_store__']
+
+    @user_data.setter
+    def user_data(self, value: dict):
+        if '__cb_store__' in self.__dict__:
+            if self.__dict__['__cb_store__'] == value:
+                return
+
+        cb_store_handle = _lib_lvgl.ffi.new_handle(value)
+        self.__dict__['__cb_store__'] = value
+        self.__dict__['__cb_store_handle__'] = cb_store_handle
+        self._obj.user_data = cb_store_handle'''
+
+    callback_property_template = '''\
+    @property
+    def {field_name}(self) -> Optional[{field_type}]:
+        cb_store = self.user_data
+        return cb_store.get('{field_type}', None)
+        
+    @{field_name}.setter
+    def {field_name}(self, value: {field_type}):
+        cb_store = self.user_data
+        if '{field_type}' not in cb_store:
+            cb_store['{field_type}'] = value
+            c_func = getattr(_lib_lvgl.lib, 'py_{full_field_type}')
+            cb_store['{field_type}.c_func'] = c_func
+            self._obj.{field_name} = c_func
+        else:
+            cb_store['{field_type}'] = value'''
+
+    int_param_template = (
+        '{field_name}: Optional[{field_type}] = 0'
+    )
+    bool_param_template = (
+        '{field_name}: Optional[{field_type}] = False'
+    )
+
+    param_template = (
+        '{field_name}: Optional[{field_type}] = _DefaultArg'
+    )
+    field_template = '    {field_name}: {field_type} = ...'
+
+    template = '''\
+class {struct_name}(_StructUnion): {nested_structs}
+    _c_type = '{c_type} *'
+
+    def __init__({params}):
+
+        super().__init__({param_names})
+{py_properties}
+'''
+    
     def __init__(self, name, decls):
         self.name = name
         self.decls = decls
-
-    def get_ast(self):
-        if self.decls is None:
-            return c_ast.Struct(self.name, None)
-
-        decls = []
-        for decl in self.decls:
-            decls.append(decl.get_aast())
-        return c_ast.Struct(self.name, decls)
 
     def gen_pyi(self):
         s_name = format_name(self.name)
 
         params = []
-        fields = []
         nested_structs = []
-
+        py_properties = []
+        param_names = []
+        
         if self.decls is None:
             return None, s_name, None
-
-        field_names = []
-
-        callbacks = []
 
         for field in self.decls:
             if isinstance(field, Decl):
                 name, type_, code = field.gen_pyi()
+                full_field_type = None
 
                 if isinstance(field.type, PtrDecl):
                     if isinstance(field.type.type, FuncDecl):
                         if code and code.startswith('def '):
-                            callbacks.append(field)
+                            continue
 
-                if isinstance(field.type, TypeDecl):
+                elif isinstance(field.type, TypeDecl):
                     if isinstance(field.type.type, (Union, Struct)) and code:
                         code = '\n'.join(
-                            '    ' + line for line in code.split('\n')
+                            '    ' + line for line in code.rstrip().split('\n')
                             )
-                        nested_structs.append(code)
-                        field_names.append(name)
 
+                        code = code.replace(name, '_' + name)
+
+                        nested_structs.append(code)
+                        # field_names.append(name)
+                        param_names.append(name + '=' + name)
                         params.append(
-                            name + ': ' + 'Optional[' + name + '] = None'
+                            name + ': ' + 'Optional[_' + name + '] = None'
                         )
+
+                        py_properties.append(
+                            self.property_template.format(
+                                field_name=name,
+                                field_type='_' + name,
+                                c_type=''
+                            )
+                        )
+
                         continue
+
+                    elif isinstance(field.type.type, IdentifierType):
+                        full_field_type = field.type.type.get_raw_type()
 
                 if not code:
                     code = type_
@@ -632,47 +758,121 @@ class Struct:
                 if not name:
                     raise RuntimeError(repr(type_) + ' : ' + repr(code))
 
-                field_names.append(name)
+                if type_ in (None, 'None'):
+                    type_ = 'Any'
 
-                params.append(
-                    pyi_struct_param_template.format(
-                        field_name=name,
-                        field_type=type_
-                    )
-                )
+                for item in ('Any', 'List', 'bool'):
+                    if type_.startswith(item):
+                        break
 
-                fields.append(
-                    pyi_struct_field_template.format(
-                        field_name=name,
-                        field_type=type_
+                else:
+                    if '"' not in type_:
+                        type_ = '"' + type_ + '"'
+
+                param_names.append(name + '=' + name)
+
+                for item in ('_cb_t', '_f_t'):    
+                    if item not in type_:
+                        continue
+
+                    py_properties.append(
+                        self.callback_property_template.format(
+                            field_name=name,
+                            field_type=type_,
+                            full_field_type=full_field_type
+                        )
                     )
-                )
+
+                    params.append(
+                            self.param_template.format(
+                                field_name=name,
+                                field_type=type_
+                            )
+                        )
+                    
+                    break
+                else:
+                    if name == 'user_data':
+                        py_properties.append(self.user_data_property_template)
+
+                    else:
+                        py_properties.append(
+                            self.property_template.format(
+                                field_name=name, 
+                                field_type=type_, 
+                                c_type=type_.replace('"', '') 
+                                if type_ != 'Any' 
+                                else 'void'
+                            )
+                        )
+
+                    if str(type_) == 'bool':
+                        params.append(
+                            self.bool_param_template.format(
+                                field_name=name,
+                                field_type=type_
+                            )
+                        )
+
+                    elif str(type_).replace('"', '') in int_types:
+                        params.append(
+                            self.int_param_template.format(
+                                field_name=name,
+                                field_type=type_
+                            )
+                        )
+                    else:
+                        
+                        params.append(
+                            self.param_template.format(
+                                field_name=name,
+                                field_type=type_
+                            )
+                        )
 
             else:
                 raise RuntimeError(str(type(field)))
 
-        if fields:
-            fields = '\n' + ('\n'.join(fields)) + '\n'
-
-        else:
-            fields = ''
-
-        if not fields and not nested_structs:
+        if not params and not nested_structs:
             return None, s_name, None
 
         if nested_structs:
-            nested_structs = '\n' + ('\n'.join(nested_structs)) + '\n'
+            nested_structs = '\n' + ('\n\n'.join(nested_structs)) + '\n'
         else:
             nested_structs = ''
 
         params.insert(0, '/')
         params.insert(0, 'self')
-        params = ', '.join(params)
+        if len(', '.join(params)) > 40:
+            params = (
+                    '\n        ' +
+                    (', \n        '.join(params)) +
+                    '\n    '
+            )
+        else:
+            params = ', '.join(params)
 
-        return s_name, None, pyi_struct_template.format(
+        py_properties = '\n' + ('\n\n'.join(py_properties))
+
+        param_names = (
+            '\n            ' +
+            (', \n            '.join(param_names)) +
+            '\n        '
+        )
+
+        if self.name is None:
+            c_type = 'None'
+        elif self.name.startswith('_'):
+            c_type = self.name[1:]
+        else:
+            c_type = self.name
+
+        return s_name, None, self.template.format(
+            c_type=c_type,
             struct_name=s_name,
             nested_structs=nested_structs,
-            fields=fields,
+            py_properties=py_properties,
+            param_names=param_names,
             params=params
         )
 
@@ -684,15 +884,7 @@ class Struct:
 
 
 class Union(Struct):
-
-    def get_ast(self):
-        if self.decls is None:
-            return c_ast.Union(self.name, None)
-
-        decls = []
-        for decl in self.decls:
-            decls.append(decl.get_aast())
-        return c_ast.Union(self.name, decls)
+    pass
 
 
 class ArrayDecl:
@@ -705,9 +897,6 @@ class ArrayDecl:
     @property
     def declname(self):
         return self.type.declname
-
-    def get_ast(self):
-        return c_ast.ArrayDecl(self.type.get_ast(), self.dim, self.dim_quals)
 
     def gen_pyi(self):
         if isinstance(self.type, TypeDecl):
@@ -756,8 +945,6 @@ class CatchAll:
 
     @property
     def children(self):
-        print(self.name)
-
         def wrapper():
             return []
 
@@ -768,214 +955,472 @@ class CatchAll:
 
     def __str__(self):
         return ''
-    
-
-used_classes = {}
-#C_AST NODES
 
 
-class ArrayRef(c_ast.ArrayRef):
-    def __init__(self, name, subscript):
-        used_classes['ArrayRef'] = True
-        c_ast.ArrayRef.__init__(self, name, subscript)
+callbacks = []
 
 
-class Assignment(c_ast.Assignment):
-    def __init__(self, op, lvalue, rvalue):
-        used_classes['Assignment'] = True
-        c_ast.Assignment.__init__(self, op, lvalue, rvalue)
-
-
-class BinaryOp(c_ast.BinaryOp):
-    def __init__(self, op, left, right):
-        used_classes['BinaryOp'] = True
-        c_ast.BinaryOp.__init__(self, op, left, right)
-        
-
-class Compound(c_ast.Compound):
-    def __init__(self, block_items):
-        used_classes['Compound'] = True
-        c_ast.Compound.__init__(self, block_items)
-
-
-class CompoundLiteral(c_ast.CompoundLiteral):
-    def __init__(self, type, init):
-        used_classes['CompoundLiteral'] = True
-        c_ast.CompoundLiteral.__init__(self, type, init)
-
-
-class Constant(c_ast.Constant):
-    def __init__(self, type, value):
-        used_classes['Constant'] = True
-        c_ast.Constant.__init__(self, type, value)
-
-
-class EllipsisParam(c_ast.EllipsisParam):
-    def __init__(self):
-        used_classes['EllipsisParam'] = True
-        c_ast.EllipsisParam.__init__(self)
-
-
-class EmptyStatement(c_ast.EmptyStatement):
-    def __init__(self):
-        used_classes['EmptyStatement'] = True
-        c_ast.EmptyStatement.__init__(self)
-
-
-class ExprList(c_ast.ExprList):
-    def __init__(self, exprs):
-        used_classes['ExprList'] = True
-        c_ast.ExprList.__init__(self, exprs)
-
-
-class FuncCall(c_ast.FuncCall):
-    def __init__(self, name, args):
-        used_classes['FuncCall'] = True
-        c_ast.FuncCall.__init__(self, name, args)
-
-
-class ID(c_ast.ID):
-    def __init__(self, name):
-        used_classes['ID'] = True
-        c_ast.ID.__init__(self, name)
-
-        
-class InitList(c_ast.InitList):
-    def __init__(self, exprs):
-        used_classes['InitList'] = True
-        c_ast.InitList.__init__(self, exprs)
-
-        
-class Return(c_ast.Return):
-    def __init__(self, expr):
-        used_classes['Return'] = True
-        c_ast.Return.__init__(self, expr)
-
-
-class StructRef(c_ast.StructRef):
-    def __init__(self, name, type, field):
-        used_classes['StructRef'] = True
-        c_ast.StructRef.__init__(self, name, type, field)
-
-
-class TernaryOp(c_ast.TernaryOp):
-    def __init__(self, cond, iftrue, iffalse):
-        used_classes['TernaryOp'] = True
-        c_ast.TernaryOp.__init__(self, cond, iftrue, iffalse)
-
-
-class UnaryOp(c_ast.UnaryOp):
-    def __init__(self, op, expr):
-        used_classes['UnaryOp'] = True
-        c_ast.UnaryOp.__init__(self, op, expr)
-
-        
-        
 class RootTypedef(Typedef):
+    struct_userdata_template = (
+        'cb_store = _lib_lvgl.ffi.from_handle({param_name}.user_data)'
+    )
+    arg_user_data_template = 'cb_store = _lib_lvgl.ffi.from_handle(user_data)'
+
+    callback_param_conversion_template = '''\
+        {param_name} = _get_py_obj(
+            {param_name},
+            '{c_type}'
+        )'''
+
+    callback_template = '''\
+@_lib_lvgl.ffi.def_extern(
+    name='py_lv_{func_name}'
+)
+def __{func_name}_callback_func({params}):
+    try:
+        {struct_userdata}
+    except:  # NOQA
+        print('No "user_data" field available ({func_name})')
+        return
+
+    if '{func_name}' in cb_store:
+        func = cb_store['{func_name}']{param_conversion}
+        try:
+            res = func({param_names})
+            
+            if res is None:
+                return None
+
+            return _get_c_obj(res)
+
+        except:  # NOQA
+            import traceback
+
+            traceback.print_exc()
+    else:
+        print('"{func_name}" is not registered')
+'''
+
+    pyi_callback_template = '{func_name} = Callable[{param_types}, {ret_type}]'
 
     def gen_pyi(self):
+        s_type = self.type
+        if isinstance(s_type, PtrDecl):
+            s_type = s_type.type
+            if isinstance(s_type, FuncDecl):
+                s_type = s_type.type
+                if isinstance(s_type, (TypeDecl, PtrDecl)):
+                    if isinstance(s_type, PtrDecl):
+                        s_type = s_type.type
+                        ptr = True
+                    else:                        
+                        ptr = False
+
+                    name = s_type._declname  # NOQA
+
+                    for item in ('_cb_t', '_f_t'):
+                        
+                        if item in name:
+                            if name.replace('lv_', '', 1) in py_callback_names:
+                                return
+
+                            try:
+                                ret_type = get_py_type(s_type.type.names[0])
+
+                                if ret_type in (None, 'None') and ptr:
+                                    ret_type = 'Any'
+                                
+                            except:  # NOQA
+                                ret_type = get_py_type(s_type.type.name)
+
+                            param_names = []
+                            params = []
+                            param_types = []
+                            param_conversions = []
+                            arg_user_data = False
+
+                            for param in self.type.type.args.params:
+                                p_ptr = False
+
+                                if isinstance(param, Typename):
+                                    p_type = param.type
+                                    param_name = param.name
+
+                                    if param_name == 'px_map':
+                                        print(
+                                            'Typename',
+                                            name
+                                        )
+
+                                    if isinstance(p_type, PtrDecl):
+                                        p_type = p_type.type.type
+                                        p_ptr = True
+                                        if param_name == 'px_map':
+                                            print(
+                                                'Typename PtrDecl',
+                                                name
+                                            )
+
+                                        if isinstance(p_type, IdentifierType):
+                                            if param_name == 'px_map':
+                                                print(
+                                                    'Typename PtrDecl IdentifierType',
+                                                    name
+                                                )
+                                            param_type = get_py_type(
+                                                p_type.names[0]
+                                            )
+                                        elif isinstance(p_type, Struct):
+                                            if param_name == 'px_map':
+                                                print(
+                                                    'Typename PtrDecl Struct',
+                                                    name
+                                                )
+                                            param_type = get_py_type(
+                                                p_type.name
+                                            )
+                                        else:
+                                            raise RuntimeError(
+                                                str(type(p_type))
+                                            )
+
+                                    elif isinstance(p_type, TypeDecl):
+                                        if param_name == 'px_map':
+                                            print(
+                                                'Typename TypeDecl',
+                                                name
+                                            )
+
+                                        p_type = p_type.type
+                                        param_type = get_py_type(
+                                            p_type.names[0]
+                                        )
+                                    else:
+                                        raise RuntimeError(str(type(p_type)))
+
+                                elif isinstance(param, Decl):
+                                    p_type = param.type
+                                    param_name = param.name
+
+                                    if param_name == 'px_map':
+                                        print(
+                                            'Decl',
+                                            name
+                                        )
+
+                                    if isinstance(p_type, PtrDecl):
+                                        if param_name == 'px_map':
+                                            print(
+                                                'Decl PtrDecl',
+                                                name
+                                            )
+
+                                        p_type = p_type.type
+                                        p_ptr = True
+
+                                        if isinstance(p_type, IdentifierType):
+                                            if param_name == 'px_map':
+                                                print(
+                                                    'Decl PtrDecl IdentifierType',
+                                                    name
+                                                )
+
+                                            param_type = get_py_type(
+                                                p_type.names[0]
+                                            )
+
+                                        elif isinstance(p_type, TypeDecl):
+                                            if param_name == 'px_map':
+                                                print(
+                                                    'Decl PtrDecl TypeDecl',
+                                                    p_type.quals
+                                                )
+
+                                            p_type = p_type.type
+
+                                            if isinstance(
+                                                p_type, 
+                                                IdentifierType
+                                            ):
+                                                if param_name == 'px_map':
+                                                    print(
+                                                        'Decl PtrDecl TypeDecl IdentifierType',
+                                                        name
+                                                    )
+                                                param_type = get_py_type(
+                                                    p_type.names[0]
+                                                )
+                                            elif isinstance(p_type, Struct):
+                                                if param_name == 'px_map':
+                                                    print(
+                                                        'Decl PtrDecl TypeDecl Struct',
+                                                        name
+                                                    )
+                                                param_type = get_py_type(
+                                                    p_type.name
+                                                )
+                                            else:
+                                                raise RuntimeError(
+                                                    str(type(p_type))
+                                                )
+                                        else:
+                                            raise RuntimeError(
+                                                str(type(p_type))
+                                            )
+
+                                    elif isinstance(p_type, TypeDecl):
+                                        if param_name == 'px_map':
+                                            print(
+                                                'Decl TypeDecl',
+                                                name
+                                            )
+                                        param_type = get_py_type(
+                                            p_type.type.names[0]
+                                        )
+                                    elif isinstance(p_type, ArrayDecl):
+                                        if param_name == 'px_map':
+                                            print(
+                                                'Decl ArrayDecl',
+                                                name
+                                            )
+
+                                        param_type = 'List[' + get_py_type(
+                                            p_type.type.type.names[0]
+                                        ) + ']'
+                                    else:
+                                        raise RuntimeError(str(type(p_type)))
+                                else:
+                                    raise RuntimeError(str(type(param)))
+                                
+                                if param_name == 'user_data':
+                                    arg_user_data = len(param_names) - 1
+                                    param_type = 'Any'
+                                else:
+                                    param_conversions.append(
+                                        self.callback_param_conversion_template.format(  # NOQA
+                                            param_name=param_name, 
+                                            c_type='void'
+                                            if param_type in ('None', None)
+                                            else param_type.replace('"', '')
+                                        )
+                                    )
+
+                                if p_ptr and param_type in ('None', None):
+                                    param_type = 'Any'
+
+                                param_types.append(param_type)
+                                param_names.append(param_name)
+                                params.append(
+                                    param_name + ': ' + str(param_type)
+                                )
+            
+                            if param_types:
+                                param_types = '[' + (', '.join(
+                                    str(pt) for pt in param_types)
+                                ) + ']'
+                            else:
+                                param_types = '...'
+
+                            if param_conversions:
+                                param_conversions = (
+                                    '\n' + ('\n'.join(param_conversions)) + '\n'
+                                )
+                            else:
+                                param_conversions = ''
+
+                            if arg_user_data is False:
+                                struct_userdata = (
+                                    self.struct_userdata_template.format(
+                                        param_name=param_names[0]
+                                    )
+                                )
+                            else:
+                                param_names.insert(arg_user_data, 'None')
+                                struct_userdata = self.arg_user_data_template
+
+                            if param_names:
+                                if 'user_data' in param_names:
+                                    user_data = 'user_data'
+                                else:
+                                    user_data = param_names[0] + '.user_data'
+
+                                if len(', '.join(param_names)) > 45:
+                                    param_names = (
+                                        '\n                ' +
+                                        ',\n                '.join(param_names)
+                                        + '\n            '
+                                    )
+                                else:
+                                    param_names = ', '.join(param_names)
+                            else:
+                                user_data = None
+                                param_names = ''
+
+                            if params:
+                                if len(', '.join(params)) > 45:
+                                    params = (
+                                        '\n    ' +
+                                        ',\n    '.join(params) +
+                                        '\n'
+                                    )
+                                else:
+                                    params = ', '.join(params)
+                            else:
+                                params = ''
+
+                            if user_data is not None:
+                                callbacks.append(
+                                    self.callback_template.format(
+                                        func_name=name.replace('lv_', '', 1),
+                                        params=params,
+                                        user_data=user_data,
+                                        param_conversion=param_conversions,
+                                        param_names=param_names,
+                                        struct_userdata=struct_userdata
+                                    )
+                                )
+
+                                cb = self.pyi_callback_template.format(
+                                    func_name=name.replace('lv_', '', 1),
+                                    param_types=param_types,
+                                    ret_type=ret_type
+                                )
+
+                                if len(cb) > 80:
+                                    cb += '  # NOQA'
+
+                                py_callbacks.append(cb)
+
+                                py_callback_names.append(
+                                    name.replace('lv_', '', 1)
+                                )
+
+                            return
+
         t_name = format_name(self.name)
+        name, type_, code = self.type.gen_pyi()
 
         if isinstance(self.type, TypeDecl):
-            name, type_, code = self.type.gen_pyi()
+            if type_:
+                type_ = type_.replace('"', '')
 
-            if name and t_name and name == t_name and type_ and not code:
-                if t_name not in pyi_typedef_names:
-                    pyi_typedef_names.append(t_name)
-                    pyi_typedefs.append(
-                        'class {0}({1})'
-                        ':\n    pass'.format(t_name, type_)
-                    )
-                return
+            if code and '_lib_lvgl.lib.' in code and 'LV_' in code:
+                if name and type_ and name == type_:
+                    type_ = 'int_'
 
-            if code:
-                if code.startswith('class'):
-                    if (
-                        name and type_ and
-                        name not in pyi_struct_names and
-                        type_ not in pyi_struct_names
-                    ):
-                        pyi_struct_names.append(type_)
-                        pyi_struct_names.append(name)
-                        pyi_structs.append(code)
+                    tdef = self.template.format(
+                            typedef_name=name,
+                            typedef_type=type_
+                        )
+                    if name not in py_int_type_names:
+                        py_int_type_names.append(name)
+                        py_int_types.append(tdef)
 
-                    elif (
-                        name and not type_ and
-                        name not in pyi_struct_names
-                    ):
-                        pyi_struct_names.append(name)
-                        pyi_structs.append(code)
-
-                    elif (
-                        type_ and not name and
-                        type_ not in pyi_struct_names
-                    ):
-                        pyi_struct_names.append(type_)
-                        pyi_structs.append(code)
-
-                elif ': int' in code:
-                    if name:
-                        tdef = pyi_typedef_template.format(
+            else:
+                if (
+                    name and 
+                    type_ and 
+                    t_name and 
+                    name == t_name and 
+                    name != type_ and 
+                    not code
+                ):
+                    if type_ in int_types:
+                        tdef = self.template.format(
                             typedef_name=name,
                             typedef_type=type_
                         )
 
-                        if name not in pyi_typedef_names:
-                            pyi_typedef_names.append(name)
-                            pyi_typedefs.append(tdef)
+                        py_int_type_names.append(name)
+                        py_int_types.append(tdef)
 
-                    if code not in pyi_enums:
-                        pyi_enums.append(code)
-                else:
-                    code = pyi_typedef_template.format(
-                        typedef_name=t_name,
-                        typedef_type=type_.replace('"', '')
-                    )
+                    else:
+                        if t_name not in py_typedef_names:
+                            tdef = self.template.format(
+                                typedef_name=t_name,
+                                typedef_type=type_
+                            )
+                            
+                            py_typedef_names.append(t_name)
+                            py_typedefs.append(tdef)
 
-                    if type_ not in pyi_callback_names + pyi_typedef_names:
-                        pyi_typedef_names.append(type_)
-                        pyi_typedefs.append(code)
+                    return
+                
+                if code:
+                    if code.startswith('class'):
+                        if (
+                            name and type_ and
+                            name not in py_struct_names and
+                            type_ not in py_struct_names
+                        ):
+                            py_struct_names.append(type_)
+                            py_struct_names.append(name)
+                            py_structs.append(code)
 
-                if t_name and type_ and t_name != type_:
-                    if (
-                        t_name not in
-                        pyi_callback_names + pyi_typedef_names
-                    ):
-                        pyi_typedef_names.append(t_name)
-                        pyi_typedefs.append(
-                            'class {0}({1})'
-                            ':\n    pass'.format(t_name, type_)
+                        elif (
+                            name and not type_ and
+                            name not in py_struct_names
+                        ):
+                            py_struct_names.append(name)
+                            py_structs.append(code)
+
+                        elif (
+                            type_ and not name and
+                            type_ not in py_struct_names
+                        ):
+                            py_struct_names.append(type_)
+                            py_structs.append(code)
+                        
+                    else:
+                        code = self.template.format(
+                            typedef_name=t_name,
+                            typedef_type=type_
                         )
 
-        elif isinstance(self.type, ArrayDecl):
-            name, type_, code = self.type.gen_pyi()
+                        if (
+                            type_ and 
+                            type_ not in (
+                                py_callback_names + py_typedef_names
+                            )
+                        ):
+                            py_typedef_names.append(type_)
+                            py_typedefs.append(code)
 
+                    if t_name and type_ and t_name != type_:
+                        if t_name not in py_callback_names + py_typedef_names:
+                            tdef = self.template.format(
+                                typedef_name=t_name,
+                                typedef_type=type_
+                            )
+                            
+                            py_typedef_names.append(t_name)
+                            py_typedefs.append(tdef)
+                            
+        elif isinstance(self.type, ArrayDecl):
             if code:
                 if not t_name:
                     t_name = name
 
                 code = '{name}: {type} = ...'.format(name=t_name, type=code)
 
-                if t_name not in pyi_typedef_names:
-                    pyi_typedef_names.append(t_name)
-                    pyi_typedefs.append(code)
+                if t_name not in py_typedef_names:
+                    py_typedef_names.append(t_name)
+                    py_typedefs.append(code)
 
         elif isinstance(self.type, PtrDecl):
-            name, type_, code = self.type.gen_pyi()
-
             if (
                 name not in
-                pyi_type_names + pyi_callback_names +
-                pyi_typedef_names + pyi_struct_names +
-                pyi_enum_names + pyi_func_names
+                py_type_names + py_callback_names +
+                py_typedef_names + py_struct_names +
+                py_enum_names + py_func_names
             ):
-                pyi_typedef_names.append(name)
-                pyi_typedefs.append(code)
+                py_typedef_names.append(name)
+                py_typedefs.append(code)
 
             if t_name and name and t_name != name:
-                if t_name not in pyi_callback_names + pyi_typedef_names:
-                    pyi_typedef_names.append(t_name)
-                    pyi_typedefs.append(
+                if t_name not in py_callback_names + py_typedef_names:
+                    py_typedef_names.append(t_name)
+                    py_typedefs.append(
                         'class {0}({1}):\n    pass'.format(t_name, name)
                     )
 
@@ -983,27 +1428,116 @@ class RootTypedef(Typedef):
             raise RuntimeError(str(type(self.type)))
 
 
+int_types = {
+    'DPI_DEF': 'coord_t',
+    'ANIM_REPEAT_INFINITE': 'uint16_t',
+    'ANIM_PLAYTIME_INFINITE': 'uint32_t',
+    'LOG_LEVEL_*': 'log_level_t',
+    '_STR_SYMBOL_*': 'uint8_t',
+    'SIZE_CONTENT': 'coord_t',
+    'COORD_MAX': 'coord_t',
+    'COORD_MIN': 'coord_t',
+    'COLOR_DEPTH': 'uint8_t',
+    'ZOOM_NONE': 'int16_t',
+    'RADIUS_CIRCLE': 'int32_t',
+    'LABEL_DOT_NUM': 'uint32_t',
+    'LABEL_POS_LAST': 'uint32_t',
+    'LABEL_TEXT_SELECTION_OFF': 'uint32_t',
+    'BTNMATRIX_BTN_NONE': 'uint16_t',
+    'CHART_POINT_NONE': 'coord_t',
+    'DROPDOWN_POS_LAST': 'uint32_t',
+    'TEXTAREA_CURSOR_LAST': 'int32_t',
+    'PART_TEXTAREA_PLACEHOLDER': 'style_selector_t',
+    'TABLE_CELL_NONE': 'uint16_t',
+    'OBJ_FLAG_FLEX_IN_NEW_TRACK': 'obj_flag_t',
+    'GRID_CONTENT': 'coord_t',
+    'GRID_TEMPLATE_LAST': 'coord_t',
+    'part_t': 'style_selector_t',
+    'state_t': 'style_selector_t',
+    'uint8_t': None,
+    'uint16_t': None,
+    'uint32_t': None,
+    'uint64_t': None,
+    'int8_t': None,
+    'int16_t': None,
+    'int32_t': None,
+    'int64_t': None,
+    'uintptr_t': 'int_',
+    'intptr_t': 'int_',
+    'int_': None
+}
+
+
+def find_int_type(name):
+    if name is None:
+        return None
+    
+    if name in int_types:
+        return int_types[name]
+    
+    for key, val in int_types.items():
+        if key.endswith('*') and name.startswith(key[:-1]):
+            return val
+    
+
 class RootDecl(Decl):
+    int_type_template = '''\
+class {name}({type}):
+    pass
+'''
 
     def gen_pyi(self):
         d_name = format_name(self.name)
-
+        
         if isinstance(self.type, Enum):
             name, type_, code = self.type.gen_pyi()
 
             if code:
+                def _check_code(c):
+                    if ')\n_' in c:
+                        c = list('_' + item + ')' for item in c.split(')\n_'))
+                        c = '\n\n'.join(c)[1:-1].split('\n\n')
+                        for item in c[:]:
+                            if item in py_enums:
+                                return False
+
+                    elif c in py_enums:
+                        return False
+
+                    return True
+
                 if name is None:
                     name = d_name
 
+                if name:
+                    e_type = find_int_type(name)
+
+                    if e_type:
+                        type_ = e_type
+
+                if '{type}' in code:
+                    if type_:
+                        code = code.format(type=type_)
+                        if _check_code(code):
+                            py_enums.append(code)
+                        return
+                    elif name:
+                        code = code.format(type=name)
+                        if _check_code(code):
+                            py_enums.append(code)
+                        return
+                    else:
+                        raise RuntimeError
+
                 if name and type_ and name != type_:
-                    t_code = 'class {0}({1}):\n    pass'.format(name, type_)
+                    if name not in py_int_type_names:
+                        py_int_type_names.append(name)
+                        py_int_types.append(
+                            self.int_type_template.format(name=name, type=type_)
+                        )
 
-                    if name not in pyi_typedef_names:
-                        pyi_typedef_names.append(name)
-                        pyi_typedefs.append(t_code)
-
-                if code not in pyi_enums:
-                    pyi_enums.append(code)
+                if _check_code(code):
+                    py_enums.append(code)
 
         elif isinstance(self.type, FuncDecl):
             name, type_, code = self.type.gen_pyi()
@@ -1011,9 +1545,9 @@ class RootDecl(Decl):
                 if not name and d_name:
                     name = d_name
 
-                if name not in pyi_callback_names + pyi_func_names:
-                    pyi_func_names.append(name)
-                    pyi_funcs.append(code)
+                if name not in py_callback_names + py_func_names:
+                    py_func_names.append(name)
+                    py_funcs.append(code)
 
         elif isinstance(self.type, TypeDecl):
             name, type_, code = self.type.gen_pyi()
@@ -1024,9 +1558,9 @@ class RootDecl(Decl):
 
                 code = '{name}: {type} = ...'.format(name=name, type=code)
 
-                if name not in pyi_type_names:
-                    pyi_type_names.append(name)
-                    pyi_types.append(code)
+                if name not in py_type_names:
+                    py_type_names.append(name)
+                    py_types.append(code)
 
         elif isinstance(self.type, PtrDecl):
             name, type_, code = self.type.gen_pyi()
@@ -1034,9 +1568,9 @@ class RootDecl(Decl):
                 if not name and d_name:
                     name = d_name
 
-                if name not in pyi_callback_names + pyi_func_names:
-                    pyi_func_names.append(name)
-                    pyi_funcs.append(code)
+                if name not in py_callback_names + py_func_names:
+                    py_func_names.append(name)
+                    py_funcs.append(code)
 
         elif isinstance(self.type, Struct):
             name, type_, code = self.type.gen_pyi()
@@ -1044,9 +1578,9 @@ class RootDecl(Decl):
                 if not name and d_name:
                     name = d_name
 
-                if name not in pyi_struct_names:
-                    pyi_struct_names.append(name)
-                    pyi_structs.append(code)
+                if name not in py_struct_names:
+                    py_struct_names.append(name)
+                    py_structs.append(code)
 
         else:
             raise RuntimeError(str(type(self.type)))
@@ -1065,32 +1599,34 @@ class RootFuncDef(FuncDef):
                 name = type_
 
             if code:
-                if name not in pyi_callback_names + pyi_func_names:
-                    pyi_func_names.append(name)
-                    pyi_funcs.append(code)
+                if name not in py_callback_names + py_func_names:
+                    py_func_names.append(name)
+                    py_funcs.append(code)
 
         else:
             raise RuntimeError(str(type(self.decl)))
 
 
-pyi_callbacks = []
-pyi_callback_names = []
+py_enums = []
+py_enum_names = []
 
+py_int_types = []
+py_int_type_names = []
 
-pyi_typedefs = []
-pyi_typedef_names = []
+py_callbacks = []
+py_callback_names = []
 
-pyi_funcs = []
-pyi_func_names = []
+py_typedefs = []
+py_typedef_names = []
 
-pyi_enums = []
-pyi_enum_names = []
+py_funcs = []
+py_func_names = []
 
-pyi_structs = []
-pyi_struct_names = []
+py_structs = []
+py_struct_names = []
 
-pyi_types = []
-pyi_type_names = []
+py_types = []
+py_type_names = []
 
 
 # this is some monkey patching code to flatten the output when printing a node.
@@ -1121,14 +1657,15 @@ def setup():
 
 class _Module(dict):
     py_enums = py_enums
-    pyi_callback_names = pyi_callback_names
-    pyi_callbacks = pyi_callbacks
-    pyi_typedefs = pyi_typedefs
-    pyi_funcs = pyi_funcs
-    pyi_enums = pyi_enums
-    pyi_structs = pyi_structs
-    pyi_types = pyi_types
-    used_nodes = used_classes
+    callbacks = callbacks
+    py_callback_names = py_callback_names
+    py_callbacks = py_callbacks
+    py_typedefs = py_typedefs
+    py_funcs = py_funcs
+    py_enums = py_enums
+    py_structs = py_structs
+    py_types = py_types
+    py_int_types = py_int_types
 
     @staticmethod
     def setup():

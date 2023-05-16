@@ -31,8 +31,7 @@ def slider_event_cb(e):
 slider = lv.slider_create(lv.scr_act())
 lv.obj_set_width(slider, 200)
 lv.obj_center(slider)
-event_cb = lv.event_cb_t(slider_event_cb)
-lv.obj_add_event(slider, event_cb, lv.EVENT_VALUE_CHANGED)
+lv.obj_add_event(slider, slider_event_cb, lv.EVENT_VALUE_CHANGED)
 
 # Create a label above the slider
 label = lv.label_create(lv.scr_act())

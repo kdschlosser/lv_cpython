@@ -1,5 +1,5 @@
 import lvgl as lv
-import _lib_lvgl
+# import _lib_lvgl
 import wx
 import threading
 import win_precise_time as wpt
@@ -17,6 +17,7 @@ ULW_ALPHA = 0x00000002
 AC_SRC_OVER = 0x00000000
 AC_SRC_ALPHA = 0x00000001
 WS_POPUP = 0x80000000
+
 
 class POINT(ctypes.Structure):
     _fields_ = [
@@ -130,7 +131,7 @@ class Frame(wx.Frame):
         self.Bind(wx.EVT_ERASE_BACKGROUND, lambda x: None)
         self.Bind(wx.EVT_PAINT, self.OnPaint)
 
-        self.SetClientSize((800, 600))
+        self.SetClientSize((480, 320))
 
         self.Bind(wx.EVT_LEFT_DOWN, self.on_left_down)
         self.Bind(wx.EVT_LEFT_UP, self.on_left_up)
@@ -300,8 +301,8 @@ class Frame(wx.Frame):
         height = area.y2 - area.y1 + 1
         size = width * height
 
-        px_data = _lib_lvgl.ffi.cast('uint8_t[{0}]'.format(size * 4), px_map._obj)
-        dbuf = _lib_lvgl.ffi.buffer(px_data)[:]
+        dbuf = px_map.as_buffer('uint8_t', size * 4)
+
         bmp = wx.Bitmap(width, height)
         bmp.CopyFromBuffer(dbuf, wx.BitmapBufferFormat_RGBA)
         self.draw_alpha(bmp)
@@ -329,31 +330,53 @@ def keyboard_cb(_, data):
 def mouse_cb(_, data):
     frame.get_mouse_state(data)
 
+
+last_tick = wpt.time_ns()
+
+
+def tick_cb(_):
+    global last_tick
+
+    curr_tick = wpt.time_ns()
+    diff = curr_tick - last_tick
+
+    int_diff = int(diff / 1000000)
+    remainder = diff - int_diff
+    curr_tick -= remainder
+    last_tick = curr_tick
+    lv.tick_inc(int_diff)
+
+
 def run():
     lv.init()
-    print('LVGL initilized')
 
-    disp = lv.disp_create(800, 600)
+    tick_dsc = lv.tick_dsc_t()
+    lv.tick_set_cb(tick_dsc, tick_cb)
 
-    flush_cb_t = lv.disp_flush_cb_t(frame.flush_lvgl)
-    lv.disp_set_flush_cb(disp, flush_cb_t)
+    disp = lv.disp_create(480, 320)
 
-    _buf1 = getattr(lv, 'color_t[{0}]'.format(800 * 600))
-    lv.disp_set_draw_buffers(disp, _buf1,  None, 800 * 600, lv.DISP_RENDER_MODE_FULL)
+    lv.disp_set_flush_cb(disp, frame.flush_lvgl)
+
+    _buf1 = lv.color_t.as_array(size=480 * 320)
+    print(_buf1)
+
+    _buf1 = _buf1._obj
+
+    # _buf1 = _lib_lvgl.ffi.new('lv_color32_t[{0}]'.format())
+
+    lv.disp_set_draw_buffers(disp, _buf1,  None, 480 * 320, lv.DISP_RENDER_MODE_FULL)
 
     group = lv.group_create()
     lv.group_set_default(group)
 
     mouse = lv.indev_create()
     lv.indev_set_type(mouse, lv.INDEV_TYPE_POINTER)
-    mouse_cb_t = lv.indev_read_cb_t(mouse_cb)
-    lv.indev_set_read_cb(mouse, mouse_cb_t)
+    lv.indev_set_read_cb(mouse, mouse_cb)
     lv.timer_set_period(mouse.read_timer, 1)
 
     keyboard = lv.indev_create()
     lv.indev_set_type(keyboard, lv.INDEV_TYPE_KEYPAD)
-    keyboard_cb_t = lv.indev_read_cb_t(keyboard_cb)
-    lv.indev_set_read_cb(keyboard, keyboard_cb_t)
+    lv.indev_set_read_cb(keyboard, keyboard_cb)
     lv.timer_set_period(keyboard.read_timer, 1)
 
     lv.indev_set_group(keyboard, group)
@@ -372,42 +395,32 @@ def run():
     label = lv.label_create(screen)
     lv.obj_set_style_text_color(label, lv.color_hex(0x00FF00), 0)
 
-    print(getattr(_lib_lvgl.lib, 'lv_font_montserrat_24'))
-    print(lv.font_montserrat_24)
-
-    lv.obj_set_style_text_font(label, lv.font_montserrat_24, 0)
+    # lv.obj_set_style_text_font(label, lv.font_montserrat_24, 0)
 
     # Create an Arc
     arc = lv.arc_create(screen)
     lv.obj_set_style_arc_color(arc, lv.color_hex(0xFF0000), lv.PART_INDICATOR)
-    lv.obj_set_size(arc, 500, 500)
-    lv.obj_set_style_arc_width(arc, 50, 0)
-    lv.obj_set_style_arc_width(arc, 50, lv.PART_INDICATOR)
+    lv.obj_set_size(arc, 200, 200)
+    lv.obj_set_style_arc_width(arc, 30, 0)
+    lv.obj_set_style_arc_width(arc, 30, lv.PART_INDICATOR)
     lv.arc_set_rotation(arc, 135)
     lv.arc_set_bg_angles(arc, 0, 270)
     lv.arc_set_value(arc, 0)
     lv.obj_center(arc)
     lv.obj_add_event(
         arc,
-        lv.event_cb_t(lambda e: value_changed_event_cb(e, label)),
+        lambda e: value_changed_event_cb(e, label),
         lv.EVENT_VALUE_CHANGED
     )
 
     # Manually update the label for the first time
     lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)
 
-    import time
-
-    start = time.time()
-    print(start)
-
     val = 0
     inc = 1
 
     while True:
-        stop = time.time()
-        diff = int((stop * 1000) - (start * 1000))
-        start = stop
+        wpt.sleep(0.01)
         val += inc
 
         if val in (0, 100):
@@ -416,7 +429,6 @@ def run():
         lv.arc_set_value(arc, val)
         lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)
 
-        lv.tick_inc(diff)
         # lv.obj_invalidate(screen)
         # lv.refr_now(disp)
         lv.task_handler()

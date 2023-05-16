@@ -36,15 +36,16 @@ typedef _lv_colorwheel_mode_t lv_colorwheel_mode_t;
 typedef uint8_t lv_colorwheel_mode_t;
 #endif /*DOXYGEN*/
 
+typedef struct {
+    lv_point_t pos;
+    uint8_t recolor     : 1;
+} lv_colorwheel_knob_t;
 
 /*Data of color picker*/
 typedef struct {
     lv_obj_t obj;
     lv_color_hsv_t hsv;
-    struct {
-        lv_point_t pos;
-        uint8_t recolor     : 1;
-    } knob;
+    lv_colorwheel_knob_t knob;
     uint32_t last_click_time;
     uint32_t last_change_time;
     lv_point_t last_press_point;

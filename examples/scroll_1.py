@@ -23,26 +23,20 @@ lv.indev_set_group(keyboard, group)
 def scroll_event(e):
     cont_a = lv.area_t()
     lv.obj_get_coords(cont, cont_a)
-    print('obj_get_coords')
     cont_y_center = cont_a.y1 + lv.area_get_height(cont_a) // 2
-    print('area_get_height')
 
     r = lv.obj_get_height(cont) * 7 // 10
-    print('obj_get_height')
 
     for chld in buttons:
         child_a = lv.area_t()
         lv.obj_get_coords(chld, child_a)
-        print('    obj_get_coords')
 
         child_y_center = child_a.y1 + lv.area_get_height(child_a) // 2
-        print('    area_get_height')
 
         diff_y = child_y_center - cont_y_center
         diff_y = abs(diff_y)
 
         # Get the x of diff_y on a circle.
-
         # If diff_y is out of the circle use the last point of the circle (the radius)
         if diff_y >= r:
             x = r
@@ -55,21 +49,17 @@ def scroll_event(e):
 
         # Translate the item by the calculated X coordinate
         lv.obj_set_style_translate_x(chld, x, 0)
-        print('    obj_set_style_translate_x')
 
         # Use some opacity with larger translations
         opa = lv.map(x, 0, r, lv.OPA_TRANSP, lv.OPA_COVER)
         lv.obj_set_style_opa(chld, lv.OPA_COVER - opa, 0)
-        print('    obj_set_style_opa\n')
 
-
-scroll_event_cb = lv.event_cb_t(scroll_event)
 
 cont = lv.obj_create(lv.scr_act())
 lv.obj_set_size(cont, 200, 200)
 lv.obj_center(cont)
 lv.obj_set_flex_flow(cont, lv.FLEX_FLOW_COLUMN)
-lv.obj_add_event(cont, scroll_event_cb, lv.EVENT_SCROLL)
+lv.obj_add_event(cont, scroll_event, lv.EVENT_SCROLL)
 lv.obj_set_style_radius(cont, lv.RADIUS_CIRCLE, 0)
 lv.obj_set_style_clip_corner(cont, True, 0)
 lv.obj_set_scroll_dir(cont, lv.DIR_VER)
