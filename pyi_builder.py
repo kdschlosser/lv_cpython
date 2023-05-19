@@ -354,7 +354,7 @@ class EllipsisParam:
 class FuncDecl:
     param_template = '{param_name}: {param_type}'
     param_conv_template = (
-        '    {param_name} = _get_c_obj({param_name})'
+        "    {param_name} = _get_c_obj({param_name}, '{param_type}')"
     )
     template = '''\
 def {func_name}({params}) -> {ret_type}:{callback_code}
@@ -493,7 +493,8 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
             else:
                 param_conversions.append(
                     self.param_conv_template.format(
-                        param_name=param_name
+                        param_name=param_name,
+                        param_type=p_type.replace('"', '')
                     )
                 )   
 
@@ -636,7 +637,11 @@ class Struct:
 
     @{field_name}.setter
     def {field_name}(self, value: {field_type}):
-        self._set_field('{field_name}', value)'''
+        self._set_field(
+            '{field_name}', 
+            value, 
+            '{c_type}'
+        )'''
 
     user_data_property_template = '''\
     @property
@@ -1046,36 +1051,15 @@ def __{func_name}_callback_func({params}):
                                     p_type = param.type
                                     param_name = param.name
 
-                                    if param_name == 'px_map':
-                                        print(
-                                            'Typename',
-                                            name
-                                        )
-
                                     if isinstance(p_type, PtrDecl):
                                         p_type = p_type.type.type
                                         p_ptr = True
-                                        if param_name == 'px_map':
-                                            print(
-                                                'Typename PtrDecl',
-                                                name
-                                            )
 
                                         if isinstance(p_type, IdentifierType):
-                                            if param_name == 'px_map':
-                                                print(
-                                                    'Typename PtrDecl IdentifierType',
-                                                    name
-                                                )
                                             param_type = get_py_type(
                                                 p_type.names[0]
                                             )
                                         elif isinstance(p_type, Struct):
-                                            if param_name == 'px_map':
-                                                print(
-                                                    'Typename PtrDecl Struct',
-                                                    name
-                                                )
                                             param_type = get_py_type(
                                                 p_type.name
                                             )
@@ -1085,12 +1069,6 @@ def __{func_name}_callback_func({params}):
                                             )
 
                                     elif isinstance(p_type, TypeDecl):
-                                        if param_name == 'px_map':
-                                            print(
-                                                'Typename TypeDecl',
-                                                name
-                                            )
-
                                         p_type = p_type.type
                                         param_type = get_py_type(
                                             p_type.names[0]
@@ -1102,63 +1080,31 @@ def __{func_name}_callback_func({params}):
                                     p_type = param.type
                                     param_name = param.name
 
-                                    if param_name == 'px_map':
-                                        print(
-                                            'Decl',
-                                            name
-                                        )
-
                                     if isinstance(p_type, PtrDecl):
-                                        if param_name == 'px_map':
-                                            print(
-                                                'Decl PtrDecl',
-                                                name
-                                            )
-
                                         p_type = p_type.type
                                         p_ptr = True
 
                                         if isinstance(p_type, IdentifierType):
-                                            if param_name == 'px_map':
-                                                print(
-                                                    'Decl PtrDecl IdentifierType',
-                                                    name
-                                                )
-
                                             param_type = get_py_type(
                                                 p_type.names[0]
                                             )
 
                                         elif isinstance(p_type, TypeDecl):
-                                            if param_name == 'px_map':
-                                                print(
-                                                    'Decl PtrDecl TypeDecl',
-                                                    p_type.quals
-                                                )
-
                                             p_type = p_type.type
 
                                             if isinstance(
                                                 p_type, 
                                                 IdentifierType
                                             ):
-                                                if param_name == 'px_map':
-                                                    print(
-                                                        'Decl PtrDecl TypeDecl IdentifierType',
-                                                        name
-                                                    )
                                                 param_type = get_py_type(
                                                     p_type.names[0]
                                                 )
+
                                             elif isinstance(p_type, Struct):
-                                                if param_name == 'px_map':
-                                                    print(
-                                                        'Decl PtrDecl TypeDecl Struct',
-                                                        name
-                                                    )
                                                 param_type = get_py_type(
                                                     p_type.name
                                                 )
+
                                             else:
                                                 raise RuntimeError(
                                                     str(type(p_type))
@@ -1169,24 +1115,15 @@ def __{func_name}_callback_func({params}):
                                             )
 
                                     elif isinstance(p_type, TypeDecl):
-                                        if param_name == 'px_map':
-                                            print(
-                                                'Decl TypeDecl',
-                                                name
-                                            )
                                         param_type = get_py_type(
                                             p_type.type.names[0]
                                         )
-                                    elif isinstance(p_type, ArrayDecl):
-                                        if param_name == 'px_map':
-                                            print(
-                                                'Decl ArrayDecl',
-                                                name
-                                            )
 
+                                    elif isinstance(p_type, ArrayDecl):
                                         param_type = 'List[' + get_py_type(
                                             p_type.type.type.names[0]
                                         ) + ']'
+
                                     else:
                                         raise RuntimeError(str(type(p_type)))
                                 else:

@@ -443,7 +443,7 @@ ffibuilder.cdef(cdef)
 # set the name of the c extension and also tell cffi what we need to compile
 ffibuilder.set_source(
     "_lib_lvgl",
-    '#include "demos\lv_demos.h"',
+    '#include "demos/lv_demos.h"',
     sources=iter_sources(lvgl_src_path) + iter_sources(os.path.join(lvgl_path, 'demos')),
     define_macros=[('CPYTHON_SDL', 1)],
     library_dirs=library_dirs,

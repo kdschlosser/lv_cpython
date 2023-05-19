@@ -17,13 +17,23 @@ def _get_py_obj(c_obj, c_type):
     if c_obj == _lib_lvgl.ffi.NULL:
         return None
 
-    if c_type.lower().startswith('list'):
-        c_type = c_type.split('[')[-1][:-1]
-        cls = type(c_type + '[]', (_Array,), {'_c_obj': c_type})
-        instance = cls()
-        instance._obj = c_obj
+    if not isinstance(c_obj, (int, float, str, bytes)):
+        type_ = _lib_lvgl.ffi.typeof(c_obj)
 
-        return instance
+        while type_.kind == 'pointer':
+            type_ = type_.item
+
+        if type_.kind == 'array':
+            # not used at the moment, need to find a way to test it
+            size = type_.length  # NOQA
+
+        if c_type.lower().startswith('list'):
+            c_type = c_type.split('[')[-1][:-1]
+            cls = type(c_type + '[]', (_Array,), {'_c_obj': c_type})
+            instance = cls()
+            instance._obj = c_obj
+
+            return instance
 
     glob = globals()
 
@@ -67,7 +77,7 @@ def _get_py_obj(c_obj, c_type):
     return c_obj
 
 
-def _get_c_obj(py_obj):
+def _get_c_obj(py_obj, c_type):
     if py_obj is None:
         return _lib_lvgl.ffi.NULL
 
@@ -75,6 +85,42 @@ def _get_c_obj(py_obj):
         return py_obj._obj  # NOQA
     except AttributeError:
         pass
+
+    if c_type is not None:
+
+        globs = globals()
+
+        if c_type.startswith('List'):
+            c_type = c_type.split('[')[-1][:-1]
+            cls = type(c_type + '[]', (_Array,), {'_c_type': c_type})
+            instance = cls()
+
+            type_cls = globs[c_type]
+
+            for i, item in enumerate(py_obj):
+                if hasattr(item, '_obj'):
+                    continue
+
+                if isinstance(item, dict):
+                    item_inst = type_cls(**item)
+                else:
+                    item_inst = type_cls(item)
+
+                py_obj[i] = item_inst
+
+            instance.extend(py_obj)
+
+            return instance._obj  # NOQA
+
+        if c_type in globs:
+            cls = globs[c_type]
+
+            if isinstance(py_obj, dict):
+                instance = cls(**py_obj)
+            else:
+                instance = cls(py_obj)
+
+            return instance._obj  # NOQA
 
     if isinstance(py_obj, (int, float)):
         return py_obj
@@ -91,6 +137,9 @@ def _get_c_obj(py_obj):
 
 
 def _get_c_type(c_obj):
+    if isinstance(c_obj, int):
+        return None
+
     cdata = str(_lib_lvgl.ffi.typeof(c_obj)).replace("'", '')
     c_type = ''
 
@@ -134,22 +183,33 @@ class _Array(list):
             dim = self._dim
 
             for item in self._array:
-                c_array.append(_get_c_obj(item))
+                c_array.append(_get_c_obj(item, self._c_type))
                 if isinstance(item, _Array):
                     dim += item._dim
 
             if '[' in self.__class__.__name__:
                 size = self.__class__.__name__.split('[')[-1]
                 size = size.split(']')[0]
+
+                if not size:
+                    size = str(len(c_array))
+
                 if size and size.isdigit():
                     dim = dim.split(']', 1)[-1]
+
                     dim = '[{0}]'.format(size) + dim
 
                     if c_array:
-                        self.__obj = _lib_lvgl.ffi.new(
-                            self._c_type + dim,
-                            [c_array]
-                        )
+                        try:
+                            self.__obj = _lib_lvgl.ffi.new(
+                                self._c_type + dim,
+                                [c_array]
+                            )
+                        except _lib_lvgl.ffi.error:
+                            self.__obj = _lib_lvgl.ffi.new(
+                                'lv_' + self._c_type + dim,
+                                c_array
+                            )
                     else:
                         self.__obj = _lib_lvgl.ffi.new(
                             self._c_type + dim
@@ -157,10 +217,17 @@ class _Array(list):
                     return self.__obj
 
             c_type = self._c_type + dim
-            self.__obj = _lib_lvgl.ffi.new(
-                c_type,
-                [c_array]
-            )
+
+            try:
+                self.__obj = _lib_lvgl.ffi.new(
+                    c_type,
+                    [c_array]
+                )
+            except _lib_lvgl.ffi.error:
+                self.__obj = _lib_lvgl.ffi.new(
+                    'lv_' + c_type,
+                    [c_array]
+                )
 
         return self.__obj
 
@@ -616,7 +683,7 @@ class void(object):
             self.ctype = _get_c_type(value)
 
         except:  # NOQA
-            c_obj = _get_c_obj(value)
+            c_obj = _get_c_obj(value, None)
 
             try:
                 self._obj = _lib_lvgl.ffi.cast(self._c_type, c_obj)
@@ -738,20 +805,24 @@ class _StructUnion(object):
             if value == _DefaultArg:
                 continue
 
-            self._set_field(key, value)
+            attr = getattr(self._obj, key)
+            c_type = _get_c_type(attr)
+            self._set_field(key, value, c_type)
 
     def _get_field(self, field_name, c_type):
         key = '__py_{0}__'.format(field_name)
         if key in self.__dict__:
-            return self.__dict__[key]
+            obj = self.__dict__[key]
+            if isinstance(obj, (_StructUnion, _Array)):
+                return obj
 
         py_obj = _get_py_obj(getattr(self._obj, field_name), c_type)
 
         self.__dict__[key] = py_obj
         return py_obj
 
-    def _set_field(self, field_name, py_obj):
-        c_obj = _get_c_obj(py_obj)
+    def _set_field(self, field_name, py_obj, c_type):
+        c_obj = _get_c_obj(py_obj, c_type)
         setattr(self._obj, field_name, c_obj)
         self.__dict__['__py_{0}__'.format(field_name)] = py_obj
         self.__dict__['__c_{0}__'.format(field_name)] = c_obj

@@ -63,10 +63,8 @@ lv.style_set_bg_grad_color(style_pr, lv.palette_darken(lv.PALETTE_BLUE, 4))
 
 # Add a transition to the outline
 trans = lv.style_transition_dsc_t()
-props = lv.style_prop_t.as_array()
-props.extend([lv.STYLE_OUTLINE_WIDTH, lv.STYLE_OUTLINE_OPA, 0])
 
-lv.style_transition_dsc_init(trans, props, lv.anim_path_linear, 300, 0)
+lv.style_transition_dsc_init(trans, [lv.STYLE_OUTLINE_WIDTH, lv.STYLE_OUTLINE_OPA, 0], lv.anim_path_linear, 300, 0)
 
 lv.style_set_transition(style_pr, trans)
 
