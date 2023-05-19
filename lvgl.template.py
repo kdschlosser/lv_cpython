@@ -578,7 +578,7 @@ class _String(str):
         return new_cls()
 
 
-class _Bool(bool):
+class _Bool(int):
     _c_type = 'bool *'
     _obj = None
 

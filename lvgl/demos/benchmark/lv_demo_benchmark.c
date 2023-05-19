@@ -18,7 +18,7 @@
 #define RENDER_REPEAT_CNT      50
 #define ANIM_TIME_MIN   ((2 * SCENE_TIME) / 10)
 #define ANIM_TIME_MAX   (SCENE_TIME)
-#define OBJ_NUM         8
+#define OBJ_NUM         30
 #define OBJ_SIZE_MIN    (LV_MAX(LV_DPI_DEF / 20, 5))
 #define OBJ_SIZE_MAX    (LV_HOR_RES / 2)
 #define RADIUS          LV_MAX(LV_DPI_DEF / 15, 2)

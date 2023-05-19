@@ -110,7 +110,7 @@ else:
 # file/directory paths
 lvgl_path = os.path.join(base_path, 'lvgl')
 lvgl_src_path = os.path.join(lvgl_path, 'src')
-lvgl_header_path = os.path.join(lvgl_path, 'lvgl.h')
+lvgl_header_path = os.path.join(lvgl_path, 'demos\lv_demos.h')
 
 if not os.path.exists(lvgl_path):
     raise RuntimeError(
@@ -443,12 +443,12 @@ ffibuilder.cdef(cdef)
 # set the name of the c extension and also tell cffi what we need to compile
 ffibuilder.set_source(
     "_lib_lvgl",
-    '#include "lvgl.h"',
-    sources=iter_sources(lvgl_src_path),
+    '#include "demos\lv_demos.h"',
+    sources=iter_sources(lvgl_src_path) + iter_sources(os.path.join(lvgl_path, 'demos')),
     define_macros=[('CPYTHON_SDL', 1)],
     library_dirs=library_dirs,
     libraries=libraries,
-    include_dirs=include_dirs,
+    include_dirs=include_dirs + [base_path],
     extra_compile_args=cpp_args,
     extra_link_args=linker_args,
     language='c'
