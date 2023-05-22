@@ -19,5 +19,3 @@ jobs:
 
           - script: python setup.py build
             displayName: 'build'
-
-
