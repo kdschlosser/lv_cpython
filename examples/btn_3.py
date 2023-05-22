@@ -57,8 +57,7 @@ def scroll_event_cb(e):
         # Use some opacity with larger translations
         opa = lv.map(x, 0, r, lv.OPA_TRANSP, lv.OPA_COVER)
 
-        # causes crash, so it is omitted until that is figured out.
-        # lv.obj_set_style_opa(child, lv.OPA_COVER - opa, 0)
+        lv.obj_set_style_opa(child, lv.OPA_COVER - opa, 0)
 
 
 #
