@@ -224,9 +224,10 @@ static inline void lv_anim_set_get_value_cb(lv_anim_t * a, lv_anim_get_value_cb_
  * @param a         pointer to an initialized `lv_anim_t` variable
  * @param ready_cb  a function call when the animation is ready
  */
-static inline void lv_anim_set_ready_cb(lv_anim_t * a, lv_anim_ready_cb_t ready_cb)
+static inline void lv_anim_set_ready_cb(lv_anim_t * a, lv_anim_ready_cb_t ready_cb, void * user_data)
 {
     a->ready_cb = ready_cb;
+    a->user_data = user_data;
 }
 
 /**
