@@ -39,7 +39,6 @@ include_dirs = []
 linker_args = []
 libraries = ['SDL2']
 cpp_args = [
-    '-std:c11',
     '-DCPYTHON_SDL',
 ]
 
@@ -61,6 +60,8 @@ if sys.platform.startswith('win'):
 
     build.sdl2_dll = sdl2_dll
 
+    cpp_args.insert(0, '-std:c11')
+
     os.environ['INCLUDE'] = fake_libc_path + ';' + os.environ['INCLUDE']
 
     if '-debug' in sys.argv:
@@ -69,10 +70,13 @@ if sys.platform.startswith('win'):
 
 elif sys.platform.startswith('darwin'):
     cpp_path = 'clang'
+    cpp_args.insert(0, '-std=c11')
+
     if debug:
         cpp_args.append('-ggdb')
 else:
     cpp_path = 'gcc'
+    cpp_args.insert(0, '-std=c11')
     if debug:
         cpp_args.append('-ggdb')
 
