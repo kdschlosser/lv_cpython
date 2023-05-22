@@ -203,7 +203,7 @@ static inline void lv_anim_set_path_cb(lv_anim_t * a, lv_anim_path_cb_t path_cb)
  * @param a         pointer to an initialized `lv_anim_t` variable
  * @param start_cb  a function call when the animation starts
  */
-static inline void lv_anim_set_start_cb(lv_anim_t * a, lv_anim_start_cb_t start_cb)
+static inline void lv_anim_set_start_cb(lv_anim_t * a, lv_anim_start_cb_t start_cb, void * user_data)
 {
     a->start_cb = start_cb;
 }
@@ -217,6 +217,7 @@ static inline void lv_anim_set_start_cb(lv_anim_t * a, lv_anim_start_cb_t start_
 static inline void lv_anim_set_get_value_cb(lv_anim_t * a, lv_anim_get_value_cb_t get_value_cb)
 {
     a->get_value_cb = get_value_cb;
+    a->user_data = user_data;
 }
 
 /**
