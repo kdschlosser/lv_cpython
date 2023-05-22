@@ -62,23 +62,30 @@ if sys.platform.startswith('win'):
 
     cpp_args.insert(0, '-std:c11')
 
-    os.environ['INCLUDE'] = fake_libc_path + ';' + os.environ['INCLUDE']
+    include_path_env_key = 'INCLUDE'
 
     if '-debug' in sys.argv:
         linker_args.append('/DEBUG')
         cpp_args.append('/Zi')
 
 elif sys.platform.startswith('darwin'):
+    include_path_env_key = 'C_INCLUDE_PATH'
+
     cpp_path = 'clang'
     cpp_args.insert(0, '-std=c11')
 
     if debug:
         cpp_args.append('-ggdb')
 else:
+    include_path_env_key = 'C_INCLUDE_PATH'
+
     cpp_path = 'gcc'
     cpp_args.insert(0, '-std=c11')
     if debug:
         cpp_args.append('-ggdb')
+
+
+os.environ[include_path_env_key] = fake_libc_path + os.pathsep + os.environ[include_path_env_key]
 
 
 # some paths/files we do not need to compile the source files for.
@@ -248,8 +255,7 @@ cdef = '\n'.join(
 ffibuilder.cdef(cdef)
 
 
-if sys.platform.startswith('win'):
-    os.environ['INCLUDE'] = os.environ['INCLUDE'].replace(fake_libc_path + ';', '')
+os.environ[include_path_env_key] = os.environ[include_path_env_key].replace(fake_libc_path + os.pathsep, '')
 
 
 # set the name of the c extension and also tell cffi what
