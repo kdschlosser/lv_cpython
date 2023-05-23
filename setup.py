@@ -35,11 +35,10 @@ if not os.path.exists(build_temp):
 
 
 library_dirs = []
-include_dirs = []
+include_dirs = ['.']
 linker_args = []
 libraries = ['SDL2']
 cpp_args = [
-    '-std:c11',
     '-DCPYTHON_SDL',
 ]
 
@@ -55,27 +54,49 @@ if sys.platform.startswith('win'):
     # compiler to use
     cpp_path = 'cl'
     sdl2_include, sdl2_dll = get_sdl2.get_sdl2(build_temp)
-    include_dirs = [sdl2_include]
-    library_dirs = [os.path.split(sdl2_dll)[0]]
+    include_dirs += [sdl2_include]
+    library_dirs += [os.path.split(sdl2_dll)[0]]
     libraries.append('legacy_stdio_definitions')
 
     build.sdl2_dll = sdl2_dll
+    cpp_args.insert(0, '-std:c11')
 
-    os.environ['INCLUDE'] = fake_libc_path + ';' + os.environ['INCLUDE']
+    include_path_env_key = 'INCLUDE'
 
     if '-debug' in sys.argv:
         linker_args.append('/DEBUG')
         cpp_args.append('/Zi')
 
 elif sys.platform.startswith('darwin'):
+    include_path_env_key = 'C_INCLUDE_PATH'
+
     cpp_path = 'clang'
+    cpp_args.insert(0, '-std=c11')
+
     if debug:
         cpp_args.append('-ggdb')
 else:
+    include_path_env_key = 'C_INCLUDE_PATH'
+
     cpp_path = 'gcc'
+    cpp_args.insert(0, '-std=c11')
+    cpp_args.append('-Wno-incompatible-pointer-types')
     if debug:
         cpp_args.append('-ggdb')
 
+build.extra_includes = include_dirs
+#
+# if include_path_env_key in os.environ:
+#     for item in include_dirs:
+#         os.environ[include_path_env_key] = item + os.pathsep + os.environ[include_path_env_key]
+# else:
+#     os.environ[include_path_env_key] = os.pathsep.join(include_dirs)
+
+
+if include_path_env_key in os.environ:
+    os.environ[include_path_env_key] = fake_libc_path + os.pathsep + os.environ[include_path_env_key]
+else:
+    os.environ[include_path_env_key] = fake_libc_path + os.pathsep
 
 # some paths/files we do not need to compile the source files for.
 IGNORE_DIRS = (
@@ -243,10 +264,7 @@ cdef = '\n'.join(
 # set the definitions into cffi
 ffibuilder.cdef(cdef)
 
-
-if sys.platform.startswith('win'):
-    os.environ['INCLUDE'] = os.environ['INCLUDE'].replace(fake_libc_path + ';', '')
-
+os.environ[include_path_env_key] = os.environ[include_path_env_key].replace(fake_libc_path + os.pathsep, '')
 
 # set the name of the c extension and also tell cffi what
 # we need to compile

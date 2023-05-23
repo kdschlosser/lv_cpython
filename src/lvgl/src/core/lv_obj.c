@@ -34,6 +34,10 @@
 #include "../layouts/flex/lv_flex.h"
 #include "../layouts/grid/lv_grid.h"
 
+#if LV_USE_SYSMON
+#include "../others/sysmon/lv_sysmon.h"
+#endif
+
 #if LV_USE_BUILTIN_MALLOC
     #include "../misc/lv_malloc_builtin.h"
 #endif

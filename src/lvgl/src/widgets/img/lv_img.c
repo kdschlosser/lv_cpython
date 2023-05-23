@@ -9,6 +9,10 @@
 #include "lv_img.h"
 #if LV_USE_IMG != 0
 
+#include "../../misc/lv_malloc_builtin.h"
+#include "../../misc/lv_memcpy_builtin.h"
+
+
 /*********************
  *      DEFINES
  *********************/

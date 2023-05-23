@@ -14,14 +14,21 @@ jobs:
           - script: sudo apt-get install --force-yes -y make libudev-dev g++ libsdl2-dev
             displayName: 'Install libs'
 
-          - script: python -m pip install --upgrade pip setuptools wheel
+          - script: python -m pip install --upgrade pip setuptools wheel build
             displayName: 'Install tools'
 
           - script: python -m pip install pycparser cffi
             displayName: 'Install build requirements'
 
-          - script: python setup.py build
+          - script: python setup.py bdist_wheel
             displayName: 'build'
 
+          - task: CopyFiles@2
+            inputs:
+              targetFolder: $(Build.ArtifactStagingDirectory)
 
-
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'dist'
+              publishLocation: 'Container'
