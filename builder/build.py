@@ -21,7 +21,7 @@ class build(_build):
 
     def finalize_options(self):
         _build.finalize_options(self)
-        self.distribution.include_dirs. = self.extra_includes
+        self.distribution.include_dirs = self.extra_includes
 
     def run(self):
         _build.run(self)
