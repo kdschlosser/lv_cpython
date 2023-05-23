@@ -35,7 +35,7 @@ if not os.path.exists(build_temp):
 
 
 library_dirs = []
-include_dirs = []
+include_dirs = ['.']
 linker_args = []
 libraries = ['SDL2']
 cpp_args = [

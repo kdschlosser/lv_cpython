@@ -5,7 +5,6 @@ jobs:
         - 'ubuntu-22.04'
         - 'ubuntu-20.04'
       pythonVersions:
-        - '3.8'
         - '3.9'
         - '3.10'
         - '3.11'
@@ -16,7 +15,6 @@ jobs:
         - 'windows-2022'
         - 'windows-2019'
       pythonVersions:
-        - '3.8'
         - '3.9'
         - '3.10'
         - '3.11'
@@ -28,7 +26,5 @@ jobs:
         - 'macOS-12'
         - 'macOS-11'
       pythonVersions:
-        - '3.8'
         - '3.9'
         - '3.10'
-        - '3.11'
