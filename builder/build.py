@@ -20,8 +20,8 @@ class build(_build):
     boolean_options = ['debug'] + _build.boolean_options
 
     def finalize_options(self):
-        self.distribution.include_dirs.append(self.extra_includes)
         _build.finalize_options(self)
+        self.distribution.include_dirs. = self.extra_includes
 
     def run(self):
         _build.run(self)
