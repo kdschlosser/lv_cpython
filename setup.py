@@ -35,7 +35,7 @@ if not os.path.exists(build_temp):
 
 
 library_dirs = []
-include_dirs = ['.', os.path.abspath(os.path.join(project_path, 'src')), os.path.abspath(os.path.join(lvgl_path, 'demos'))]
+include_dirs = []
 linker_args = []
 libraries = ['SDL2']
 cpp_args = [
@@ -59,7 +59,6 @@ if sys.platform.startswith('win'):
     libraries.append('legacy_stdio_definitions')
 
     build.sdl2_dll = sdl2_dll
-
     cpp_args.insert(0, '-std:c11')
 
     include_path_env_key = 'INCLUDE'
@@ -85,12 +84,13 @@ else:
     if debug:
         cpp_args.append('-ggdb')
 
-
-if include_path_env_key in os.environ:
-    for item in include_dirs:
-        os.environ[include_path_env_key] = item + os.pathsep + os.environ[include_path_env_key]
-else:
-    os.environ[include_path_env_key] = os.pathsep.join(include_dirs)
+build.extra_includes = include_dirs
+#
+# if include_path_env_key in os.environ:
+#     for item in include_dirs:
+#         os.environ[include_path_env_key] = item + os.pathsep + os.environ[include_path_env_key]
+# else:
+#     os.environ[include_path_env_key] = os.pathsep.join(include_dirs)
 
 
 # some paths/files we do not need to compile the source files for.
@@ -259,15 +259,13 @@ cdef = '\n'.join(
 # set the definitions into cffi
 ffibuilder.cdef(cdef)
 
-
-os.environ[include_path_env_key] = os.environ[include_path_env_key].replace(fake_libc_path + os.pathsep, '')
-
+# os.environ[include_path_env_key] = os.environ[include_path_env_key].replace(fake_libc_path + os.pathsep, '')
 
 # set the name of the c extension and also tell cffi what
 # we need to compile
 ffibuilder.set_source(
     "__lib_lvgl",
-    '#include "lv_demos.h"',
+    '#include "src/lvgl/demos/lv_demos.h"',
     sources=(
             iter_sources(lvgl_src_path) +
             iter_sources(os.path.join(lvgl_path, 'demos'))

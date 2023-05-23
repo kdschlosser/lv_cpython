@@ -11,12 +11,17 @@ from . import py_builder
 class build(_build):
     ast = None
     sdl2_dll = None
+    extra_includes = []
 
     user_options = [
         ('debug', None, 'adds debugging output to the compilation')
     ] + _build.user_options
 
     boolean_options = ['debug'] + _build.boolean_options
+
+    def finalize_options(self):
+        self.distribution.include_dirs.append(self.extra_includes)
+        _build.finalize_options(self)
 
     def run(self):
         _build.run(self)
