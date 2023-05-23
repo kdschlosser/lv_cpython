@@ -47,6 +47,6 @@ requires=[
     "pyMSVC>=0.5.1;sys_platform=='win32'",
     "requests>=2.3.0",
     "pycparser>=2.21",
-    "cffi>=1.51.1"
+    "cffi>=1.15.1"
 ]
 build-backend="setuptools.build_meta"
