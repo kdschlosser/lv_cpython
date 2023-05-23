@@ -11,24 +11,21 @@ jobs:
             inputs:
               versionSpec: ${{ pythonVersion }}
               addToPath: true
-          - script: python -m pip install --upgrade pip setuptools wheel requests
+          - script: python -m pip install --upgrade pip setuptools wheel requests build
             displayName: 'Install tools'
 
           - script: python -m pip install pycparser cffi pyMSVC>=0.5.1
             displayName: 'Install build requirements'
 
-          - script: python setup.py build
+          - script: python -m build
             displayName: 'build'
 
-          - script: python setup.py sdist
-            displayName: 'Artifact creation'
+    - task: CopyFiles@2
+      inputs:
+        targetFolder: $(Build.ArtifactStagingDirectory)
 
-          - task: CopyFiles@2
-            inputs:
-              targetFolder: $(Build.ArtifactStagingDirectory)
-
-          - task: PublishBuildArtifacts@1
-            inputs:
-              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-              ArtifactName: 'dist'
-              publishLocation: 'Container'
+    - task: PublishBuildArtifacts@1
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'dist'
+        publishLocation: 'Container'
