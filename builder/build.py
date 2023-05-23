@@ -36,12 +36,16 @@ class build(_build):
             if file.endswith('pyd') or file.endswith('pdb'):
                 src = os.path.join(self.build_lib, file)
                 dst = os.path.join(lvgl_output_path, file)
+                if os.path.exists(dst):
+                    os.remove(dst)
 
                 shutil.copyfile(src, dst)
                 os.remove(src)
 
         if sys.platform.startswith('win'):
-            shutil.copyfile(
-                self.sdl2_dll,
-                os.path.join(lvgl_output_path, 'SDL2.dll')
-            )
+            dst = os.path.join(lvgl_output_path, 'SDL2.dll')
+
+            if os.path.exists(dst):
+                os.remove(dst)
+
+            shutil.copyfile(self.sdl2_dll, dst)
