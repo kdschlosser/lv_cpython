@@ -93,6 +93,11 @@ build.extra_includes = include_dirs
 #     os.environ[include_path_env_key] = os.pathsep.join(include_dirs)
 
 
+if include_path_env_key in os.environ:
+    os.environ[include_path_env_key] = fake_libc_path + os.pathsep + os.environ[include_path_env_key]
+else:
+    os.environ[include_path_env_key] = fake_libc_path + os.pathsep
+
 # some paths/files we do not need to compile the source files for.
 IGNORE_DIRS = (
     'disp', 'arm2d', 'gd32_ipa', 'nxp', 'stm32_dma2d', 'swm341_dma2d'
@@ -259,7 +264,7 @@ cdef = '\n'.join(
 # set the definitions into cffi
 ffibuilder.cdef(cdef)
 
-# os.environ[include_path_env_key] = os.environ[include_path_env_key].replace(fake_libc_path + os.pathsep, '')
+os.environ[include_path_env_key] = os.environ[include_path_env_key].replace(fake_libc_path + os.pathsep, '')
 
 # set the name of the c extension and also tell cffi what
 # we need to compile
