@@ -14,6 +14,7 @@ jobs:
               addToPath: true
 
           - script: brew install sdl2
+
             displayName: 'Install libs'
 
           - script: python -m pip install --upgrade pip setuptools wheel build
