@@ -54,8 +54,8 @@ if sys.platform.startswith('win'):
     # compiler to use
     cpp_path = 'cl'
     sdl2_include, sdl2_dll = get_sdl2.get_sdl2(build_temp)
-    include_dirs = [sdl2_include]
-    library_dirs = [os.path.split(sdl2_dll)[0]]
+    include_dirs += [sdl2_include]
+    library_dirs += [os.path.split(sdl2_dll)[0]]
     libraries.append('legacy_stdio_definitions')
 
     build.sdl2_dll = sdl2_dll
