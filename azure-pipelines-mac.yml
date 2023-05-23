@@ -25,12 +25,12 @@ jobs:
           - script: python -m build
             displayName: 'build'
 
-    - task: CopyFiles@2
-      inputs:
-        targetFolder: $(Build.ArtifactStagingDirectory)
+          - task: CopyFiles@2
+            inputs:
+              targetFolder: $(Build.ArtifactStagingDirectory)
 
-    - task: PublishBuildArtifacts@1
-      inputs:
-        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-        ArtifactName: 'dist'
-        publishLocation: 'Container'
+          - task: PublishBuildArtifacts@1
+            inputs:
+              PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+              ArtifactName: 'dist'
+              publishLocation: 'Container'

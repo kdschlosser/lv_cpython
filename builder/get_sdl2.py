@@ -57,12 +57,9 @@ def get_sdl2(path, url=SDL2_URL):
     lib_path = get_path('lib\\x64', path)
     dll_path = get_path('SDL2.dll', lib_path)
 
-    print('INCLUDE:', include_path)
-    print('LIB:', lib_path)
-    print('DLL:', dll_path)
-
     sdl_include_path = os.path.split(include_path)[0]
-    os.rename(include_path, os.path.join(sdl_include_path, 'SDL2'))
+    if not os.path.exists(os.path.join(sdl_include_path, 'SDL2')):
+        os.rename(include_path, os.path.join(sdl_include_path, 'SDL2'))
 
     zf.close()
     stream.close()
