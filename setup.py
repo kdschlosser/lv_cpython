@@ -35,7 +35,7 @@ if not os.path.exists(build_temp):
 
 
 library_dirs = []
-include_dirs = ['.', os.path.relpath(os.path.join(project_path, 'src'))]
+include_dirs = ['.', os.path.abspath(os.path.join(project_path, 'src')), os.path.abspath(os.path.join(lvgl_path, 'demos'))]
 linker_args = []
 libraries = ['SDL2']
 cpp_args = [
@@ -81,6 +81,7 @@ else:
 
     cpp_path = 'gcc'
     cpp_args.insert(0, '-std=c11')
+    cpp_args.append('-Wno-incompatible-pointer-types')
     if debug:
         cpp_args.append('-ggdb')
 
@@ -265,7 +266,7 @@ os.environ[include_path_env_key] = os.environ[include_path_env_key].replace(fake
 # we need to compile
 ffibuilder.set_source(
     "__lib_lvgl",
-    '#include "src/lvgl/demos/lv_demos.h"',
+    '#include "lv_demos.h"',
     sources=(
             iter_sources(lvgl_src_path) +
             iter_sources(os.path.join(lvgl_path, 'demos'))
