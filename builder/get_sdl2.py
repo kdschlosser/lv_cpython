@@ -8,7 +8,7 @@ import sys
 SDL2_URL = 'https://github.com/libsdl-org/SDL/releases/download/release-2.26.5/SDL2-devel-2.26.5-VC.zip'  # NOQA
 
 
-def get_path(name, p):
+def get_path(name: str, p: str) -> str:
     for file in os.listdir(p):
         file = os.path.join(p, file)
 
@@ -16,8 +16,7 @@ def get_path(name, p):
             return file
 
         if os.path.isdir(file):
-            res = get_path(name, file)
-            if res:
+            if res := get_path(name, file):
                 return res
 
 
@@ -65,4 +64,3 @@ def get_sdl2(path, url=SDL2_URL):
     stream.close()
 
     return sdl_include_path, dll_path
-

@@ -2,7 +2,7 @@
 
 import os
 import sys
-from pycparser import c_generator
+from pycparser import c_generator  # NOQA
 
 from . import utils
 
@@ -21,17 +21,16 @@ def get_py_type(name):
         private = False
 
     if name.startswith('lv_'):
-        if private:
-            return '"_{0}"'.format(name[3:])
-        else:
-            return '"{0}"'.format(name[3:])
+        return (
+            '"_{0}"'.format(name[3:]) if private else '"{0}"'.format(name[3:])
+        )
 
-    elif name.startswith('void'):
-        return None
-    elif name.startswith('float'):
-        return 'Float'
+    return (
+        None if name.startswith('void') else
+        'Float' if name.startswith('float') else
+        f'"{name}"'
+    )
 
-    return '"' + name + '"'
 
 
 def format_name(name):
@@ -50,7 +49,7 @@ def format_name(name):
             name = name[3:]
 
         if private:
-            name = '_' + name
+            name = f'_{name}'
 
     return name
 
@@ -64,7 +63,7 @@ class Decl:
             align,
             storage,
             funcspec,
-            type,
+            type,  # NOQA
             init,
             bitsize
     ):  # NOQA
@@ -83,29 +82,25 @@ class Decl:
     def get_type(self):
         return self.type.declname
 
-    def gen_pyi(self):
+    def gen_py(self):
 
         s_name = format_name(self.name)
 
         if isinstance(self.type, (TypeDecl, PtrDecl, ArrayDecl, FuncDecl)):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
 
         else:
-            raise RuntimeError(str(s_name) + ' : ' + str(type(self.type)))
+            raise RuntimeError(f'{str(s_name)} : {str(type(self.type))}')
 
-        if name is None:
-            return s_name, type_, code
+        return (
+            (s_name, type_, code)
+            if name is None  else (s_name, name, code)
+            if s_name != name else (name, type_, code)
+        )
 
-        if s_name != name:
-            return s_name, name, code
-
-        return name, type_, code
 
     def __str__(self):
-        if self.name:
-            return self.name
-
-        return ''
+        return self.name if self.name else ''
 
 
 class Typedef:
@@ -120,24 +115,21 @@ class {typedef_name}({typedef_type}):
         self.quals = quals
         self.storage = storage
 
-    def gen_pyi(self):
+    def gen_py(self):
         s_name = format_name(self.name)
 
-        name, type_, code = self.type.gen_pyi()
+        name, type_, code = self.type.gen_py()
 
         if code and code.startswith('class'):
             if name is None and type_ is None:
                 if s_name and code.startswith('class None'):
-                    code = code.replace('class None', 'class ' + s_name, 1)
+                    code = code.replace('class None', f'class {s_name}', 1)
 
                     nme = self.name
                     if nme.startswith('_'):
                         nme = nme[1:]
 
-                    code = code.replace(
-                        "_c_type = 'None",
-                        "_c_type = '" + nme
-                    )
+                    code = code.replace("_c_type = 'None", f"_c_type = '{nme}")
 
                 type_ = name = s_name
 
@@ -152,9 +144,8 @@ class {typedef_name}({typedef_type}):
         return s_name, name, code
 
     def __str__(self):
-        if self.name:
-            return self.name
-        return ''
+        return self.name if self.name else ''
+
 
 
 class Enumerator:
@@ -175,7 +166,7 @@ class Enumerator:
         self.name = name
         self.value = value
 
-    def gen_pyi(self):
+    def gen_py(self):
         name = format_name(self.name)
 
         type_ = find_int_type(name)
@@ -196,8 +187,7 @@ class EnumeratorList:
 
     def __iter__(self):
         if self.enumerators is not None:
-            for item in self.enumerators:
-                yield item
+            yield from self.enumerators
 
 
 class Enum:
@@ -206,7 +196,7 @@ class Enum:
         self.name = name
         self.values = values
 
-    def gen_pyi(self):
+    def gen_py(self):
         name = format_name(self.name)
         enumerators = []
 
@@ -214,16 +204,13 @@ class Enum:
             t_name = find_int_type(name)
 
             if t_name is None:
-                if name.startswith('_'):
-                    t_name = name[1:]
-                else:
-                    t_name = name
+                t_name = name[1:] if name.startswith('_') else name
         else:
             t_name = None
 
         if self.values is not None:
             for enum_item in self.values:
-                e_name, e_type, e_code = enum_item.gen_pyi()
+                e_name, e_type, e_code = enum_item.gen_py()
 
                 if e_type is None:
                     if t_name is not None:
@@ -239,9 +226,8 @@ class Enum:
         return name, None, code
 
     def __str__(self):
-        if self.name:
-            return self.name
-        return ''
+        return self.name if self.name else ''
+
 
 
 class TypeDecl:
@@ -256,34 +242,27 @@ class TypeDecl:
     def declname(self):
         return str(self.type)
 
-    def gen_pyi(self):
+    def gen_py(self):
         declname = format_name(self._declname)
 
         if isinstance(self.type, IdentifierType):
-            return declname, self.type.gen_pyi()[-1], None
+            return declname, self.type.gen_py()[-1], None
 
         if isinstance(self.type, (Struct, Union)):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
 
             if name is None and code is None and type_:
                 return declname, type_, None
 
             if code:
                 if name is None:
-                    code = code.replace(
-                        'class None',
-                        'class ' + declname,
-                        1
-                    )
+                    code = code.replace('class None', f'class {declname}', 1)
 
                     nme = self._declname
                     if nme.startswith('_'):
                         nme = nme[1:]
 
-                    code = code.replace(
-                        "_c_type = 'None",
-                        "_c_type = '" + nme
-                    )
+                    code = code.replace("_c_type = 'None", f"_c_type = '{nme}")
 
                     return declname, None, code
 
@@ -296,7 +275,7 @@ class TypeDecl:
             return name, type_, code
 
         if isinstance(self.type, Enum):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
 
             if '{type}' in code:
                 if declname:
@@ -319,12 +298,10 @@ class TypeDecl:
 
             return name, type_, code
 
-        raise RuntimeError(str(declname) + ' : ' + str(type(self.type)))
+        raise RuntimeError(f'{str(declname)} : {str(type(self.type))}')
 
     def __str__(self):
-        if self._declname:
-            return self._declname
-        return ''
+        return self._declname if self._declname else ''
 
 
 class IdentifierType:
@@ -332,11 +309,12 @@ class IdentifierType:
     def __init__(self, names):
         self.names = names
 
-    def gen_pyi(self):
-        if self.names is None:
-            return None, None, None
+    def gen_py(self):
+        return (
+            (None, None, None) if self.names is None
+            else (None, None, str(self))
+        )
 
-        return None, None, str(self)
 
     def get_raw_type(self):
         if self.names is not None:
@@ -360,8 +338,7 @@ class ParamList:
 
     def __iter__(self):
         if self.params is not None:
-            for item in self.params:
-                yield item
+            yield from self.params
 
 
 class EllipsisParam:
@@ -398,7 +375,7 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
     var_args_template = '''
     args = list(args)
     for i, arg in enumerate(args):
-        args[i] = _get_c_obj(arg)
+        args[i] = _get_c_obj(arg, None)
     '''
 
     callback_code_user_data_param_template = '''\
@@ -431,19 +408,17 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
         return self.type.declname
 
     def get_types(self):
-        types = []
+        return [format_name(arg.declname) for arg in self.args]
 
-        for arg in self.args:
-            types.append(format_name(arg.declname))
 
     def __getitem__(self, item):
         return self.args[item]
 
-    def gen_pyi(self):
+    def gen_py(self):
         args = self.args or []
 
         if isinstance(self.type, (TypeDecl, PtrDecl)):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
         else:
             raise RuntimeError(str(type(self.type)))
 
@@ -468,7 +443,7 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
         for param in args:
             if isinstance(param, (Decl, Typename)):
                 param_name = param.name
-                p_name, p_type, _ = param.gen_pyi()
+                p_name, p_type, _ = param.gen_py()
             elif isinstance(param, EllipsisParam):
                 params.append('*args')
                 param_names.append('*args')
@@ -517,15 +492,11 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
                     )
                 )
 
-        if params:
-            params = '\n    ' + (',\n    '.join(params)) + '\n'
-        else:
-            params = ''
+        params = '\n    ' + (',\n    '.join(params)) + '\n' if params else ''
 
-        if param_conversions:
-            param_conversions = '\n' + ('\n'.join(param_conversions))
-        else:
-            param_conversions = ''
+        param_conversions = (
+            '\n' + ('\n'.join(param_conversions)) if param_conversions else ''
+        )
 
         if callback_format_params is None:
             callback_code = ''
@@ -543,16 +514,13 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
                 **callback_format_params
             )
 
-        if callback_code:
-            callback_code = '\n' + callback_code + '\n'
+        callback_code = '\n' + callback_code + '\n' if callback_code else ''
 
-        if param_names:
-            param_names = (
-                    '  # NOQA\n        ' + (
-                ',\n        '.join(param_names)) + '\n    )'
-            )
-        else:
-            param_names = ')  # NOQA'
+        param_names = (
+            '  # NOQA\n        ' +
+            (',\n        '.join(param_names)) + '\n    )'
+        ) if param_names else ')  # NOQA'
+
 
         return name, type_, self.template.format(
             o_func_name=declname,
@@ -579,30 +547,28 @@ class Typename:
     def get_type(self):
         return self.type.declname
 
-    def gen_pyi(self):
+    def gen_py(self):
 
         s_name = format_name(self.name)
 
         if isinstance(self.type, TypeDecl):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
             if name:
                 return name, type_, code
 
             return s_name, type_, code
 
         if isinstance(self.type, PtrDecl):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
             if name:
                 return name, type_, code
 
             return s_name, type_, code
 
-        raise RuntimeError(str(s_name) + ' : ' + str(type(self.type)))
+        raise RuntimeError(f'{str(s_name)} : {str(type(self.type))}')
 
     def __str__(self):
-        if self.name:
-            return self.name
-        return ''
+        return self.name if self.name else ''
 
 
 class PtrDecl:
@@ -620,22 +586,18 @@ class PtrDecl:
             return self.type.get_types()
         return []
 
-    def gen_pyi(self):
+    def gen_py(self):
         if isinstance(self.type, TypeDecl):
-            return self.type.gen_pyi()
+            return self.type.gen_py()
         if isinstance(self.type, FuncDecl):
-            return self.type.gen_pyi()
+            return self.type.gen_py()
         if isinstance(self.type, PtrDecl):
-            return self.type.gen_pyi()
+            return self.type.gen_py()
 
         raise RuntimeError(str(type(self.type)))
 
     def __str__(self):
-        type_ = get_py_type(str(self.type))
-        if type_:
-            return type_
-
-        return ''
+        return type_ if (type_ := get_py_type(str(self.type))) else ''
 
 
 class FuncDef:
@@ -645,8 +607,8 @@ class FuncDef:
         self.param_decls = param_decls
         self.body = body
 
-    def gen_pyi(self):
-        return self.decl.gen_pyi()
+    def gen_py(self):
+        return self.decl.gen_py()
 
 
 class Struct:
@@ -731,7 +693,7 @@ class {struct_name}(_StructUnion): {nested_structs}
         self.name = name
         self.decls = decls
 
-    def gen_pyi(self):
+    def gen_py(self):
         s_name = format_name(self.name)
 
         params = []
@@ -744,33 +706,34 @@ class {struct_name}(_StructUnion): {nested_structs}
 
         for field in self.decls:
             if isinstance(field, Decl):
-                name, type_, code = field.gen_pyi()
+                name, type_, code = field.gen_py()
                 full_field_type = None
 
                 if isinstance(field.type, PtrDecl):
-                    if isinstance(field.type.type, FuncDecl):
-                        if code and code.startswith('def '):
+                    if code and code.startswith('def '):
+                        if isinstance(field.type.type, FuncDecl):
                             continue
 
                 elif isinstance(field.type, TypeDecl):
                     if isinstance(field.type.type, (Union, Struct)) and code:
-                        code = '\n'.join(
-                            '    ' + line for line in code.rstrip().split('\n')
+                        code = (
+                            '\n'.join(
+                                f'    {line}'
+                                for line in code.rstrip().split('\n')
+                            )
                         )
 
-                        code = code.replace(name, '_' + name)
+                        code = code.replace(name, f'_{name}')
 
                         nested_structs.append(code)
                         # field_names.append(name)
-                        param_names.append(name + '=' + name)
-                        params.append(
-                            name + ': ' + 'Optional[_' + name + '] = None'
-                        )
+                        param_names.append(f'{name}={name}')
+                        params.append(f'{name}: Optional[_{name}] = None')
 
                         py_properties.append(
                             self.property_template.format(
                                 field_name=name,
-                                field_type='_' + name,
+                                field_type=f'_{name}',
                                 c_type=''
                             )
                         )
@@ -784,7 +747,7 @@ class {struct_name}(_StructUnion): {nested_structs}
                     code = type_
 
                 if not name:
-                    raise RuntimeError(repr(type_) + ' : ' + repr(code))
+                    raise RuntimeError(f'{repr(type_)} : {repr(code)}')
 
                 if type_ in (None, 'None'):
                     type_ = 'Any'
@@ -864,36 +827,32 @@ class {struct_name}(_StructUnion): {nested_structs}
         if not params and not nested_structs:
             return None, s_name, None
 
-        if nested_structs:
-            nested_structs = '\n' + ('\n\n'.join(nested_structs)) + '\n'
-        else:
-            nested_structs = ''
+        nested_structs = (
+            '\n{0}\n'.format('\n\n'.join(nested_structs))
+            if nested_structs else ''
+        )
+
 
         params.insert(0, '/')
         params.insert(0, 'self')
         if len(', '.join(params)) > 40:
-            params = (
-                    '\n        ' +
-                    (', \n        '.join(params)) +
-                    '\n    '
-            )
+            params = '\n        {0}\n    '.format(', \n        '.join(params))
         else:
             params = ', '.join(params)
 
-        py_properties = '\n' + ('\n\n'.join(py_properties))
+        py_properties = '\n{0}'.format('\n\n'.join(py_properties))
 
         param_names = (
-                '\n            ' +
-                (', \n            '.join(param_names)) +
-                '\n        '
+            '\n            {0}\n        '.format(
+                ', \n            '.join(param_names)
+            )
         )
 
-        if self.name is None:
-            c_type = 'None'
-        elif self.name.startswith('_'):
-            c_type = self.name[1:]
-        else:
-            c_type = self.name
+        c_type = (
+            'None' if self.name is None else
+            self.name[1:] if self.name.startswith('_') else
+            self.name
+        )
 
         return s_name, None, self.template.format(
             c_type=c_type,
@@ -926,41 +885,39 @@ class ArrayDecl:
     def declname(self):
         return self.type.declname
 
-    def gen_pyi(self):
+    def gen_py(self):
         if isinstance(self.type, TypeDecl):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
             if code:
-                return name, 'List[' + code + ']', None
+                return name, f'List[{code}]', None
 
-            return name, 'List[' + type_ + ']', None
+            return name, f'List[{type_}]', None
 
         if isinstance(self.type, PtrDecl):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
 
             if name is None:
-                return type_, 'List[' + code + ']', None
+                return type_, f'List[{code}]', None
 
             if type_ is None:
                 type_ = 'Any'
 
-            return name, 'List[' + type_ + ']', None
+            return name, f'List[{type_}]', None
 
         if isinstance(self.type, ArrayDecl):
-            name, type_, _ = self.type.gen_pyi()
-            return name, 'List[' + type_ + ']', None
+            name, type_, _ = self.type.gen_py()
+            return name, f'List[{type_}]', None
 
         raise RuntimeError(str(type(self.type)))
 
     def __str__(self):
-        type_ = str(self.type)
-        if type_:
-            type_ = get_py_type(type_)
-            if type_ == 'None':
-                type_ = 'Any'
-
-            return 'List[' + type_ + ']'
-        else:
+        if not (type_ := str(self.type)):
             return 'list'
+        type_ = get_py_type(type_)
+        if type_ == 'None':
+            type_ = 'Any'
+
+        return f'List[{type_}]'
 
 
 class CatchAll:
@@ -978,7 +935,7 @@ class CatchAll:
 
         return wrapper
 
-    def gen_pyi(self):  # NOQA
+    def gen_py(self):  # NOQA
         return None, None, None
 
     def __str__(self):
@@ -1019,7 +976,7 @@ def __{func_name}_callback_func({params}):
             if res is None:
                 return None
 
-            return _get_c_obj(res)
+            return _get_c_obj(res, '{ret_type}')
 
         except:  # NOQA
             import traceback
@@ -1031,7 +988,7 @@ def __{func_name}_callback_func({params}):
 
     pyi_callback_template = '{func_name} = Callable[{param_types}, {ret_type}]'
 
-    def gen_pyi(self):
+    def gen_py(self):
         s_type = self.type
         if isinstance(s_type, PtrDecl):
             s_type = s_type.type
@@ -1157,8 +1114,7 @@ def __{func_name}_callback_func({params}):
                                     param_type = 'Any'
                                 else:
                                     param_conversions.append(
-                                        self.callback_param_conversion_template.format(
-                                            # NOQA
+                                        self.callback_param_conversion_template.format(  # NOQA
                                             param_name=param_name,
                                             c_type='void'
                                             if param_type in ('None', None)
@@ -1241,7 +1197,8 @@ def __{func_name}_callback_func({params}):
                                         user_data=user_data,
                                         param_conversion=param_conversions,
                                         param_names=param_names,
-                                        struct_userdata=struct_userdata
+                                        struct_userdata=struct_userdata,
+                                        ret_type=ret_type.replace('"', '')
                                     )
                                 )
 
@@ -1263,7 +1220,7 @@ def __{func_name}_callback_func({params}):
                             return
 
         t_name = format_name(self.name)
-        name, type_, code = self.type.gen_pyi()
+        name, type_, code = self.type.gen_py()
 
         if isinstance(self.type, TypeDecl):
             if type_:
@@ -1451,16 +1408,16 @@ class {name}({type}):
     pass
 '''
 
-    def gen_pyi(self):
+    def gen_py(self):
         d_name = format_name(self.name)
 
         if isinstance(self.type, Enum):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
 
             if code:
                 def _check_code(c):
                     if ')\n_' in c:
-                        c = list('_' + item + ')' for item in c.split(')\n_'))
+                        c = [f'_{item})' for item in c.split(')\n_')]
                         c = '\n\n'.join(c)[1:-1].split('\n\n')
                         for item in c[:]:
                             if item in py_enums:
@@ -1505,7 +1462,7 @@ class {name}({type}):
                     py_enums.append(code)
 
         elif isinstance(self.type, FuncDecl):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
             if code:
                 if not name and d_name:
                     name = d_name
@@ -1515,7 +1472,7 @@ class {name}({type}):
                     py_funcs.append(code)
 
         elif isinstance(self.type, TypeDecl):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
 
             if code:
                 if not name and d_name:
@@ -1528,7 +1485,7 @@ class {name}({type}):
                     py_types.append(code)
 
         elif isinstance(self.type, PtrDecl):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
             if code:
                 if not name and d_name:
                     name = d_name
@@ -1538,7 +1495,7 @@ class {name}({type}):
                     py_funcs.append(code)
 
         elif isinstance(self.type, Struct):
-            name, type_, code = self.type.gen_pyi()
+            name, type_, code = self.type.gen_py()
             if code:
                 if not name and d_name:
                     name = d_name
@@ -1553,12 +1510,12 @@ class {name}({type}):
 
 class RootFuncDef(FuncDef):
 
-    def gen_pyi(self):
+    def gen_py(self):
         if self.param_decls is not None:
             raise RuntimeError(str(type(self.param_decls)))
 
         if isinstance(self.decl, Decl):
-            name, type_, code = self.decl.gen_pyi()
+            name, type_, code = self.decl.gen_py()
 
             if not name:
                 name = type_
@@ -1616,7 +1573,7 @@ def patch_pycparser():
             return repr(obj)
 
     def cls_repr(self):
-        result = self.__class__.__name__ + '('
+        result = f'{self.__class__.__name__}('
         attrs = []
 
         for name in self.__slots__[:-2]:
@@ -1758,8 +1715,8 @@ def run(output_path, ast):
         # module. Doing this makes for a smaller code footprint because
         # I don't have to have all kinds of crazy instance checking to
         # see what I am dealing with.
-        node = eval('Root' + str(child), globs)
-        node.gen_pyi()
+        node = eval(f'Root{str(child)}', globs)
+        node.gen_py()
 
     base_path = os.path.dirname(__file__)
 

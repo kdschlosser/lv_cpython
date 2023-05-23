@@ -381,10 +381,12 @@ class digit(object):
             s.set_color(color, opa)
 
 
-with open(r'C:\Users\drsch\Desktop\New folder (75)\knob_gradient.png', 'rb') as f:
+base_path = os.path.dirname(__file__)
+
+with open(os.path.join(base_path, 'assets', 'knob_gradient.png'), 'rb') as f:
     knob_gradient_data = f.read()
 
-with open(r'C:\Users\drsch\Desktop\New folder (75)\knob_glass.png', 'rb') as f:
+with open(os.path.join(base_path, 'assets', 'knob_glass.png'), 'rb') as f:
     knob_glass_data = f.read()
 
 glass = lv.img_dsc_t(
