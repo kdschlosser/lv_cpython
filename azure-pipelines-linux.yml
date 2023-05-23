@@ -24,7 +24,7 @@ jobs:
             displayName: 'build'
 
           - script: python setup.py sdist
-              displayName: 'Artifact creation'
+            displayName: 'Artifact creation'
 
           - task: CopyFiles@2
             inputs:
