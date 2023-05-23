@@ -87,9 +87,10 @@ else:
 
 
 if include_path_env_key in os.environ:
-    os.environ[include_path_env_key] = fake_libc_path + os.pathsep + os.environ[include_path_env_key]
+    for item in include_dirs:
+        os.environ[include_path_env_key] = item + os.pathsep + os.environ[include_path_env_key]
 else:
-    os.environ[include_path_env_key] = fake_libc_path + os.pathsep
+    os.environ[include_path_env_key] = os.pathsep.join(include_dirs)
 
 
 # some paths/files we do not need to compile the source files for.
