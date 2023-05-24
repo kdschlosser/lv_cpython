@@ -1198,7 +1198,7 @@ def __{func_name}_callback_func({params}):
                                         param_conversion=param_conversions,
                                         param_names=param_names,
                                         struct_userdata=struct_userdata,
-                                        ret_type=ret_type.replace('"', '')
+                                        ret_type=str(ret_type).replace('"', '')
                                     )
                                 )
 
