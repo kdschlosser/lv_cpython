@@ -44,7 +44,7 @@ Forum = "https://forum.lvgl.io/"
 requires=[
     "setuptools>=67.8.0",
     "wheel>=0.40.0",
-    "pyMSVC>=0.5.1;sys_platform=='win32'",
+    "pyMSVC>=0.5.3;sys_platform=='win32'",
     "requests>=2.3.0",
     "pycparser>=2.21",
     "cffi>=1.15.1"
