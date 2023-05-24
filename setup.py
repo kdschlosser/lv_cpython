@@ -1,11 +1,8 @@
-import sys
-import os
-
 import os
 import sys
 import pycparser  # NOQA
 from pycparser import c_ast, c_generator  # NOQA
-import cffi
+import cffi  # NOQA
 
 from builder import utils
 from setuptools import setup
@@ -28,7 +25,9 @@ fake_libc_path = os.path.join(project_path, 'builder', 'fake_libc_include')
 lvgl_path = os.path.relpath(os.path.join(project_path, 'src', 'lvgl'))
 lvgl_src_path = os.path.join(lvgl_path, 'src')
 lvgl_header_path = os.path.join(lvgl_path, 'demos', 'lv_demos.h')
-
+lvgl_config_path = os.path.relpath(
+    os.path.join(project_path, 'src', 'lv_conf.h')
+)
 
 if not os.path.exists(build_temp):
     os.makedirs(build_temp)
@@ -38,9 +37,10 @@ library_dirs = []
 include_dirs = ['.']
 linker_args = []
 libraries = ['SDL2']
-cpp_args = [
-    '-DCPYTHON_SDL',
-]
+cpp_args = ['-DCPYTHON_SDL']
+
+with open(lvgl_config_path, 'r') as f:
+    conf = f.read()
 
 
 if sys.platform.startswith('win'):
@@ -67,6 +67,12 @@ if sys.platform.startswith('win'):
         linker_args.append('/DEBUG')
         cpp_args.append('/Zi')
 
+    conf = conf.replace(
+        '#define LV_USE_FS_WIN32 0',
+        '#define LV_USE_FS_WIN32 1'
+    )
+
+
 elif sys.platform.startswith('darwin'):
     include_path_env_key = 'C_INCLUDE_PATH'
 
@@ -75,6 +81,14 @@ elif sys.platform.startswith('darwin'):
 
     if debug:
         cpp_args.append('-ggdb')
+
+    with open(lvgl_config_path, 'r') as f:
+        conf = f.read()
+
+    conf = conf.replace(
+        '#define LV_USE_FS_POSIX 0',
+        '#define LV_USE_FS_POSIX 1'
+    )
 else:
     include_path_env_key = 'C_INCLUDE_PATH'
 
@@ -84,17 +98,26 @@ else:
     if debug:
         cpp_args.append('-ggdb')
 
+    with open(lvgl_config_path, 'r') as f:
+        conf = f.read()
+
+    conf = conf.replace(
+        '#define LV_USE_FS_POSIX 0',
+        '#define LV_USE_FS_POSIX 1'
+    )
+
+
+with open(lvgl_config_path, 'w') as f:
+    f.write(conf)
+
+
 build.extra_includes = include_dirs
-#
-# if include_path_env_key in os.environ:
-#     for item in include_dirs:
-#         os.environ[include_path_env_key] = item + os.pathsep + os.environ[include_path_env_key]
-# else:
-#     os.environ[include_path_env_key] = os.pathsep.join(include_dirs)
 
 
 if include_path_env_key in os.environ:
-    os.environ[include_path_env_key] = fake_libc_path + os.pathsep + os.environ[include_path_env_key]
+    os.environ[include_path_env_key] = (
+        fake_libc_path + os.pathsep + os.environ[include_path_env_key]
+    )
 else:
     os.environ[include_path_env_key] = fake_libc_path + os.pathsep
 
@@ -143,12 +166,9 @@ def visit(self, node):
     if utils.is_lib_c_node(node):
         return ''
 
-    method = 'visit_' + node.__class__.__name__
+    method = f'visit_{node.__class__.__name__}'
     ret = getattr(self, method, self.generic_visit)(node)
-    if ret.strip() == ';':
-        return ''
-
-    return ret
+    return '' if ret.strip() == ';' else ret
 
 
 # turns function definitions into declarations.
@@ -157,9 +177,9 @@ def visit_FuncDef(self, n):
     self.indent_level = 0
     if n.param_decls:
         knrdecls = ';\n'.join(self.visit(p) for p in n.param_decls)
-        res = decl + '\n' + knrdecls + ';\n'  # + body + '\n'  # NOQA
+        res = decl + '\n' + knrdecls + ';\n'
     else:
-        res = decl + ';\n'  # NOQA
+        res = decl + ';\n'
 
     return res
 
@@ -174,34 +194,39 @@ def visit_Typedef(self, n):
 
     s += self._generate_type(n.type)
 
-    if isinstance(n.type, c_ast.PtrDecl):
-        if isinstance(n.type.type, c_ast.FuncDecl):
-            if isinstance(n.type.type.type, (c_ast.TypeDecl, c_ast.PtrDecl)):
-                if isinstance(n.type.type.type, c_ast.PtrDecl):
-                    type_ = n.type.type.type.type
-                    # ptr = True
-                else:
-                    type_ = n.type.type.type
-                    # ptr = False
+    node = n.type
+    for type_ in (
+        c_ast.PtrDecl,
+        c_ast.FuncDecl,
+        (c_ast.TypeDecl, c_ast.PtrDecl)
+    ):
+        if isinstance(node, type_):
+            node = node.type
+        else:
+            return s
 
-                name = type_.declname
-                for item in ('_cb_t', '_f_t'):
-                    if name.endswith(item):
-                        if 'py_' + name in callback_names:
-                            return ''
+    while isinstance(node, c_ast.PtrDecl):
+        node = node.type
 
-                        callback_names.append('py_' + name)
+    name = node.declname
+    for item in ('_cb_t', '_f_t'):
+        if not name.endswith(item):
+            continue
 
-                        s = s.replace('(*' + name + ')', 'py_' + name).replace(
-                            '(* ' + name + ')',
-                            'py_' + name
-                        ) + ';\n' + s
-                        if s.startswith('typedef'):
-                            s = '\n\nextern "Python"' + s[7:]
-                        else:
-                            s = '\n\nextern "Python"' + s
+        if f'py_{name}' in callback_names:
+            return ''
 
-                        break
+        callback_names.append(f'py_{name}')
+
+        s = s.replace(f'(*{name})', f'py_{name}') + ';\n' + s
+
+        if s.startswith('typedef'):
+            s = '\n\nextern "Python"' + s[7:]
+        else:
+            s = '\n\nextern "Python"' + s
+
+        break
+
     return s
 
 
@@ -290,9 +315,26 @@ ext_modules = [ffibuilder.distutils_extension()]
 setup(
     name='lvgl',
     author='Kevin G. Schlosser',
-    version='0.1.0b',
+    version='0.1.1b',
     zip_safe=False,
     packages=['lvgl'],
     ext_modules=ext_modules,
     cmdclass=dict(build=build)
 )
+
+
+if sys.platform.startswith('win'):
+    conf = conf.replace(
+        '#define LV_USE_FS_WIN32 1',
+        '#define LV_USE_FS_WIN32 0'
+    )
+
+else:
+    conf = conf.replace(
+        '#define LV_USE_FS_POSIX 1',
+        '#define LV_USE_FS_POSIX 0'
+    )
+
+
+with open(lvgl_config_path, 'w') as f:
+    f.write(conf)
