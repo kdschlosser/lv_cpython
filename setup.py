@@ -290,7 +290,7 @@ ext_modules = [ffibuilder.distutils_extension()]
 setup(
     name='lvgl',
     author='Kevin G. Schlosser',
-    version='0.1.0',
+    version='0.1.0b',
     zip_safe=False,
     packages=['lvgl'],
     ext_modules=ext_modules,
