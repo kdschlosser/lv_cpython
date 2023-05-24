@@ -1,19 +1,19 @@
 jobs:
-  - template: azure-pipelines-linux.yml
-    parameters:
-      images:
-        - 'ubuntu-22.04'
-        - 'ubuntu-20.04'
-      pythonVersions:
-        - '3.9'
-        - '3.10'
-        - '3.11'
-
   - template: azure-pipelines-windows.yml
     parameters:
       images:
         - 'windows-2022'
         - 'windows-2019'
+      pythonVersions:
+        - '3.9'
+        - '3.10'
+        - '3.11'
+
+  - template: azure-pipelines-linux.yml
+    parameters:
+      images:
+        - 'ubuntu-22.04'
+        - 'ubuntu-20.04'
       pythonVersions:
         - '3.9'
         - '3.10'
