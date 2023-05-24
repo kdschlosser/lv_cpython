@@ -1,8 +1,8 @@
 [project]
 name = "lvgl"
-version = "0.1.0"
+version = "0.1.0b"
 description = "README.md"
-authors = [{name = "Kevin G. Schlosser"}]
+authors = [{name = "Kevin G. Schlosser"}, {name="Many other contributors"}]
 maintainers = [{name = "Kevin G. Schlosser"}]
 classifiers = [
     "Development Status :: 4 - Beta",
@@ -44,7 +44,7 @@ Forum = "https://forum.lvgl.io/"
 requires=[
     "setuptools>=67.8.0",
     "wheel>=0.40.0",
-    "pyMSVC>=0.5.1;sys_platform=='win32'",
+    "pyMSVC>=0.5.2;sys_platform=='win32'",
     "requests>=2.3.0",
     "pycparser>=2.21",
     "cffi>=1.15.1"
