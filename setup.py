@@ -39,9 +39,6 @@ linker_args = []
 libraries = ['SDL2']
 cpp_args = ['-DCPYTHON_SDL']
 
-with open(lvgl_config_path, 'r') as f:
-    conf = f.read()
-
 
 if sys.platform.startswith('win'):
     from builder import get_sdl2
@@ -60,17 +57,16 @@ if sys.platform.startswith('win'):
 
     build.sdl2_dll = sdl2_dll
     cpp_args.insert(0, '-std:c11')
-
+    cpp_args.extend([
+        '/wd4996',
+        '/wd4244',
+        '/wd4267'
+    ])
     include_path_env_key = 'INCLUDE'
 
     if '-debug' in sys.argv:
         linker_args.append('/DEBUG')
         cpp_args.append('/Zi')
-
-    conf = conf.replace(
-        '#define LV_USE_FS_WIN32 0',
-        '#define LV_USE_FS_WIN32 1'
-    )
 
 
 elif sys.platform.startswith('darwin'):
@@ -82,13 +78,7 @@ elif sys.platform.startswith('darwin'):
     if debug:
         cpp_args.append('-ggdb')
 
-    with open(lvgl_config_path, 'r') as f:
-        conf = f.read()
 
-    conf = conf.replace(
-        '#define LV_USE_FS_POSIX 0',
-        '#define LV_USE_FS_POSIX 1'
-    )
 else:
     include_path_env_key = 'C_INCLUDE_PATH'
 
@@ -98,17 +88,6 @@ else:
     if debug:
         cpp_args.append('-ggdb')
 
-    with open(lvgl_config_path, 'r') as f:
-        conf = f.read()
-
-    conf = conf.replace(
-        '#define LV_USE_FS_POSIX 0',
-        '#define LV_USE_FS_POSIX 1'
-    )
-
-
-with open(lvgl_config_path, 'w') as f:
-    f.write(conf)
 
 
 build.extra_includes = include_dirs
@@ -321,20 +300,3 @@ setup(
     ext_modules=ext_modules,
     cmdclass=dict(build=build)
 )
-
-
-if sys.platform.startswith('win'):
-    conf = conf.replace(
-        '#define LV_USE_FS_WIN32 1',
-        '#define LV_USE_FS_WIN32 0'
-    )
-
-else:
-    conf = conf.replace(
-        '#define LV_USE_FS_POSIX 1',
-        '#define LV_USE_FS_POSIX 0'
-    )
-
-
-with open(lvgl_config_path, 'w') as f:
-    f.write(conf)

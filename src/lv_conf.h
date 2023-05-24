@@ -195,7 +195,7 @@
     /*Allow buffering some shadow calculation.
     *LV_DRAW_SW_SHADOW_CACHE_SIZE is the max. shadow size to buffer, where shadow size is `shadow_width + radius`
     *Caching has LV_DRAW_SW_SHADOW_CACHE_SIZE^2 RAM cost*/
-    #define LV_DRAW_SW_SHADOW_CACHE_SIZE (64 * 1024)
+    #define LV_DRAW_SW_SHADOW_CACHE_SIZE (1024)
 
     /* Set number of maximally cached circle data.
     * The circumference of 1/4 circle are saved for anti-aliasing
