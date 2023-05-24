@@ -1,8 +1,8 @@
 [project]
 name = "lvgl"
-version = "0.1.0"
+version = "0.1.0b"
 description = "README.md"
-authors = [{name = "Kevin G. Schlosser"}]
+authors = [{name = "Kevin G. Schlosser"}, {name="Many other contributors"}]
 maintainers = [{name = "Kevin G. Schlosser"}]
 classifiers = [
     "Development Status :: 4 - Beta",
