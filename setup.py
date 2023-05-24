@@ -194,13 +194,13 @@ def visit_Typedef(self, n):
 
     s += self._generate_type(n.type)
 
-    node = n.type
+    node = n
     for type_ in (
         c_ast.PtrDecl,
         c_ast.FuncDecl,
         (c_ast.TypeDecl, c_ast.PtrDecl)
     ):
-        if isinstance(node, type_):
+        if isinstance(node.type, type_):
             node = node.type
         else:
             return s
