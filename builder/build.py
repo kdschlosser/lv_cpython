@@ -6,6 +6,7 @@ from setuptools.command.build import build as _build  # NOQA
 
 import shutil
 from . import py_builder
+from . import mpy_builder
 
 
 class build(_build):
@@ -49,3 +50,5 @@ class build(_build):
                 os.remove(dst)
 
             shutil.copyfile(self.sdl2_dll, dst)
+
+        mpy_builder.run()

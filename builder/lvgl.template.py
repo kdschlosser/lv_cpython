@@ -751,6 +751,15 @@ class _StructUnion(_AsArrayMixin):
         return py_obj
 
     def _set_field(self, field_name, py_obj, c_type):
+        if isinstance(py_obj, list):
+            c_obj = [item.as_dict() for item in py_obj]
+
+            setattr(self._obj, field_name, c_obj)
+            self.__dict__['__py_{0}__'.format(field_name)] = py_obj
+            self.__dict__['__c_{0}__'.format(field_name)] = c_obj
+
+            return
+
         c_obj = _get_c_obj(py_obj, c_type)
         if isinstance(c_obj, bytes):
             c_obj = _lib_lvgl.ffi.from_buffer(

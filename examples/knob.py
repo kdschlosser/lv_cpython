@@ -1,18 +1,15 @@
-try:
-    import lvgl as lv
-except ImportError:
-    import os
-    import sys
 
-    base_path = os.path.dirname(__file__)
-    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+import os
+import sys
 
-    import lvgl as lv
+base_path = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
+import lvgl as lv
 
 
 import math
 import time
-import os
 
 
 last_tick = time.time()
