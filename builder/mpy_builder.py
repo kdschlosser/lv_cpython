@@ -1,17 +1,17 @@
 import sys
 import os
-
-base_path = os.path.dirname(__file__)
-build_path = os.path.join(base_path, '..', 'build')
-lvgl_path = os.path.join(build_path, 'lvgl')
-sys.path.insert(0, build_path)
-
 from types import FunctionType
 import inspect
 
-import lvgl
 
 def run():
+    base_path = os.path.dirname(__file__)
+    build_path = os.path.join(base_path, '..', 'build')
+    lvgl_path = os.path.join(build_path, 'lvgl')
+    sys.path.insert(0, build_path)
+
+
+    import lvgl
 
     functions = {}
     structs_unions = {}
