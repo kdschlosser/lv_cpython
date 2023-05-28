@@ -51,4 +51,4 @@ class build(_build):
 
             shutil.copyfile(self.sdl2_dll, dst)
 
-        mpy_builder.run()
+        mpy_builder.run(self.build_lib)

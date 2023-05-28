@@ -28,6 +28,7 @@ def get_py_type(name):
     return (
         None if name.startswith('void') else
         'Float' if name.startswith('float') else
+        'int_' if name.split(' ')[0] == 'int' else
         f'"{name}"'
     )
 

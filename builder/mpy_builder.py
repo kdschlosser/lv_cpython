@@ -4,11 +4,9 @@ from types import FunctionType
 import inspect
 
 
-def run():
-    base_path = os.path.dirname(__file__)
-    build_path = os.path.join(base_path, '..', 'build')
-    lvgl_path = os.path.join(build_path, 'lvgl')
-    sys.path.insert(0, build_path)
+def run(lib_path):
+    lvgl_path = os.path.join(lib_path, 'lvgl')
+    sys.path.insert(0, lib_path)
 
 
     import lvgl
@@ -18,8 +16,9 @@ def run():
     enum_items = {}
 
     create_funcs = {}
-    create_structs = {}
     other = []
+
+    basic_types = []
 
     for key, value in lvgl.__dict__.items():
         if value in (
@@ -41,7 +40,8 @@ def run():
             lvgl.Callable,
             lvgl.Optional,
             lvgl.List,
-            lvgl._Float
+            lvgl._Float,
+            lvgl._convert_basic_type
         ):
             continue
 
@@ -49,7 +49,7 @@ def run():
             continue
 
         if isinstance(value, FunctionType):
-            if key.endswith('_create'):
+            if key.endswith('_create') and not key.startswith('sdl') and not key.startswith('indev'):
                 create_funcs[key] = value
             else:
                 functions[key] = value
@@ -67,16 +67,57 @@ def run():
                         'methods': {},
                         'enums': {}
                     }
-                else:
-                    other.append(key)
+                elif issubclass(value, (
+                    lvgl._Float,
+                    lvgl._Integer,
+                    lvgl._String,
+                    lvgl._Bool,
+                    lvgl.void
+                )):
+                    basic_types.append(key)
+
             except TypeError:
                 other.append(key)
 
     obj_classes = {}
 
+    def convert_type(ano):
+        if ano == 'void':
+            return '_lvgl.void'
+
+
+        for type_ in basic_types:
+            if type_ in ano:
+                return ano
+
+        if '_Bool' in ano:
+            if '_lvgl' not in ano:
+                ano = ano.replace('_Bool', '_lvgl._Bool')
+            return ano
+
+        if 'List[' in ano:
+            ano = ano.split('List[')[1:]
+            for i, itm in enumerate(ano):
+                if '_lvgl' in itm:
+                    itm = itm.replace('_lvgl.', '"')[:-1] + '"]'
+                    ano[i] = itm
+            anno.insert(0, '')
+            ano = 'List['.join(ano)
+            ano = ano.replace('obj_t', 'obj')
+            return ano
+
+        if '_lvgl' in ano:
+            ano = ano.replace('_lvgl.', '"') + '"'
+
+        ano = ano.replace('obj_t', 'obj')
+
+        return ano
 
     def convert_annotation(annot):
-        annot = str(annot)
+        try:
+            annot = annot.__name__
+        except:
+            annot = str(annot)
 
         annot = annot.replace("ForwardRef('", '').replace("')", '')
 
@@ -89,6 +130,7 @@ def run():
                     if item.startswith('typing'):
                         item = item.replace('typing.', '')
                     else:
+                        item = item.lstrip('_')
                         item = f'_lvgl.{item}'
                     annot[i] = item
 
@@ -106,21 +148,29 @@ def run():
 
         annot = annot.replace('bool', '_Bool')
 
+        if not annot.startswith('_Bool'):
+            annot = annot.lstrip('_')
+
         if annot.startswith('List['):
             annot.replace('List[', '')
             if annot.startswith('typing'):
                 annot = annot.replace('typing.', '')
                 return f'List[{annot}'
 
+            if not annot.startswith('_Bool'):
+                annot = annot.lstrip('_')
             annot = f'List[_lvgl.{annot}'
         elif qoted:
+            if not annot.startswith('_Bool'):
+                annot = annot.lstrip('_')
             annot = f'_lvgl.{annot}'
 
         elif annot != 'None':
+            if not annot.startswith('_Bool'):
+                annot = annot.lstrip('_')
             annot = f'_lvgl.{annot}'
 
         return annot
-
 
     for name, func in create_funcs.items():
         cls_name = name.replace('_create', '')
@@ -133,12 +183,14 @@ def run():
             notation = param.annotation
 
             if notation == param.empty:
+                functions[name] = func
                 continue
 
             p_notation = convert_annotation(notation).replace('_lvgl.', '')
             ret_val = convert_annotation(sig.return_annotation).replace('_lvgl.', '')
 
             if ret_val != p_notation:
+                functions[name] = func
                 continue
 
             new_params = ['self']
@@ -264,15 +316,18 @@ def run():
             else:
                 anno = convert_annotation(param.annotation)
                 anno = anno.replace('NoneType', 'void')
+                anno = convert_type(anno)
                 new_params.append(f'{param_name}: {anno}')
 
             param_names.append(param_name)
 
         anno = convert_annotation(sig.return_annotation)
-
+        anno = convert_type(anno)
         ret_val = f' -> {anno}'
 
         new_func_name = get_uncommon_name(match['name'], func_name)
+        if new_func_name == 'del':
+            new_func_name = '_del'
         match['methods'][new_func_name] = {
             'name': func_name,
             'ret_val': ret_val,
@@ -280,6 +335,90 @@ def run():
             'param_names': ', '.join(param_names)
         }
 
+    structs = {}
+
+    for func_name, func in list(functions.items()):
+        match = None
+        matched_common_name = ''
+
+        sig = inspect.signature(func)
+        params = list(sig.parameters.items())
+        if not params:
+            continue
+
+        param_name, param = params[0]
+
+        anno = param.annotation
+        if anno == param.empty:
+            continue
+
+        anno = convert_annotation(anno).replace('_lvgl.', '')
+
+
+        for struct_name, cont in structs.items():
+            common = get_common_name(func_name, struct_name)
+            if not common:
+                continue
+
+            if struct_name != anno:
+                continue
+
+            if len(common) > len(matched_common_name):
+                matched_common_name = common
+                match = cont
+
+        for struct_name, cont in structs_unions.items():
+            common = get_common_name(func_name, struct_name)
+            if not common:
+                continue
+
+            if struct_name != anno:
+                continue
+
+            if len(common) > len(matched_common_name):
+                matched_common_name = common
+                match = cont
+
+        if match is None:
+            continue
+
+        del functions[func_name]
+
+        new_params = ['self']
+        param_names = ['self']
+
+        for param_name, param in list(sig.parameters.items())[1:]:
+            if param.kind == param.VAR_POSITIONAL:
+                param_name = f'*{param_name}'
+                new_params.append(param_name)
+            else:
+                anno = convert_annotation(param.annotation)
+                anno = anno.replace('NoneType', 'void').replace('None', 'void')
+                anno = convert_type(anno)
+                new_params.append(f'{param_name}: {anno}')
+
+            param_names.append(param_name)
+
+        anno = convert_annotation(sig.return_annotation)
+        anno = convert_type(anno)
+        ret_val = f' -> {anno}'
+
+        new_func_name = get_uncommon_name(match['name'], func_name)
+        if new_func_name == 'del':
+            new_func_name = '_del'
+
+        match['methods'][new_func_name] = {
+            'name': func_name,
+            'ret_val': ret_val,
+            'params': ', '.join(new_params),
+            'param_names': ', '.join(param_names)
+        }
+
+        structs[match['name']] = match
+        try:
+            del structs_unions[match['name']]
+        except KeyError:
+            pass
 
     for enum_name, val in sorted(list(enum_items.items())):
         match = None
@@ -304,28 +443,23 @@ def run():
 
     for cls_name, cont in obj_classes.items():
 
-        matched_enums = {}
+        def _match_enums(matched_name=None):
+            if matched_name is not None:
+                matches = []
 
-        for enum1, val1 in list(cont['enums'].items()):
-            matches = []
-            matched_name = ''
+                for enum, val in list(cont['enums'].items()):
+                    common = get_common_name(matched_name, enum, 3)
 
-            for enum2, val2 in list(cont['enums'].items()):
-                if enum1 == enum2:
-                    continue
+                    if not common:
+                        continue
 
-                common = get_common_name(enum1, enum2, 2)
-                if not common:
-                    continue
+                    if common != matched_name:
+                        continue
 
-                if len(common) > len(matched_name):
-                    matched_name = common
-                    matches = [(enum1, val1)]
+                    matches.append((enum, val))
 
-                matches.append((enum2, val2))
-
-            if matched_name:
                 m_enums = {}
+                matched_enums = {}
 
                 for match, val in matches:
                     del cont['enums'][match]
@@ -334,29 +468,126 @@ def run():
 
                 matched_enums[matched_name] = m_enums
 
-        cont['enums'] = matched_enums
+                return matched_enums
+
+            matched_enums = {}
+
+            for enum1, val1 in list(cont['enums'].items()):
+                matches = []
+                matched_name = ''
+
+                for enum2, val2 in list(cont['enums'].items()):
+                    if enum1 == enum2:
+                        continue
+
+                    common = get_common_name(enum1, enum2, 2)
+                    if not common:
+                        continue
+
+                    if len(common) > len(matched_name):
+                        matched_name = common
+                        matches = [(enum1, val1)]
+
+                    matches.append((enum2, val2))
+
+                if matched_name:
+                    m_enums = {}
+
+                    for match, val in matches:
+                        del cont['enums'][match]
+                        new_enum_name = get_uncommon_name(matched_name, match)
+                        m_enums[new_enum_name] = [match, val]
+
+                    matched_enums[matched_name] = m_enums
+
+            return matched_enums
+
+        storage = {}
+        if cls_name == 'obj':
+            storage.update(_match_enums('CLASS_THEME_INHERITABLE'))
+            storage.update(_match_enums('CLASS_GROUP_DEF'))
+            storage.update(_match_enums('CLASS_EDITABLE'))
+
+        elif cls_name == 'chart':
+            storage.update(_match_enums('AXIS_PRIMARY'))
+            storage.update(_match_enums('AXIS_SECONDARY'))
+
+        elif cls_name == 'imgbtn':
+            storage.update(_match_enums('STATE'))
+
+        elif cls_name == 'menu':
+            storage.update(_match_enums('ROOT_BACK_BTN'))
 
 
-    enum_classes = []
+        storage.update(_match_enums())
+        cont['enums'] = storage
 
     used = []
 
+    output = open(os.path.join(lvgl_path, 'mpy.py'), 'w')
+
+    output.write('from typing import Union, Any, Callable, Optional, List  # NOQA\n\n')
+    output.write('import lvgl as _lvgl\n\n\n')
+
+    enum_template = '''
+class {name}:
+{items}'''
+
+    enum_item_template = '    {name} = _lvgl.{o_name}'
+
+    def output_enum(name, items):
+        new_items = []
+
+        if len(items) == 1:
+            print('{0} = _lvgl.{1}'.format(*items[0]))
+
+            output.write('{0} = _lvgl.{1}\n\n'.format(*items[0]))
+        else:
+            for e_name, o_name in items:
+                if e_name[0].isdigit():
+                    e_name = f'_{e_name}'
+
+                new_items.append(f'    {e_name} = _lvgl.{o_name}')
+
+            tmpl = enum_template.format(
+                name=name,
+                items='\n'.join(new_items)
+            )
+
+            print(tmpl + '\n')
+
+            output.write(tmpl + '\n\n')
+
+
     def sort_enums(match_name=None):
+
+        if match_name is not None:
+            m_enums = []
+
+            for enum_name, value in list(enum_items.items()):
+
+                common = get_common_name(enum_name, match_name, 2)
+
+                if common and common == match_name:
+                    new_enum_name = enum_name.replace(match_name + '_', '')
+                    m_enums.append((new_enum_name, value))
+                    used.append(enum_name)
+
+                    try:
+                        del enum_items[enum_name]
+                    except KeyError:
+                        continue
+
+            output_enum(match_name, m_enums)
+            return
+
+
         for enum_name1, value1 in list(enum_items.items()):
             if enum_name1 in used:
                 continue
 
-            if match_name is not None:
-                common = get_common_name(enum_name1, match_name, 2)
-                if common and common == match_name:
-                    matched_common_name = common
-                    matches = [(enum_name1, value1)]
-                else:
-                    matched_common_name = ''
-                    matches = []
-            else:
-                matched_common_name = ''
-                matches = []
+            matched_common_name = ''
+            matches = []
 
             for enum_name2, value2 in list(enum_items.items()):
                 if enum_name2 in used:
@@ -365,34 +596,7 @@ def run():
                 if enum_name1 == enum_name2:
                     continue
 
-                if matched_common_name and matched_common_name not in (
-                    'COLOR_FORMAT',
-                    'ALIGN',
-                    'PALETTE',
-                    'TEXT_FLAG',
-                    'STYLE',
-                    '_STYLE',
-                    'STATE',
-                    'EVENT',
-                    'DISP',
-                    'FS_RES',
-                    'DRAW_MASK_RES',
-                    'INDEV_TYPE',
-                    '_BTNMATRIX',
-                    'FLEX_ALIGN',
-                    'GRID',
-                    'DRAW_MASK'
-                ):
-                    for enum_name3, _ in matches:
-                        common = get_common_name(enum_name2, enum_name3, 2)
-                        if common and len(common) > len(matched_common_name):
-                            print(matched_common_name)
-                            return common
-
                 common = get_common_name(enum_name1, enum_name2, 2)
-
-                if common in ('DISP_ROTATION', 'DISP_RENDER_MODE', 'FONT_SUBPX', 'COLOR', 'FONT', 'FONT_FMT_TXT'):
-                    continue
 
                 if not common:
                     continue
@@ -404,7 +608,13 @@ def run():
                 matches.append((enum_name2, value2))
 
             if not matched_common_name:
-                enum_classes.append({'name': enum_name1, 'enums': [(enum_name1, value1)]})
+                used.append(enum_name1)
+                try:
+                    del enum_items[enum_name1]
+                except KeyError:
+                    pass
+
+                output_enum(enum_name1, [(enum_name1, value1)])
             else:
                 m_enums = []
 
@@ -414,55 +624,70 @@ def run():
                     except KeyError:
                         continue
 
+                    used.append(enum_name)
+
                     new_enum_name = get_uncommon_name(matched_common_name, enum_name)
                     m_enums.append((new_enum_name, val))
 
-                enum_classes.append({'name': matched_common_name, 'enums': m_enums[:]})
-
-            used.append(enum_name1)
+                output_enum(matched_common_name, m_enums[:])
 
             try:
                 del enum_items[enum_name1]
             except KeyError:
                 pass
 
+    for e_name in (
+        'EXPLORER',
+        'INDEV_TYPE',
+        'INDEV_STATE',
+        'DRAW_MASK',
+        'DRAW_LAYER',
+        'FS_RES',
+        'FS_MODE',
+        'FS_SEEK',
+        'DISP_ROTATION',
+        'FONT_SUBPX',
+        'ANIM_IMG',
+        'SPAN_MODE',
+        'SPAN_OVERFLOW',
+        'FLEX_ALIGN',
+        'FLEX_FLOW',
+        'GRID_ALIGN',
+        'GRID',
+        'COLOR_FORMAT',
+        'STYLE_RES',
+        'STYLE_PROP'
+    ):
+        sort_enums(e_name)
 
-    nm = sort_enums()
-    import time
-    while nm is not None:
-        print(nm)
-        time.sleep(1)
-        nm = sort_enums(nm)
+    '''
+    OBJ_CLASS_EDITABLE
+    OBJ_CLASS_GROUP
+    OBJ_CLASS_THEME
+
+    CHART_AXIS
+
+    IMGBTN_STATE
+    MENU_ROOT
+    '''
+    sort_enums()
 
 
     class_template = '''\
-    class {name}({parent_cls}):
-    {enums}
-        def __init__({args}):
-            super().__init__({fp_name})
-            cls = _lvgl.{create_func_name}({arg_names})
-            cls.cast(self)
-        
-    {methods}'''
+class {name}({parent_cls}):
+{enums}
+    def __init__({args}):
+        super().__init__({fp})
+        cls = _lvgl.{create_func_name}({arg_names})
+        cls.cast(self)
+   
+{methods}'''
 
 
     method_template = '''\
-        def {name}({args}){ret_val}:
-            return _lvgl.{o_name}({arg_names})
-    '''
-
-    enum_template = '''
-    class {name}:
-    {items}'''
-
-    enum_item_template = '    {name} = _lvgl.{o_name}'
-
-
-    output = open(os.path.join(lvgl_path, 'mpy.py'), 'w')
-
-    output.write('from typing import Union, Any, Callable, Optional, List  # NOQA\n\n')
-    output.write('import lvgl as _lvgl\n\n\n')
-
+    def {name}({args}){ret_val}:
+        return _lvgl.{o_name}({arg_names})
+'''
 
     for name in structs_unions.keys():
         output.write(f'{name} = _lvgl.{name}\n')
@@ -474,49 +699,72 @@ def run():
 
 
     output.write('\n\n')
+    function_template = '''\
+def {name}({args}){ret_val}:
+    return _lvgl.{o_name}({arg_names})
+'''
 
+    for func_name, func in list(functions.items()):
+        new_params = []
+        param_names = []
 
-    for func_name in functions.keys():
+        sig = inspect.signature(func)
 
-        output.write(f'{func_name} = _lvgl.{func_name}\n')
+        for param_name, param in list(sig.parameters.items()):
+            if param.kind == param.VAR_POSITIONAL:
+                param_name = f'*{param_name}'
+                new_params.append(param_name)
+            else:
+                anno = convert_annotation(param.annotation)
+                anno = anno.replace('NoneType', 'void')
+                anno = convert_type(anno)
+                new_params.append(f'{param_name}: {anno}')
+
+            param_names.append(param_name)
+
+        anno = convert_annotation(sig.return_annotation)
+        anno = convert_type(anno)
+        ret_val = f' -> {anno}'
+
+        fnc = function_template.format(
+            name=func_name,
+            o_name=func_name,
+            args=', '.join(new_params),
+            arg_names=', '.join(param_names),
+            ret_val=ret_val
+        )
+
+        output.write('\n' + fnc + '\n')
 
     output.write('\n\n')
 
-    used_enums = []
 
-    for enm in enum_classes:
-        name = enm['name']
-        if name in used_enums:
-            continue
+    struct_class_template = '''\
+class {name}({parent_cls}):
 
-        used_enums.append(name)
+{methods}'''
 
-        items = enm['enums']
-        new_items = []
+    for name, value in structs.items():
+        methods = []
 
-        if len(items) == 1:
-            if items[0] in used_enums:
-                continue
-
-            used_enums.append(items[0])
-            output.write('{0} = _lvgl.{1}\n\n'.format(*items[0]))
-        else:
-            for e_name, o_name in items:
-                used_enums.append(o_name)
-
-                if e_name[0].isdigit():
-                    e_name = f'_{e_name}'
-
-                new_items.append(f'    {e_name} = _lvgl.{o_name}')
-
-            tmpl = enum_template.format(
-                name=name,
-                items='\n'.join(new_items)
+        for method_name, cont in value['methods'].items():
+            meth = method_template.format(
+                name=method_name,
+                o_name=cont['name'],
+                args=cont['params'],
+                arg_names=cont['param_names'],
+                ret_val=cont['ret_val']
             )
 
-            output.write(tmpl + '\n\n')
+            methods.append(meth)
 
-    output.write('\n')
+        cls = struct_class_template.format(
+            name=name,
+            parent_cls=f'_lvgl.{name}',
+            methods='\n'.join(methods),
+        )
+
+        output.write(cls + '\n\n')
 
     for name, value in obj_classes.items():
         methods = []
@@ -559,10 +807,13 @@ def run():
             create_func_name=value['create_func_name'],
             arg_names=value['arg_names'],
             methods='\n'.join(methods),
-            fp_name=value['arg_names'].split(',')[0]
+            fp='' if name == 'obj' else 'None'
         )
 
         output.write(cls + '\n\n')
 
 
     output.close()
+
+if __name__ == '__main__':
+    run(r'..\build\lib.win-amd64-cpython-310')

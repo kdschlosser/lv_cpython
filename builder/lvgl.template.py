@@ -49,6 +49,18 @@ def _get_py_obj(c_obj, c_type):
 
         return res
 
+    if c_type + '_' in glob:
+        cls = glob[c_type + '_']
+        if issubclass(cls, _StructUnion):
+            instance = cls()
+            instance._obj = c_obj  # NOQA
+            return instance
+
+        cls = type(c_type, (cls,), {'_obj': c_obj, '_c_type': c_type + ' *'})
+        res = cls(c_obj)
+
+        return res
+
     if isinstance(c_obj, bool):
         return _convert_basic_type(c_obj, c_type)
 
@@ -84,18 +96,15 @@ def _get_c_obj(py_obj, c_type):
     if py_obj is None:
         return _lib_lvgl.ffi.NULL
 
-    try:
+    if hasattr(py_obj, '_obj'):
         return py_obj._obj  # NOQA
-    except AttributeError:
-        pass
 
     if c_type is not None:
-
         globs = globals()
 
         if c_type.startswith('List'):
             c_type = c_type.split('[')[-1][:-1]
-            cls = type(c_type + '[]', (_Array,), {'_c_type': c_type})
+            cls = type(f'{c_type}[]', (_Array,), {'_c_type': c_type})
             instance = cls()
 
             type_cls = globs[c_type]
@@ -104,29 +113,39 @@ def _get_c_obj(py_obj, c_type):
                 if hasattr(item, '_obj'):
                     continue
 
-                if isinstance(item, dict):
-                    item_inst = type_cls(**item)
-                else:
-                    item_inst = type_cls(item)
-
+                item_inst = (
+                    type_cls(**item) if isinstance(item, dict)
+                    else type_cls(item)
+                )
                 py_obj[i] = item_inst
 
             instance.extend(py_obj)
 
             return instance._obj  # NOQA
 
-        if c_type in globs:
-            cls = globs[c_type]
+        def _instance(_c_type):
+            c = globs[_c_type]
 
             try:
                 if isinstance(py_obj, dict):
-                    instance = cls(**py_obj)
+                    ins = c(**py_obj)
                 else:
-                    instance = cls(py_obj)
+                    ins = c(py_obj)
 
-                return instance._obj  # NOQA
+                return ins._obj  # NOQA
             except Exception:  # NOQA
                 pass
+
+
+        if c_type in globs:
+            obj = _instance(c_type)
+            if obj is not None:
+                return obj
+
+        if f'{c_type}_' in globs:
+            obj = _instance(f'{c_type}_')
+            if obj is not None:
+                return obj
 
     if isinstance(py_obj, (int, float)):
         return py_obj
@@ -136,10 +155,7 @@ def _get_c_obj(py_obj, c_type):
     if isinstance(py_obj, tuple):
         py_obj = list(py_obj)
 
-    if isinstance(py_obj, list):
-        return [py_obj]
-
-    return py_obj
+    return [py_obj] if isinstance(py_obj, list) else py_obj
 
 
 def _get_c_type(c_obj):
@@ -516,20 +532,26 @@ def _convert_basic_type(obj, c_type):
 
     glob = globals()
 
-    if c_type in glob:
-        cls = glob[c_type]
-        cls = type(
+    def _instance(_c_type):
+        c = glob[_c_type]
+        c = type(
             c_type,
-            (cls,),
+            (c,),
             {'_obj': obj, '_c_type': f'{c_type} *'}
         )
 
         try:
-            return cls()
+            return c()
         except Exception:  # NOQA
-            instance = cls()
-            instance._obj = obj
-            return instance
+            ins = c()
+            ins._obj = obj
+            return ins
+
+    if c_type in glob:
+        return _instance(c_type)
+
+    if f'{c_type}_' in glob:
+        return _instance(f'{c_type}_')
 
     if isinstance(obj, bool):
         if c_type != 'bool':
@@ -710,7 +732,44 @@ class size_t(_Integer):
     _c_type = 'size_t *'
 
 
-class _StructUnion(_AsArrayMixin):
+
+# This class checks to see if wrapper classes are being used by
+# the mpy module. The reason why this meta class exists is so that objects
+# comming from C code get redirected to those wrapper classes instead of to
+# the C API classes. If the redirection does not occur then the methods in
+# the wraapper classes would not be accessable.
+class _StructUnionMeta(type):
+    _wrapped_classes = {}
+    _classes = {}
+
+    def __init__(cls, name, bases, dct):
+        super().__init__(name, bases, dct)
+
+        if '.mpy.' in str(bases[0]) or f'lvgl.{name}' in str(bases[0]):
+            nme = f'{name}_t' if not name.endswith('_t') else name
+            if nme not in _StructUnionMeta._wrapped_classes:
+                _StructUnionMeta._wrapped_classes[nme] = cls
+
+    def __call__(cls, *args, **kwargs):
+        name = cls.__name__
+
+        if name in _StructUnionMeta._wrapped_classes:
+            cls = _StructUnionMeta._wrapped_classes[name]  # NOQA
+
+        elif name.startswith('_'):
+            if name[1:] in _StructUnionMeta._wrapped_classes:
+                cls = _StructUnionMeta._wrapped_classes[name[1:]]  # NOQA
+
+        # elif name.endswith('_t') and name[:-2] in _StructUnionMeta._wrapped_classes:
+        #     cls = _StructUnionMeta._wrapped_classes[name[:-2]]
+
+        try:
+            return super(_StructUnionMeta, cls).__call__(*args, **kwargs)
+        except TypeError:
+            return super(_StructUnionMeta, cls).__call__(_DefaultArg)
+
+
+class _StructUnion(_AsArrayMixin, metaclass=_StructUnionMeta):
     _c_type = ''
 
     @classmethod
@@ -751,13 +810,15 @@ class _StructUnion(_AsArrayMixin):
         return py_obj
 
     def _set_field(self, field_name, py_obj, c_type):
-        if isinstance(py_obj, list):
-            c_obj = [item.as_dict() for item in py_obj]
-
+        def _setattr():
             setattr(self._obj, field_name, c_obj)
             self.__dict__['__py_{0}__'.format(field_name)] = py_obj
             self.__dict__['__c_{0}__'.format(field_name)] = c_obj
 
+
+        if isinstance(py_obj, list):
+            c_obj = [item.as_dict() for item in py_obj]
+            _setattr()
             return
 
         c_obj = _get_c_obj(py_obj, c_type)
@@ -766,9 +827,7 @@ class _StructUnion(_AsArrayMixin):
                 c_type.split(' ')[0] + f'[{len(c_obj)}]', bytearray(c_obj)
             )
 
-        setattr(self._obj, field_name, c_obj)
-        self.__dict__['__py_{0}__'.format(field_name)] = py_obj
-        self.__dict__['__c_{0}__'.format(field_name)] = c_obj
+        _setattr()
 
     def as_dict(self):
         res = {}
