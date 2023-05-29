@@ -2,7 +2,7 @@ jobs:
   - ${{ each image in parameters.images }}:
     - ${{ each pythonVersion in parameters.pythonVersions }}:
       - job:
-        displayName: ${{ format('OS-{0} PY-{1}', image, pythonVersion) }}
+        displayName: ${{ format('{0}_python_{1}', image, pythonVersion) }}
 
         pool:
           vmImage: ${{ image }}
@@ -34,5 +34,5 @@ jobs:
           - task: PublishBuildArtifacts@1
             inputs:
               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-              ArtifactName: "artifact_$(Agent.JobName)_$(python.architecture)"
+              ArtifactName: "$(Agent.JobName)_x64"
               PublishLocation: 'Container'
