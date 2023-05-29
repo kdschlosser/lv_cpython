@@ -20,8 +20,8 @@ jobs:
           - script: python -m pip install pycparser cffi
             displayName: 'Install build requirements'
 
-          - script: python setup.py bdist_wheel
-            displayName: 'build'
+          - script: python build
+              displayName: 'build'
 
           - task: CopyFiles@2
             inputs:
