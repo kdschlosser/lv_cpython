@@ -675,9 +675,17 @@ class {name}:
 class {name}({parent_cls}):
 {enums}
     def __init__({args}):
-        super().__init__({fp})
-        cls = _lvgl.{create_func_name}({arg_names})
-        cls.cast(self)
+        if self.__class__.__name__ == 'obj':
+            super().__init__()
+        else:
+            super().__init__(_lvgl._DefaultArg)  # NOQA
+                                    
+        for arg in ({arg_names},):
+            if arg == _lvgl._DefaultArg:  # NOQA
+                break
+        else:
+            cls = _lvgl.{create_func_name}({arg_names})
+            cls.cast(self)
    
 {methods}'''
 
@@ -805,7 +813,7 @@ class {name}({parent_cls}):
             create_func_name=value['create_func_name'],
             arg_names=value['arg_names'],
             methods='\n'.join(methods),
-            fp='' if name == 'obj' else 'None'
+            fp='' if name == 'obj' else '_lvgl._DefaultArg'
         )
 
         output.write(cls + '\n\n')

@@ -70,6 +70,7 @@ typedef int32_t (*lv_anim_get_value_cb_t)(struct _lv_anim_t * anim);
 /** Callback used when the animation is deleted*/
 typedef void (*lv_anim_deleted_cb_t)(struct _lv_anim_t * anim);
 
+
 /** Describes an animation*/
 typedef struct _lv_anim_t {
     void * var;                          /**<Variable to animate*/
@@ -140,6 +141,7 @@ static inline void lv_anim_set_exec_cb(lv_anim_t * a, lv_anim_exec_xcb_t exec_cb
     a->exec_cb = exec_cb;
 }
 
+
 /**
  * Set the duration of an animation
  * @param a         pointer to an initialized `lv_anim_t` variable
@@ -182,11 +184,10 @@ static inline void lv_anim_set_values(lv_anim_t * a, int32_t start, int32_t end)
  * @param a         pointer to an initialized `lv_anim_t` variable
  * @param exec_cb   a function to execute.
  */
-static inline void lv_anim_set_custom_exec_cb(lv_anim_t * a, lv_anim_custom_exec_cb_t exec_cb,  void * user_data)
+static inline void lv_anim_set_custom_exec_cb(lv_anim_t * a, lv_anim_custom_exec_cb_t exec_cb)
 {
     a->var     = a;
     a->exec_cb = (lv_anim_exec_xcb_t)exec_cb;
-    a->user_data = user_data;
 }
 
 /**
@@ -194,10 +195,9 @@ static inline void lv_anim_set_custom_exec_cb(lv_anim_t * a, lv_anim_custom_exec
  * @param a         pointer to an initialized `lv_anim_t` variable
  * @param path_cb a function to set the current value of the animation.
  */
-static inline void lv_anim_set_path_cb(lv_anim_t * a, lv_anim_path_cb_t path_cb,  void * user_data)
+static inline void lv_anim_set_path_cb(lv_anim_t * a, lv_anim_path_cb_t path_cb)
 {
     a->path_cb = path_cb;
-    a->user_data = user_data;
 }
 
 /**
@@ -205,10 +205,9 @@ static inline void lv_anim_set_path_cb(lv_anim_t * a, lv_anim_path_cb_t path_cb,
  * @param a         pointer to an initialized `lv_anim_t` variable
  * @param start_cb  a function call when the animation starts
  */
-static inline void lv_anim_set_start_cb(lv_anim_t * a, lv_anim_start_cb_t start_cb, void * user_data)
+static inline void lv_anim_set_start_cb(lv_anim_t * a, lv_anim_start_cb_t start_cb)
 {
     a->start_cb = start_cb;
-    a->user_data = user_data;
 }
 
 /**
@@ -217,10 +216,9 @@ static inline void lv_anim_set_start_cb(lv_anim_t * a, lv_anim_start_cb_t start_
  * @param a             pointer to an initialized `lv_anim_t` variable
  * @param get_value_cb  a function call when the animation starts
  */
-static inline void lv_anim_set_get_value_cb(lv_anim_t * a, lv_anim_get_value_cb_t get_value_cb, void * user_data)
+static inline void lv_anim_set_get_value_cb(lv_anim_t * a, lv_anim_get_value_cb_t get_value_cb)
 {
     a->get_value_cb = get_value_cb;
-    a->user_data = user_data;
 }
 
 /**
@@ -228,10 +226,9 @@ static inline void lv_anim_set_get_value_cb(lv_anim_t * a, lv_anim_get_value_cb_
  * @param a         pointer to an initialized `lv_anim_t` variable
  * @param ready_cb  a function call when the animation is ready
  */
-static inline void lv_anim_set_ready_cb(lv_anim_t * a, lv_anim_ready_cb_t ready_cb, void * user_data)
+static inline void lv_anim_set_ready_cb(lv_anim_t * a, lv_anim_ready_cb_t ready_cb)
 {
     a->ready_cb = ready_cb;
-    a->user_data = user_data;
 }
 
 /**
@@ -239,11 +236,11 @@ static inline void lv_anim_set_ready_cb(lv_anim_t * a, lv_anim_ready_cb_t ready_
  * @param a         pointer to an initialized `lv_anim_t` variable
  * @param deleted_cb  a function call when the animation is deleted
  */
-static inline void lv_anim_set_deleted_cb(lv_anim_t * a, lv_anim_deleted_cb_t deleted_cb, void * user_data)
+static inline void lv_anim_set_deleted_cb(lv_anim_t * a, lv_anim_deleted_cb_t deleted_cb)
 {
     a->deleted_cb = deleted_cb;
-    a->user_data = user_data;
 }
+
 
 /**
  * Make the animation to play back to when the forward direction is ready
@@ -368,6 +365,7 @@ static inline void * lv_anim_get_user_data(lv_anim_t * a)
  * @return          true: at least 1 animation is deleted, false: no animation is deleted
  */
 bool lv_anim_del(void * var, lv_anim_exec_xcb_t exec_cb);
+
 
 /**
  * Delete all the animations

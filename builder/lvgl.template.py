@@ -5,6 +5,8 @@ try:
 except ImportError:
     import __lib_lvgl as _lib_lvgl  # NOQA
 
+_MPY_API = False
+
 
 __version__ = "0.1.1b"
 
@@ -741,35 +743,39 @@ class size_t(_Integer):
 # comming from C code get redirected to those wrapper classes instead of to
 # the C API classes. If the redirection does not occur then the methods in
 # the wraapper classes would not be accessable.
+# This class checks to see if wrapper classes are being used by
+# the mpy module. The reason why this meta class exists is so that objects
+# comming from C code get redirected to those wrapper classes instead of to
+# the C API classes. If the redirection does not occur then the methods in
+# the wraapper classes would not be accessable.
 class _StructUnionMeta(type):
     _wrapped_classes = {}
     _classes = {}
+    _calling_from_meta = False
 
     def __init__(cls, name, bases, dct):
         super().__init__(name, bases, dct)
 
         if '.mpy.' in str(bases[0]) or f'lvgl.{name}' in str(bases[0]):
-            nme = f'{name}_t' if not name.endswith('_t') else name
-            if nme not in _StructUnionMeta._wrapped_classes:
-                _StructUnionMeta._wrapped_classes[nme] = cls
+            if name not in _StructUnionMeta._wrapped_classes:
+                _StructUnionMeta._wrapped_classes[name] = cls
 
     def __call__(cls, *args, **kwargs):
         name = cls.__name__
 
-        if name in _StructUnionMeta._wrapped_classes:
-            cls = _StructUnionMeta._wrapped_classes[name]  # NOQA
+        if not _StructUnionMeta._calling_from_meta:
+            if not cls.__module__.endswith('mpy'):
+                if name.endswith('_t') and name[:-2] in _StructUnionMeta._wrapped_classes:
+                    cls = _StructUnionMeta._wrapped_classes[name[:-2]]  # NOQA
+                elif name.startswith('_') and name[1:] in _StructUnionMeta._wrapped_classes:
+                    cls = _StructUnionMeta._wrapped_classes[name[1:]]  # NOQA
+                elif name in _StructUnionMeta._wrapped_classes:
+                    cls = _StructUnionMeta._wrapped_classes[name]  # NOQA
 
-        elif name.startswith('_'):
-            if name[1:] in _StructUnionMeta._wrapped_classes:
-                cls = _StructUnionMeta._wrapped_classes[name[1:]]  # NOQA
-
-        # elif name.endswith('_t') and name[:-2] in _StructUnionMeta._wrapped_classes:
-        #     cls = _StructUnionMeta._wrapped_classes[name[:-2]]
-
-        try:
-            return super(_StructUnionMeta, cls).__call__(*args, **kwargs)
-        except TypeError:
-            return super(_StructUnionMeta, cls).__call__(_DefaultArg)
+        _StructUnionMeta._calling_from_meta = True
+        instance = super(_StructUnionMeta, cls).__call__(*args, **kwargs)
+        _StructUnionMeta._calling_from_meta = False
+        return instance
 
 
 class _StructUnion(_AsArrayMixin, metaclass=_StructUnionMeta):

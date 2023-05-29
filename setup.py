@@ -1,5 +1,10 @@
 import os
 import sys
+
+
+project_path = os.path.dirname(__file__)
+sys.path.insert(0, project_path)
+
 import pycparser  # NOQA
 from pycparser import c_ast, c_generator  # NOQA
 import cffi  # NOQA
@@ -15,8 +20,6 @@ if '--debug' in sys.argv:
 else:
     debug = False
 
-
-project_path = os.path.dirname(__file__)
 
 build_path = os.path.relpath(os.path.join(project_path, 'build'))
 build_temp = os.path.join(build_path, 'temp')
@@ -297,7 +300,7 @@ setup(
     version='0.1.1b',
     zip_safe=False,
     packages=['lvgl'],
-    requires=['cffi>=1.15.1'],
+    install_requires=['cffi>=1.15.1'],
     ext_modules=ext_modules,
     cmdclass=dict(build=build)
 )

@@ -362,12 +362,13 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
 
     callback_code_user_data_struct_template = '''\
     try:
-        cb_store = {first_param_name}.user_data
+        _ = {first_param_name}.user_data
     except:  # NOQA
         raise RuntimeError(
             'no user_data field available in the first parameter'
         )
 
+    cb_store = {first_param_name}.__dict__['__cb_store__']    
     cb_store['{cb_type}'] = {param_name}
 
     {param_name} = getattr(_lib_lvgl.lib, 'py_{full_cb_type}')
@@ -387,7 +388,7 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
             del store[{param_name}]
     else:
         store = _CBStore()
-        store['{cb_type}.{func_name}'] = store
+        cb_store['{cb_type}.{func_name}'] = store
 
     cb_store_handle = _lib_lvgl.ffi.new_handle(store)    
     c_func = getattr(_lib_lvgl.lib, 'py_{full_cb_type}')
@@ -397,7 +398,8 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
 
     cb_store['{cb_type}.{func_name}'] = store
     {param_name} = c_func
-
+    
+    cb_store['user_data'] = user_data
     user_data = cb_store_handle'''
 
     def __init__(self, args, type):  # NOQA
@@ -458,12 +460,22 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
 
             if param_name == 'user_data':
                 has_user_data = True
+                p_type = 'Any'
+                param_names.append(param_name)
+                params.append(
+                    self.param_template.format(
+                        param_name=p_name,
+                        param_type=p_type
+                    )
+                )
                 continue
+
 
             param_names.append(param_name)
 
             if p_type is None:
                 p_type = 'Any'
+
 
             params.append(
                 self.param_template.format(
@@ -502,7 +514,6 @@ def {func_name}({params}) -> {ret_type}:{callback_code}
         if callback_format_params is None:
             callback_code = ''
         elif has_user_data:
-            param_names.append('user_data')
             callback_format_params['func_name'] = declname
 
             callback_code = self.callback_code_user_data_param_template.format(
@@ -631,35 +642,47 @@ class Struct:
 
     user_data_property_template = '''\
     @property
-    def user_data(self) -> dict:
+    def user_data(self) -> Any:
         if '__cb_store__' not in self.__dict__:
-            cb_store = self.__dict__['__cb_store__'] = _CBStore()
-            cb_store_handle = _lib_lvgl.ffi.new_handle(cb_store)
-            self.__dict__['__cb_store_handle__'] = cb_store_handle
-            self._obj.user_data = cb_store_handle
+            try:
+                cb_store_handle = self._obj.user_data
+                cb_store = _lib_lvgl.ffi.from_handle(cb_store_handle)
+            except:  # NOQA
+                cb_store = _CBStore()
+                cb_store_handle = _lib_lvgl.ffi.new_handle(cb_store)
+                self._obj.user_data = cb_store_handle
 
-        return self.__dict__['__cb_store__']
+            self.__dict__['__cb_store__'] = cb_store
+            self.__dict__['__cb_store_handle__'] = cb_store_handle
+
+        else:
+            cb_store = self.__dict__['__cb_store__']
+                
+        if 'user_data' not in cb_store:
+            cb_store['user_data'] = None
+            
+        return cb_store['user_data']
 
     @user_data.setter
-    def user_data(self, value: dict):
-        if '__cb_store__' in self.__dict__:
-            if self.__dict__['__cb_store__'] == value:
-                return
+    def user_data(self, value: Any):
+        if '__cb_store__' not in self.__dict__:
+            _ = self.user_data
 
-        cb_store_handle = _lib_lvgl.ffi.new_handle(value)
-        self.__dict__['__cb_store__'] = value
-        self.__dict__['__cb_store_handle__'] = cb_store_handle
-        self._obj.user_data = cb_store_handle'''
+        self.__dict__['__cb_store__']['user_data'] = value'''
 
     callback_property_template = '''\
     @property
     def {field_name}(self) -> Optional[{field_type}]:
-        cb_store = self.user_data
+        _ = self.user_data
+        
+        cb_store = self.__dict__['__cb_store__']
         return cb_store.get('{field_type}', None)
 
     @{field_name}.setter
     def {field_name}(self, value: {field_type}):
-        cb_store = self.user_data
+        _ = self.user_data
+        cb_store = self.__dict__['__cb_store__']
+
         if '{field_type}' not in cb_store:
             cb_store['{field_type}'] = value
             c_func = getattr(_lib_lvgl.lib, 'py_{full_field_type}')

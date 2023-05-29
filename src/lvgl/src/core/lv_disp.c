@@ -601,8 +601,8 @@ void lv_scr_load_anim(lv_obj_t * new_scr, lv_scr_load_anim_t anim_type, uint32_t
     lv_anim_t a_new;
     lv_anim_init(&a_new);
     lv_anim_set_var(&a_new, new_scr);
-    lv_anim_set_start_cb(&a_new, scr_load_anim_start, NULL);
-    lv_anim_set_ready_cb(&a_new, scr_anim_ready, NULL);
+    lv_anim_set_start_cb(&a_new, scr_load_anim_start);
+    lv_anim_set_ready_cb(&a_new, scr_anim_ready);
     lv_anim_set_time(&a_new, time);
     lv_anim_set_delay(&a_new, delay);
 
