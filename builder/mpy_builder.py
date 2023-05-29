@@ -101,7 +101,7 @@ def run(lib_path):
                 if '_lvgl' in itm:
                     itm = itm.replace('_lvgl.', '"')[:-1] + '"]'
                     ano[i] = itm
-            anno.insert(0, '')
+            ano.insert(0, '')
             ano = 'List['.join(ano)
             ano = ano.replace('obj_t', 'obj')
             return ano
