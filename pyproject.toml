@@ -32,6 +32,8 @@ keywords = ["LVGL", "LV", "lvgl", "lv", "graphics", "gui", "gui framework"]
 license = {file = "LICENSE"}
 readme = "README.md"
 requires-python = ">=3.6"
+dependencies=["cffi>=1.15.1"]
+
 
 [project.urls]
 Homepage = "https://github.com/kdschlosser/lv_cpython"
@@ -39,6 +41,7 @@ Documentation = "https://docs.lvgl.io/master/index.html"
 Repository = "https://github.com/kdschlosser/lv_cpython"
 Issues = "https://github.com/kdschlosser/lv_cpython/issues"
 Forum = "https://forum.lvgl.io/"
+
 
 [build-system]
 requires=[

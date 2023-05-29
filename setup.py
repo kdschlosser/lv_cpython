@@ -297,6 +297,7 @@ setup(
     version='0.1.1b',
     zip_safe=False,
     packages=['lvgl'],
+    requires=['cffi>=1.15.1'],
     ext_modules=ext_modules,
     cmdclass=dict(build=build)
 )
