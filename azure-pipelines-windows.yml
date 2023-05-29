@@ -17,8 +17,11 @@ jobs:
           - script: python -m pip install pycparser cffi pyMSVC>=0.5.3
             displayName: 'Install build requirements'
 
-          - script: python -m build --no-isolation
-            displayName: 'build'
+          - script: python setup.py bdist_wheel
+            displayName: 'bdist_wheel'
+
+          - script: python setup.py sdist
+            displayName: 'sdist'
 
           - task: CopyFiles@2
             inputs:
