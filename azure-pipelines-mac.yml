@@ -24,7 +24,7 @@ jobs:
             displayName: 'Install build requirements'
 
           - script: python build
-              displayName: 'build'
+            displayName: 'build'
 
           - task: CopyFiles@2
             inputs:
