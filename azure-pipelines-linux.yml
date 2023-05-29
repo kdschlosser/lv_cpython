@@ -20,7 +20,7 @@ jobs:
           - script: python -m pip install pycparser cffi
             displayName: 'Install build requirements'
 
-          - script: python -m build --sdist
+          - script: python -m build
             displayName: 'build'
 
           - task: CopyFiles@2
