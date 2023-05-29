@@ -8,9 +8,8 @@ import pycparser  # NOQA
 from pycparser import c_ast, c_generator  # NOQA
 import cffi  # NOQA
 
-from builder import utils
 from setuptools import setup
-from builder import build
+from builder import utils, build, install
 
 
 if '--debug' in sys.argv:
@@ -301,5 +300,5 @@ setup(
     packages=['lvgl'],
     install_requires=['cffi>=1.15.1'],
     ext_modules=ext_modules,
-    cmdclass=dict(build=build)
+    cmdclass=dict(build=build, install=install)
 )
