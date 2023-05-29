@@ -1,6 +1,9 @@
 from typing import Union, Any, Callable, Optional, List  # NOQA
 
-from . import __lib_lvgl as _lib_lvgl  # NOQA
+try:
+    from . import __lib_lvgl as _lib_lvgl  # NOQA
+except ImportError:
+    import __lib_lvgl as _lib_lvgl  # NOQA
 
 
 __version__ = "0.1.1b"

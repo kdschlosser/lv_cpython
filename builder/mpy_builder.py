@@ -22,26 +22,26 @@ def run(lib_path):
 
     for key, value in lvgl.__dict__.items():
         if value in (
-            lvgl._StructUnion,
-            lvgl._String,
-            lvgl._Bool,
-            lvgl._CBStore,
-            lvgl._lib_lvgl,
-            lvgl._get_c_obj,
-            lvgl._get_py_obj,
-            lvgl._get_c_type,
-            lvgl._Array,
-            lvgl._AsArrayMixin,
-            lvgl._DefaultArg,
-            lvgl._Integer,
-            lvgl._PY_C_TYPES,
-            lvgl.Union,
-            lvgl.Any,
-            lvgl.Callable,
-            lvgl.Optional,
-            lvgl.List,
-            lvgl._Float,
-            lvgl._convert_basic_type
+            lvgl._StructUnion,  # NOQA
+            lvgl._String,  # NOQA
+            lvgl._Bool,  # NOQA
+            lvgl._CBStore,  # NOQA
+            lvgl._lib_lvgl,  # NOQA
+            lvgl._get_c_obj,  # NOQA
+            lvgl._get_py_obj,  # NOQA
+            lvgl._get_c_type,  # NOQA
+            lvgl._Array,  # NOQA
+            lvgl._AsArrayMixin,  # NOQA
+            lvgl._DefaultArg,  # NOQA
+            lvgl._Integer,  # NOQA
+            lvgl._PY_C_TYPES,  # NOQA
+            lvgl.Union,  # NOQA
+            lvgl.Any,  # NOQA
+            lvgl.Callable,  # NOQA
+            lvgl.Optional,  # NOQA
+            lvgl.List,  # NOQA
+            lvgl._Float,  # NOQA
+            lvgl._convert_basic_type  # NOQA
         ):
             continue
 
@@ -59,7 +59,7 @@ def run(lib_path):
 
         else:
             try:
-                if issubclass(value, lvgl._StructUnion):
+                if issubclass(value, lvgl._StructUnion):  # NOQA
                     structs_unions[key] = {
                         'cls': value,
                         'name': key,
@@ -68,11 +68,11 @@ def run(lib_path):
                         'enums': {}
                     }
                 elif issubclass(value, (
-                    lvgl._Float,
-                    lvgl._Integer,
-                    lvgl._String,
-                    lvgl._Bool,
-                    lvgl.void
+                    lvgl._Float,  # NOQA
+                    lvgl._Integer,  # NOQA
+                    lvgl._String,  # NOQA
+                    lvgl._Bool,  # NOQA
+                    lvgl.void  # NOQA
                 )):
                     basic_types.append(key)
 
@@ -116,7 +116,7 @@ def run(lib_path):
     def convert_annotation(annot):
         try:
             annot = annot.__name__
-        except:
+        except:  # NOQA
             annot = str(annot)
 
         annot = annot.replace("ForwardRef('", '').replace("')", '')
@@ -126,13 +126,13 @@ def run(lib_path):
             if annot.startswith('List['):
                 annot = annot.split('List[')[1:]
 
-                for i, item in enumerate(annot):
-                    if item.startswith('typing'):
-                        item = item.replace('typing.', '')
+                for i, itm in enumerate(annot):
+                    if itm.startswith('typing'):
+                        itm = itm.replace('typing.', '')
                     else:
-                        item = item.lstrip('_')
-                        item = f'_lvgl.{item}'
-                    annot[i] = item
+                        itm = itm.lstrip('_')
+                        itm = f'_lvgl.{itm}'
+                    annot[i] = itm
 
                 annot.insert(0, '')
                 annot = 'List['.join(annot)
@@ -237,10 +237,10 @@ def run(lib_path):
 
 
     def get_uncommon_name(name1, name2):
-        common = get_common_name(name1, name2)
-        common += '_'
+        cmmon = get_common_name(name1, name2)
+        cmmon += '_'
 
-        return name2.replace(common, '', 1)
+        return name2.replace(cmmon, '', 1)
 
 
     for cls_name1, cls in obj_classes.items():
@@ -443,30 +443,30 @@ def run(lib_path):
 
     for cls_name, cont in obj_classes.items():
 
-        def _match_enums(matched_name=None):
-            if matched_name is not None:
+        def _match_enums(mtched_name=None):
+            if mtched_name is not None:
                 matches = []
 
-                for enum, val in list(cont['enums'].items()):
-                    common = get_common_name(matched_name, enum, 3)
+                for enum, vl in list(cont['enums'].items()):
+                    comm = get_common_name(mtched_name, enum, 3)
 
-                    if not common:
+                    if not comm:
                         continue
 
-                    if common != matched_name:
+                    if comm != mtched_name:
                         continue
 
-                    matches.append((enum, val))
+                    matches.append((enum, vl))
 
                 m_enums = {}
                 matched_enums = {}
 
-                for match, val in matches:
-                    del cont['enums'][match]
-                    new_enum_name = get_uncommon_name(matched_name, match)
-                    m_enums[new_enum_name] = [match, val]
+                for mtch, vl in matches:
+                    del cont['enums'][mtch]
+                    n_enum_name = get_uncommon_name(mtched_name, mtch)
+                    m_enums[n_enum_name] = [mtch, vl]
 
-                matched_enums[matched_name] = m_enums
+                matched_enums[mtched_name] = m_enums
 
                 return matched_enums
 
@@ -474,31 +474,31 @@ def run(lib_path):
 
             for enum1, val1 in list(cont['enums'].items()):
                 matches = []
-                matched_name = ''
+                mtched_name = ''
 
                 for enum2, val2 in list(cont['enums'].items()):
                     if enum1 == enum2:
                         continue
 
-                    common = get_common_name(enum1, enum2, 2)
-                    if not common:
+                    comm = get_common_name(enum1, enum2, 2)
+                    if not comm:
                         continue
 
-                    if len(common) > len(matched_name):
-                        matched_name = common
+                    if len(common) > len(mtched_name):
+                        mtched_name = comm
                         matches = [(enum1, val1)]
 
                     matches.append((enum2, val2))
 
-                if matched_name:
+                if mtched_name:
                     m_enums = {}
 
-                    for match, val in matches:
+                    for mtch, vl in matches:
                         del cont['enums'][match]
-                        new_enum_name = get_uncommon_name(matched_name, match)
-                        m_enums[new_enum_name] = [match, val]
+                        n_enum_name = get_uncommon_name(mtched_name, mtch)
+                        m_enums[n_enum_name] = [match, vl]
 
-                    matched_enums[matched_name] = m_enums
+                    matched_enums[mtched_name] = m_enums
 
             return matched_enums
 
@@ -535,7 +535,7 @@ class {name}:
 
     enum_item_template = '    {name} = _lvgl.{o_name}'
 
-    def output_enum(name, items):
+    def output_enum(nme, items):
         new_items = []
 
         if len(items) == 1:
@@ -543,42 +543,40 @@ class {name}:
 
             output.write('{0} = _lvgl.{1}\n\n'.format(*items[0]))
         else:
-            for e_name, o_name in items:
-                if e_name[0].isdigit():
-                    e_name = f'_{e_name}'
+            for ename, o_name in items:
+                if ename[0].isdigit():
+                    ename = f'_{ename}'
 
-                new_items.append(f'    {e_name} = _lvgl.{o_name}')
+                new_items.append(f'    {ename} = _lvgl.{o_name}')
 
             tmpl = enum_template.format(
-                name=name,
+                name=nme,
                 items='\n'.join(new_items)
             )
-
-            print(tmpl + '\n')
 
             output.write(tmpl + '\n\n')
 
 
-    def sort_enums(match_name=None):
+    def sort_enums(mtch_name=None):
 
-        if match_name is not None:
+        if mtch_name is not None:
             m_enums = []
 
-            for enum_name, value in list(enum_items.items()):
+            for ename, vlue in list(enum_items.items()):
 
-                common = get_common_name(enum_name, match_name, 2)
+                comm = get_common_name(ename, mtch_name, 2)
 
-                if common and common == match_name:
-                    new_enum_name = enum_name.replace(match_name + '_', '')
-                    m_enums.append((new_enum_name, value))
-                    used.append(enum_name)
+                if comm and comm == mtch_name:
+                    nenum_name = ename.replace(mtch_name + '_', '')
+                    m_enums.append((nenum_name, vlue))
+                    used.append(ename)
 
                     try:
-                        del enum_items[enum_name]
+                        del enum_items[ename]
                     except KeyError:
                         continue
 
-            output_enum(match_name, m_enums)
+            output_enum(mtch_name, m_enums)
             return
 
 
@@ -586,7 +584,7 @@ class {name}:
             if enum_name1 in used:
                 continue
 
-            matched_common_name = ''
+            mtched_common_name = ''
             matches = []
 
             for enum_name2, value2 in list(enum_items.items()):
@@ -596,18 +594,18 @@ class {name}:
                 if enum_name1 == enum_name2:
                     continue
 
-                common = get_common_name(enum_name1, enum_name2, 2)
+                cmm = get_common_name(enum_name1, enum_name2, 2)
 
-                if not common:
+                if not cmm:
                     continue
 
-                if len(common) > len(matched_common_name):
+                if len(cmm) > len(mtched_common_name):
                     matches = [(enum_name1, value1)]
-                    matched_common_name = common
+                    mtched_common_name = cmm
 
                 matches.append((enum_name2, value2))
 
-            if not matched_common_name:
+            if not mtched_common_name:
                 used.append(enum_name1)
                 try:
                     del enum_items[enum_name1]
@@ -618,18 +616,18 @@ class {name}:
             else:
                 m_enums = []
 
-                for enum_name, val in matches:
+                for ename, vl in matches:
                     try:
-                        del enum_items[enum_name]
+                        del enum_items[ename]
                     except KeyError:
                         continue
 
-                    used.append(enum_name)
+                    used.append(ename)
 
-                    new_enum_name = get_uncommon_name(matched_common_name, enum_name)
-                    m_enums.append((new_enum_name, val))
+                    nenum_name = get_uncommon_name(mtched_common_name, ename)
+                    m_enums.append((nenum_name, vl))
 
-                output_enum(matched_common_name, m_enums[:])
+                output_enum(mtched_common_name, m_enums[:])
 
             try:
                 del enum_items[enum_name1]
