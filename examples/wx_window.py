@@ -1,5 +1,12 @@
+import sys
+import os
+
+
+base_path = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+
 import lvgl as lv
-# import _lib_lvgl
+
 import wx
 import threading
 import win_precise_time as wpt
@@ -328,6 +335,7 @@ def keyboard_cb(_, data):
 
 
 def mouse_cb(_, data):
+    print('mouse cb')
     frame.get_mouse_state(data)
 
 
@@ -357,7 +365,7 @@ def run():
 
     lv.disp_set_flush_cb(disp, frame.flush_lvgl)
 
-    _buf1 = lv.color_t.as_array(size=480 * 320)
+    _buf1 = lv.color_t.as_array(size=800 * 600)
     print(_buf1)
 
     _buf1 = _buf1._obj
@@ -421,13 +429,13 @@ def run():
 
     while True:
         wpt.sleep(0.01)
-        val += inc
-
-        if val in (0, 100):
-            inc = -inc
-
-        lv.arc_set_value(arc, val)
-        lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)
+        # val += inc
+        #
+        # if val in (0, 100):
+        #     inc = -inc
+        #
+        # lv.arc_set_value(arc, val)
+        # lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)
 
         # lv.obj_invalidate(screen)
         # lv.refr_now(disp)

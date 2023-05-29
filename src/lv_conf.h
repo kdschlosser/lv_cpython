@@ -187,33 +187,33 @@
      * and can't be drawn in chunks. */
 
     /*The target buffer size for simple layer chunks.*/
-    #define LV_DRAW_SW_LAYER_SIMPLE_BUF_SIZE          (24 * 1024)   /*[bytes]*/
+    #define LV_DRAW_SW_LAYER_SIMPLE_BUF_SIZE          (64 * 1024)   /*[bytes]*/
 
     /*Used if `LV_DRAW_SW_LAYER_SIMPLE_BUF_SIZE` couldn't be allocated.*/
-    #define LV_DRAW_SW_LAYER_SIMPLE_FALLBACK_BUF_SIZE (3 * 1024)    /*[bytes]*/
+    #define LV_DRAW_SW_LAYER_SIMPLE_FALLBACK_BUF_SIZE (24 * 1024)    /*[bytes]*/
 
     /*Allow buffering some shadow calculation.
     *LV_DRAW_SW_SHADOW_CACHE_SIZE is the max. shadow size to buffer, where shadow size is `shadow_width + radius`
     *Caching has LV_DRAW_SW_SHADOW_CACHE_SIZE^2 RAM cost*/
-    #define LV_DRAW_SW_SHADOW_CACHE_SIZE 0
+    #define LV_DRAW_SW_SHADOW_CACHE_SIZE (1024)
 
     /* Set number of maximally cached circle data.
     * The circumference of 1/4 circle are saved for anti-aliasing
     * radius * 4 bytes are used per circle (the most often used radiuses are saved)
     * 0: to disable caching */
-    #define LV_DRAW_SW_CIRCLE_CACHE_SIZE 4
+    #define LV_DRAW_SW_CIRCLE_CACHE_SIZE 16
 
     /*Default gradient buffer size.
      *When LVGL calculates the gradient "maps" it can save them into a cache to avoid calculating them again.
      *LV_DRAW_SW_GRADIENT_CACHE_DEF_SIZE sets the size of this cache in bytes.
      *If the cache is too small the map will be allocated only while it's required for the drawing.
      *0 mean no caching.*/
-    #define LV_DRAW_SW_GRADIENT_CACHE_DEF_SIZE 0
+    #define LV_DRAW_SW_GRADIENT_CACHE_DEF_SIZE 1920 * 1080 * 4
 
     /*Allow dithering the gradients (to achieve visual smooth color gradients on limited color depth display)
      *LV_DRAW_SW_GRADIENT_DITHER implies allocating one or two more lines of the object's rendering surface
      *The increase in memory consumption is (32 bits * object width) plus 24 bits * object width if using error diffusion */
-    #define LV_DRAW_SW_GRADIENT_DITHER 0
+    #define LV_DRAW_SW_GRADIENT_DITHER 1
     #if LV_DRAW_SW_GRADIENT_DITHER
         /*Add support for error diffusion dithering.
          *Error diffusion dithering gets a much better visual result, but implies more CPU consumption and memory when drawing.
@@ -222,7 +222,7 @@
     #endif
 
     /*Enable subpixel rendering*/
-    #define LV_DRAW_SW_FONT_SUBPX 0
+    #define LV_DRAW_SW_FONT_SUBPX 1
     #if LV_DRAW_SW_FONT_SUBPX
         /*Set the pixel order of the display. Physical order of RGB channels. Doesn't matter with "normal" fonts.*/
         #define LV_DRAW_SW_FONT_SUBPX_BGR 0  /*0: RGB; 1:BGR order*/
@@ -343,9 +343,9 @@
 /*-------------
  * Others
  *-----------*/
-#define LV_USE_SYSMON 1
+#define LV_USE_SYSMON 0
 /*1: Show CPU usage and FPS count*/
-#define LV_USE_PERF_MONITOR 1
+#define LV_USE_PERF_MONITOR 0
 #if LV_USE_PERF_MONITOR
     #define LV_USE_PERF_MONITOR_POS LV_ALIGN_BOTTOM_RIGHT
 #endif
@@ -357,12 +357,13 @@
     #define LV_USE_MEM_MONITOR_POS LV_ALIGN_BOTTOM_LEFT
 #endif
 
+
 /*1: Draw random colored rectangles over the redrawn areas*/
 #define LV_USE_REFR_DEBUG 0
 
 /*Maximum buffer size to allocate for rotation.
  *Only used if software rotation is enabled in the display driver.*/
-#define LV_DISP_ROT_MAX_BUF (10*1024)
+#define LV_DISP_ROT_MAX_BUF (1920 * 1080 * 4)
 
 #define LV_USE_USER_DATA 1
 
@@ -383,7 +384,7 @@
 
 /*Number of stops allowed per gradient. Increase this to allow more stops.
  *This adds (sizeof(lv_color_t) + 1) bytes per additional stop*/
-#define LV_GRADIENT_MAX_STOPS 2
+#define LV_GRADIENT_MAX_STOPS 32
 
 /* Adjust color mix functions rounding. GPUs might calculate color mix (blending) differently.
  * 0: round down, 64: round up from x.75, 128: round up from half, 192: round up from x.25, 254: round up */
@@ -448,24 +449,24 @@
 #define LV_FONT_MONTSERRAT_28 1
 #define LV_FONT_MONTSERRAT_30 1
 #define LV_FONT_MONTSERRAT_32 1
-#define LV_FONT_MONTSERRAT_34 0
-#define LV_FONT_MONTSERRAT_36 0
-#define LV_FONT_MONTSERRAT_38 0
-#define LV_FONT_MONTSERRAT_40 0
-#define LV_FONT_MONTSERRAT_42 0
-#define LV_FONT_MONTSERRAT_44 0
-#define LV_FONT_MONTSERRAT_46 0
-#define LV_FONT_MONTSERRAT_48 0
+#define LV_FONT_MONTSERRAT_34 1
+#define LV_FONT_MONTSERRAT_36 1
+#define LV_FONT_MONTSERRAT_38 1
+#define LV_FONT_MONTSERRAT_40 1
+#define LV_FONT_MONTSERRAT_42 1
+#define LV_FONT_MONTSERRAT_44 1
+#define LV_FONT_MONTSERRAT_46 1
+#define LV_FONT_MONTSERRAT_48 1
 
 /*Demonstrate special features*/
-#define LV_FONT_MONTSERRAT_12_SUBPX      0
-#define LV_FONT_MONTSERRAT_28_COMPRESSED 0  /*bpp = 3*/
-#define LV_FONT_DEJAVU_16_PERSIAN_HEBREW 0  /*Hebrew, Arabic, Persian letters and all their forms*/
-#define LV_FONT_SIMSUN_16_CJK            0  /*1000 most common CJK radicals*/
+#define LV_FONT_MONTSERRAT_12_SUBPX      1
+#define LV_FONT_MONTSERRAT_28_COMPRESSED 1  /*bpp = 3*/
+#define LV_FONT_DEJAVU_16_PERSIAN_HEBREW 1  /*Hebrew, Arabic, Persian letters and all their forms*/
+#define LV_FONT_SIMSUN_16_CJK            1  /*1000 most common CJK radicals*/
 
 /*Pixel perfect monospace fonts*/
-#define LV_FONT_UNSCII_8  0
-#define LV_FONT_UNSCII_16 0
+#define LV_FONT_UNSCII_8  1
+#define LV_FONT_UNSCII_16 1
 
 /*Optionally declare custom fonts here.
  *You can use these fonts as default font too and they will be available globally.
@@ -478,10 +479,10 @@
 /*Enable handling large font and/or fonts with a lot of characters.
  *The limit depends on the font size, font face and bpp.
  *Compiler error will be triggered if a font needs it.*/
-#define LV_FONT_FMT_TXT_LARGE 0
+#define LV_FONT_FMT_TXT_LARGE 1
 
 /*Enables/disables support for compressed fonts.*/
-#define LV_USE_FONT_COMPRESSED 0
+#define LV_USE_FONT_COMPRESSED 1
 
 /*Enable drawing placeholders when glyph dsc is not found*/
 #define LV_USE_FONT_PLACEHOLDER 1

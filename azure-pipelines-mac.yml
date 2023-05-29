@@ -2,7 +2,7 @@ jobs:
   - ${{ each image in parameters.images }}:
     - ${{ each pythonVersion in parameters.pythonVersions }}:
       - job:
-        displayName: ${{ format('OS:{0} PY:{1}', image, pythonVersion) }}
+        displayName: ${{ format('{0}_python_{1}', image, pythonVersion) }}
 
         pool:
           vmImage: ${{ image }}
@@ -24,14 +24,18 @@ jobs:
             displayName: 'Install build requirements'
 
           - script: python setup.py bdist_wheel
-            displayName: 'build'
+            displayName: 'bdist_wheel'
+
+          - script: python setup.py sdist
+            displayName: 'sdist'
 
           - task: CopyFiles@2
             inputs:
-              targetFolder: $(Build.ArtifactStagingDirectory)
+              SourceFolder: 'dist'
+              TargetFolder: $(Build.ArtifactStagingDirectory)
 
           - task: PublishBuildArtifacts@1
             inputs:
               PathtoPublish: '$(Build.ArtifactStagingDirectory)'
-              ArtifactName: 'dist'
-              publishLocation: 'Container'
+              ArtifactName: "$(Agent.JobName)_x64"
+              PublishLocation: 'Container'

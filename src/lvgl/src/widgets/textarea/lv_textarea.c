@@ -1057,7 +1057,7 @@ static void start_cursor_blink(lv_obj_t * obj)
         lv_anim_set_time(&a, blink_time);
         lv_anim_set_playback_time(&a, blink_time);
         lv_anim_set_values(&a, 1, 0);
-        lv_anim_set_path_cb(&a, lv_anim_path_step, NULL);
+        lv_anim_set_path_cb(&a, lv_anim_path_step);
         lv_anim_set_repeat_count(&a, LV_ANIM_REPEAT_INFINITE);
         lv_anim_start(&a);
     }
@@ -1367,8 +1367,8 @@ static void auto_hide_characters(lv_obj_t * obj)
         lv_anim_set_exec_cb(&a, pwd_char_hider_anim);
         lv_anim_set_time(&a, ta->pwd_show_time);
         lv_anim_set_values(&a, 0, 1);
-        lv_anim_set_path_cb(&a, lv_anim_path_step, NULL);
-        lv_anim_set_ready_cb(&a, pwd_char_hider_anim_ready, NULL);
+        lv_anim_set_path_cb(&a, lv_anim_path_step);
+        lv_anim_set_ready_cb(&a, pwd_char_hider_anim_ready);
         lv_anim_start(&a);
     }
 }

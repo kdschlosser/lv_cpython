@@ -1,6 +1,18 @@
 from typing import Union, Any, Callable, Optional, List  # NOQA
 
-from . import __lib_lvgl as _lib_lvgl  # NOQA
+try:
+    from . import __lib_lvgl as _lib_lvgl  # NOQA
+except ImportError:
+    import __lib_lvgl as _lib_lvgl  # NOQA
+
+_MPY_API = False
+
+
+__version__ = "0.1.1b"
+
+
+def binding_version():
+    return __version__
 
 
 def _get_py_obj(c_obj, c_type):
@@ -42,6 +54,18 @@ def _get_py_obj(c_obj, c_type):
 
         return res
 
+    if c_type + '_' in glob:
+        cls = glob[c_type + '_']
+        if issubclass(cls, _StructUnion):
+            instance = cls()
+            instance._obj = c_obj  # NOQA
+            return instance
+
+        cls = type(c_type, (cls,), {'_obj': c_obj, '_c_type': c_type + ' *'})
+        res = cls(c_obj)
+
+        return res
+
     if isinstance(c_obj, bool):
         return _convert_basic_type(c_obj, c_type)
 
@@ -54,7 +78,7 @@ def _get_py_obj(c_obj, c_type):
     if c_type is None:
         try:
             c_type = _get_c_type(c_obj)
-        except:  # NOQA
+        except Exception:  # NOQA
             return c_obj
 
     try:
@@ -64,7 +88,7 @@ def _get_py_obj(c_obj, c_type):
         array = cls()
         array._obj = c_obj  # NOQA
         return array
-    except:  # NOQA
+    except Exception:  # NOQA
         pass
 
     return c_obj
@@ -77,18 +101,15 @@ def _get_c_obj(py_obj, c_type):
     if py_obj is None:
         return _lib_lvgl.ffi.NULL
 
-    try:
+    if hasattr(py_obj, '_obj'):
         return py_obj._obj  # NOQA
-    except AttributeError:
-        pass
 
     if c_type is not None:
-
         globs = globals()
 
         if c_type.startswith('List'):
             c_type = c_type.split('[')[-1][:-1]
-            cls = type(c_type + '[]', (_Array,), {'_c_type': c_type})
+            cls = type(f'{c_type}[]', (_Array,), {'_c_type': c_type})
             instance = cls()
 
             type_cls = globs[c_type]
@@ -97,30 +118,39 @@ def _get_c_obj(py_obj, c_type):
                 if hasattr(item, '_obj'):
                     continue
 
-                if isinstance(item, dict):
-                    item_inst = type_cls(**item)
-                else:
-                    item_inst = type_cls(item)
-
+                item_inst = (
+                    type_cls(**item) if isinstance(item, dict)
+                    else type_cls(item)
+                )
                 py_obj[i] = item_inst
 
             instance.extend(py_obj)
 
             return instance._obj  # NOQA
 
-        if c_type in globs:
-            cls = globs[c_type]
+        def _instance(_c_type):
+            c = globs[_c_type]
 
             try:
-
                 if isinstance(py_obj, dict):
-                    instance = cls(**py_obj)
+                    ins = c(**py_obj)
                 else:
-                    instance = cls(py_obj)
+                    ins = c(py_obj)
 
-                return instance._obj  # NOQA
-            except:
+                return ins._obj  # NOQA
+            except Exception:  # NOQA
                 pass
+
+
+        if c_type in globs:
+            obj = _instance(c_type)
+            if obj is not None:
+                return obj
+
+        if f'{c_type}_' in globs:
+            obj = _instance(f'{c_type}_')
+            if obj is not None:
+                return obj
 
     if isinstance(py_obj, (int, float)):
         return py_obj
@@ -130,10 +160,7 @@ def _get_c_obj(py_obj, c_type):
     if isinstance(py_obj, tuple):
         py_obj = list(py_obj)
 
-    if isinstance(py_obj, list):
-        return [py_obj]
-
-    return py_obj
+    return [py_obj] if isinstance(py_obj, list) else py_obj
 
 
 def _get_c_type(c_obj):
@@ -166,14 +193,28 @@ class _DefaultArg:
     pass
 
 
+class _AsArrayMixin:
+    _c_type = ''
+
+    @classmethod
+    def as_array(cls, size=None):
+        new_cls = type(
+            cls.__name__ + ('[]' if size is None else f'[{size}]'),
+            (_Array,),
+            {'_c_type': cls._c_type.split(' ')[0]}
+        )
+
+        return new_cls()
+
+
 class _Array(list):
     _c_type = ''
 
     def as_buffer(self, c_type, size=None):
         if size is None:
-            cast = _lib_lvgl.ffi.cast(c_type + '[]', self._obj)
+            cast = _lib_lvgl.ffi.cast(f'{c_type}[]', self._obj)
         else:
-            cast = _lib_lvgl.ffi.cast(c_type + '[{}]'.format(size), self._obj)
+            cast = _lib_lvgl.ffi.cast(f'{c_type}[{size}]', self._obj)
         return _lib_lvgl.ffi.buffer(cast)[:]
 
     @property
@@ -210,7 +251,7 @@ class _Array(list):
                             )
                         except _lib_lvgl.ffi.error:
                             self.__obj = _lib_lvgl.ffi.new(
-                                'lv_' + self._c_type + dim,
+                                f'lv_{self._c_type}{dim}',
                                 c_array
                             )
                     else:
@@ -227,10 +268,7 @@ class _Array(list):
                     [c_array]
                 )
             except _lib_lvgl.ffi.error:
-                self.__obj = _lib_lvgl.ffi.new(
-                    'lv_' + c_type,
-                    [c_array]
-                )
+                self.__obj = _lib_lvgl.ffi.new(f'lv_{c_type}', [c_array])
 
         return self.__obj
 
@@ -261,10 +299,7 @@ class _Array(list):
     @property
     def _dim(self):
         size = len(self)
-        if size == 0:
-            return '[]'
-        else:
-            return '[{0}]'.format(size)
+        return '[]' if size == 0 else '[{0}]'.format(size)
 
     def __init__(self):
         self.__obj = None
@@ -303,7 +338,7 @@ class _Array(list):
     def add_dimension(self) -> "_Array":
         self.__check_locked()
 
-        cls = type(self._c_type + '[]', (_Array,), {'_c_type': self._c_type})
+        cls = type(f'{self._c_type}[]', (_Array,), {'_c_type': self._c_type})
         instance = cls()
         self._array.append(instance)
         return instance
@@ -482,7 +517,7 @@ class _Array(list):
                 self._array.append(py_type)
 
     def as_dict(self):
-        return list(item.as_dict() for item in self)
+        return [item.as_dict() for item in self]
 
     def __str__(self):
         return str(self._array)
@@ -502,31 +537,38 @@ def _convert_basic_type(obj, c_type):
 
     glob = globals()
 
-    if c_type in glob:
-        cls = glob[c_type]
-        cls = type(
+    def _instance(_c_type):
+        c = glob[_c_type]
+        c = type(
             c_type,
-            (cls,),
-            {'_obj': obj, '_c_type': c_type + ' *'}
+            (c,),
+            {'_obj': obj, '_c_type': f'{c_type} *'}
         )
+
         try:
-            instance = cls(obj)
-            return instance
-        except:  # NOQA
-            instance = cls()
-            instance._obj = obj
-            return instance
+            return c()
+        except Exception:  # NOQA
+            ins = c()
+            ins._obj = obj
+            return ins
+
+    if c_type in glob:
+        return _instance(c_type)
+
+    if f'{c_type}_' in glob:
+        return _instance(f'{c_type}_')
 
     if isinstance(obj, bool):
         if c_type != 'bool':
             raise TypeError(
-                'incompatible types "bool" and "{0}"'.format(c_type)
+                f'incompatible types "bool" and "{c_type}"'
             )
+
         cls = type(
             c_type,
             (_Bool,),
-            {'_c_type': c_type + ' *', '_obj': obj}
-            )
+            {'_obj': obj, '_c_type': f'{c_type} *'}
+        )
         return cls(obj)
 
     if isinstance(obj, float):
@@ -535,12 +577,12 @@ def _convert_basic_type(obj, c_type):
                 cls = type(
                     c_type,
                     (_Float,),
-                    {'_c_type': c_type + ' *', '_obj': obj}
+                    {'_obj': obj, '_c_type': f'{c_type} *'}
                 )
                 return cls(obj)
 
         raise TypeError(
-            'incompatible types "float" and "{0}"'.format(c_type)
+            f'incompatible types "float" and "{c_type}"'
         )
 
     if isinstance(obj, bytes) and c_type == 'char':
@@ -549,21 +591,21 @@ def _convert_basic_type(obj, c_type):
     if isinstance(obj, str):
         if c_type != 'char':
             raise TypeError(
-                'incompatible types "str" and "{0}"'.format(c_type)
+                f'incompatible types "str" and "{c_type}"'
             )
 
         cls = type(
             c_type,
             (_String,),
-            {'_c_type': c_type + ' *', '_obj': obj}
+            {'_obj': obj, '_c_type': f'{c_type} *'}
         )
 
         return cls(obj)
 
-    raise TypeError('Unknown type ("{0}")'.format(c_type))
+    raise TypeError(f'Unknown type ("{c_type}")')
 
 
-class _Float(float):
+class _Float(float, _AsArrayMixin):
     _c_type = 'float *'
     _obj = None
 
@@ -575,28 +617,8 @@ class _Float(float):
         instance._obj = value
         return instance
 
-    @classmethod
-    def as_array(cls, size=None):
-        if size is not None:
-            new_cls = type(
-                cls.__name__ + '[{}]'.format(size),
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
 
-            )
-        else:
-            new_cls = type(
-                cls.__name__ + '[]',
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
-
-            )
-
-        return new_cls()
-
-
-class _Integer(int):
-    _c_type = ''
+class _Integer(int, _AsArrayMixin):
     _obj = None
 
     def as_dict(self):
@@ -607,28 +629,8 @@ class _Integer(int):
         instance._obj = value
         return instance
 
-    @classmethod
-    def as_array(cls, size=None):
-        if size is not None:
-            new_cls = type(
-                cls.__name__ + '[{}]'.format(size),
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
 
-            )
-        else:
-            new_cls = type(
-                cls.__name__ + '[]',
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
-
-            )
-
-        return new_cls()
-
-
-class _String(str):
-    _c_type = ''
+class _String(str, _AsArrayMixin):
     _obj = None
 
     def as_dict(self):
@@ -639,27 +641,8 @@ class _String(str):
         instance._obj = value.encode('utf-8')
         return instance
 
-    @classmethod
-    def as_array(cls, size=None):
-        if size is not None:
-            new_cls = type(
-                cls.__name__ + '[{}]'.format(size),
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
 
-            )
-        else:
-            new_cls = type(
-                cls.__name__ + '[]',
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
-
-            )
-
-        return new_cls()
-
-
-class _Bool(int):
+class _Bool(int, _AsArrayMixin):
     _c_type = 'bool *'
     _obj = None
 
@@ -671,27 +654,8 @@ class _Bool(int):
         instance._obj = value
         return instance
 
-    @classmethod
-    def as_array(cls, size=None):
-        if size is not None:
-            new_cls = type(
-                cls.__name__ + '[{}]'.format(size),
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
 
-            )
-        else:
-            new_cls = type(
-                cls.__name__ + '[]',
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
-
-            )
-
-        return new_cls()
-
-
-class void(object):
+class void(_AsArrayMixin):
     _c_type = 'void *'
 
     def as_dict(self):
@@ -702,39 +666,20 @@ class void(object):
             self._obj = _lib_lvgl.ffi.cast(self._c_type, value)
             self.ctype = _get_c_type(value)
 
-        except:  # NOQA
+        except Exception:  # NOQA
             c_obj = _get_c_obj(value, None)
 
             try:
                 self._obj = _lib_lvgl.ffi.cast(self._c_type, c_obj)
                 self.ctype = _get_c_type(c_obj)
                 value = c_obj
-            except:  # NOQA
+            except Exception:  # NOQA
                 self._obj = value
 
         self.__original__object__ = value
 
     def __str__(self):
-        return '(void *) ({})'.format(self.ctype)
-
-    @classmethod
-    def as_array(cls, size=None):
-        if size is not None:
-            new_cls = type(
-                cls.__name__ + '[{}]'.format(size),
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
-
-            )
-        else:
-            new_cls = type(
-                cls.__name__ + '[]',
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
-
-            )
-
-        return new_cls()
+        return f'(void *) ({self.ctype})'
 
 
 class char(_String):
@@ -792,7 +737,48 @@ class size_t(_Integer):
     _c_type = 'size_t *'
 
 
-class _StructUnion(object):
+
+# This class checks to see if wrapper classes are being used by
+# the mpy module. The reason why this meta class exists is so that objects
+# comming from C code get redirected to those wrapper classes instead of to
+# the C API classes. If the redirection does not occur then the methods in
+# the wraapper classes would not be accessable.
+# This class checks to see if wrapper classes are being used by
+# the mpy module. The reason why this meta class exists is so that objects
+# comming from C code get redirected to those wrapper classes instead of to
+# the C API classes. If the redirection does not occur then the methods in
+# the wraapper classes would not be accessable.
+class _StructUnionMeta(type):
+    _wrapped_classes = {}
+    _classes = {}
+    _calling_from_meta = False
+
+    def __init__(cls, name, bases, dct):
+        super().__init__(name, bases, dct)
+
+        if '.mpy.' in str(bases[0]) or f'lvgl.{name}' in str(bases[0]):
+            if name not in _StructUnionMeta._wrapped_classes:
+                _StructUnionMeta._wrapped_classes[name] = cls
+
+    def __call__(cls, *args, **kwargs):
+        name = cls.__name__
+
+        if not _StructUnionMeta._calling_from_meta:
+            if not cls.__module__.endswith('mpy'):
+                if name.endswith('_t') and name[:-2] in _StructUnionMeta._wrapped_classes:
+                    cls = _StructUnionMeta._wrapped_classes[name[:-2]]  # NOQA
+                elif name.startswith('_') and name[1:] in _StructUnionMeta._wrapped_classes:
+                    cls = _StructUnionMeta._wrapped_classes[name[1:]]  # NOQA
+                elif name in _StructUnionMeta._wrapped_classes:
+                    cls = _StructUnionMeta._wrapped_classes[name]  # NOQA
+
+        _StructUnionMeta._calling_from_meta = True
+        instance = super(_StructUnionMeta, cls).__call__(*args, **kwargs)
+        _StructUnionMeta._calling_from_meta = False
+        return instance
+
+
+class _StructUnion(_AsArrayMixin, metaclass=_StructUnionMeta):
     _c_type = ''
 
     @classmethod
@@ -804,29 +790,10 @@ class _StructUnion(object):
 
     def as_buffer(self, c_type, size=None):
         if size is None:
-            cast = _lib_lvgl.ffi.cast(c_type + '[]', self._obj)
+            cast = _lib_lvgl.ffi.cast(f'{c_type}[]', self._obj)
         else:
-            cast = _lib_lvgl.ffi.cast(c_type + '[{}]'.format(size), self._obj)
+            cast = _lib_lvgl.ffi.cast(f'{c_type}[{size}]', self._obj)
         return _lib_lvgl.ffi.buffer(cast)[:]
-
-    @classmethod
-    def as_array(cls, size=None):
-        if size is not None:
-            new_cls = type(
-                cls.__name__ + '[{}]'.format(size),
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
-
-            )
-        else:
-            new_cls = type(
-                cls.__name__ + '[]',
-                (_Array,),
-                {'_c_type': cls._c_type.split(' ')[0]}
-
-            )
-
-        return new_cls()
 
     def __init__(self, **kwargs):
         self._obj = _lib_lvgl.ffi.new(self._c_type)
@@ -852,16 +819,24 @@ class _StructUnion(object):
         return py_obj
 
     def _set_field(self, field_name, py_obj, c_type):
+        def _setattr():
+            setattr(self._obj, field_name, c_obj)
+            self.__dict__['__py_{0}__'.format(field_name)] = py_obj
+            self.__dict__['__c_{0}__'.format(field_name)] = c_obj
+
+
+        if isinstance(py_obj, list):
+            c_obj = [item.as_dict() for item in py_obj]
+            _setattr()
+            return
+
         c_obj = _get_c_obj(py_obj, c_type)
         if isinstance(c_obj, bytes):
             c_obj = _lib_lvgl.ffi.from_buffer(
-                c_type.split(' ')[0] + '[{}]'.format(len(c_obj)),
-                bytearray(c_obj)
+                c_type.split(' ')[0] + f'[{len(c_obj)}]', bytearray(c_obj)
             )
 
-        setattr(self._obj, field_name, c_obj)
-        self.__dict__['__py_{0}__'.format(field_name)] = py_obj
-        self.__dict__['__c_{0}__'.format(field_name)] = c_obj
+        _setattr()
 
     def as_dict(self):
         res = {}
