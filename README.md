@@ -1,4 +1,4 @@
-lv_bindings_cpython
+![image info](./assets/logo_text.png) 
 ===================
 ____________________________
 
