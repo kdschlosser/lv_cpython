@@ -1,5 +1,5 @@
 ![image info](./assets/logo_text.png) 
-===================
+
 ____________________________
 
 CPython bindings to the LVGL graphics framework.
@@ -34,28 +34,21 @@ the command `pip install lvgl`
 
 What can it be used for
 ------------------------
-_____________________________
 
-***MCU Development***
-_______________________________
-Having this library eliminates the compile/flash/test over and over again 
+- ***MCU Development***: Having this library eliminates the compile/flash/test over and over again 
 during the development cycle. you are able to develop a GUI in a much shorter 
 time frame because of the elimination of having to compile and flash. you can 
 simply run the code.
 
 
-***Desktop use***
-_______________________________
-It can be used in combination with your favorite  Python GUI framework or it 
-can also be used by itself.
-
-On Microsoft Windows PC's you can use LVGL to create OSD type graphics 
+- ***Desktop use***: It can be used in combination with your favorite  Python GUI framework or it 
+can also be used by itself. 
+  <br/><br/>
+  On Microsoft Windows PC's you can use LVGL to create OSD type graphics 
 that have transparent backgrounds and no title bars, menus and window frames.
 
 
-***Over the Internet***
-_____________________________
-It can also be used as a server side graphics framework over javascript. the 
+- ***Over the Internet***: It can also be used as a server side graphics framework over javascript. the 
 frame buffer data can easily be sent over a socket connection and be rendered 
 using javascript on a clients computer.
 
@@ -63,7 +56,6 @@ using javascript on a clients computer.
 
 How to use
 ----------
-__________________
 
 If you are familiar with LVGL then you will be glad to know there aare 2 API's
 available to this binding. One is the C style API and the other is the MicroPython
@@ -79,15 +71,17 @@ API then you would code the import `import lvgl.mpy as lv`.
 There is special code that has to be used to aactivate the "display" and also 
 to update LVGL. After you import LVGL the following code needs to be added.
 
+```python
+import lvgl as lv
 
-    DISPLAY_WIDTH = 480
-    DISPLAY_HEIGHT = 320
+DISPLAY_WIDTH = 480
+DISPLAY_HEIGHT = 320
 
-    lv.init()
-    disp = lv.sdl_window_create(DISPLAY_WIDTH, DISPLAY_HEIGHT)
-    mouse = lv.sdl_mouse_create()
-    keyboard = lv.sdl_keyboard_create()
-
+lv.init()
+disp = lv.sdl_window_create(DISPLAY_WIDTH, DISPLAY_HEIGHT)
+mouse = lv.sdl_mouse_create()
+keyboard = lv.sdl_keyboard_create()
+```
 
 you can change the `DISPLAY_WIDTH` and `DISPLAY_HEIGHT` variables to whatever 
 you want to use.
@@ -96,19 +90,19 @@ That takes care of setting up the display. Now to get LVGL to update and also
 to keep the prograam running this is the "main loop" of the prograam. This has 
 to be placed aat the very end of your code.
 
+```python
+import time  # NOQA
 
-    import time  # NOQA
-
-    start = time.time()
+start = time.time()
     
-    while True:
-        stop = time.time()
-        diff = int((stop * 1000) - (start * 1000))
-        if diff >= 1:
-            start = stop
-            lv.tick_inc(diff)
-            lv.task_handler()
-
+while True:
+    stop = time.time()
+    diff = int((stop * 1000) - (start * 1000))
+    if diff >= 1:
+        start = stop
+        lv.tick_inc(diff)
+        lv.task_handler()
+```
 
 The code above is identical for both APIs. It also has to be removed before 
 flashing if using the MicroPython API and beforer porting if using the C API.
