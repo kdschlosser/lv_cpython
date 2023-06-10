@@ -2,6 +2,7 @@
 
 import os
 import sys
+import re
 from pycparser import c_generator  # NOQA
 
 from . import utils
@@ -162,23 +163,29 @@ class Enumerator:
         _lib_lvgl.lib.{1}  # NOQA
     )
 )'''
+    str_enum_pattern = re.compile('^_LV_STR_(.+)')
 
     def __init__(self, name, value):  # NOQA
         self.name = name
         self.value = value
 
     def gen_py(self):
-        name = format_name(self.name)
+        if self.str_enum_pattern.match(self.name):
+            name = self.str_enum_pattern.match(self.name).group(1)
+            o_name = name = f'LV_{name}'
+        else:
+            name = format_name(self.name)
+            o_name = self.name
 
         type_ = find_int_type(name)
 
         if type_:
-            code = self.template1.format(name, type_, self.name)
+            code = self.template1.format(name, type_, o_name)
             py_enums.append(code)
 
             return name, type_, code
 
-        return name, type_, self.template2.format(name, self.name)
+        return name, type_, self.template2.format(name, o_name)
 
 
 class EnumeratorList:
@@ -315,7 +322,6 @@ class IdentifierType:
             (None, None, None) if self.names is None
             else (None, None, str(self))
         )
-
 
     def get_raw_type(self):
         if self.names is not None:
@@ -676,7 +682,7 @@ class Struct:
         _ = self.user_data
         
         cb_store = self.__dict__['__cb_store__']
-        return cb_store.get('{field_type}', None)
+        return cb_store.get('{field_type_stripped}', None)
 
     @{field_name}.setter
     def {field_name}(self, value: {field_type}):
@@ -684,19 +690,12 @@ class Struct:
         cb_store = self.__dict__['__cb_store__']
 
         if '{field_type}' not in cb_store:
-            cb_store['{field_type}'] = value
+            cb_store['{field_type_stripped}'] = value
             c_func = getattr(_lib_lvgl.lib, 'py_{full_field_type}')
-            cb_store['{field_type}.c_func'] = c_func
+            cb_store['{field_type_stripped}.c_func'] = c_func
             self._obj.{field_name} = c_func
         else:
-            cb_store['{field_type}'] = value'''
-
-    int_param_template = (
-        '{field_name}: Optional[{field_type}] = 0'
-    )
-    bool_param_template = (
-        '{field_name}: Optional[{field_type}] = False'
-    )
+            cb_store['{field_type_stripped}'] = value'''
 
     param_template = (
         '{field_name}: Optional[{field_type}] = _DefaultArg'
@@ -794,7 +793,8 @@ class {struct_name}(_StructUnion): {nested_structs}
                         self.callback_property_template.format(
                             field_name=name,
                             field_type=type_,
-                            full_field_type=full_field_type
+                            full_field_type=full_field_type,
+                            field_type_stripped=type_.replace('"', '')
                         )
                     )
 
@@ -821,29 +821,12 @@ class {struct_name}(_StructUnion): {nested_structs}
                             )
                         )
 
-                    if str(type_) == 'bool':
-                        params.append(
-                            self.bool_param_template.format(
-                                field_name=name,
-                                field_type=type_
-                            )
+                    params.append(
+                        self.param_template.format(
+                            field_name=name,
+                            field_type=type_
                         )
-
-                    elif str(type_).replace('"', '') in int_types:
-                        params.append(
-                            self.int_param_template.format(
-                                field_name=name,
-                                field_type=type_
-                            )
-                        )
-                    else:
-
-                        params.append(
-                            self.param_template.format(
-                                field_name=name,
-                                field_type=type_
-                            )
-                        )
+                    )
 
             else:
                 raise RuntimeError(str(type(field)))
@@ -1473,7 +1456,9 @@ class {name}({type}):
                             py_enums.append(code)
                         return
                     else:
-                        raise RuntimeError
+                        code = code.format(type='str')
+                        code = code.replace('LV_SYMBOL', 'SYMBOL', 1).replace('\nLV_SYMBOL', '\nSYMBOL')
+                        # raise RuntimeError
 
                 if name and type_ and name != type_:
                     if name not in py_int_type_names:

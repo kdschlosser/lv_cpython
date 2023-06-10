@@ -210,6 +210,16 @@ def visit_Typedef(self, n):
     return s
 
 
+def visit_Enum(self, n):
+    res = self._generate_struct_union_enum(n, name='enum')
+    if '_LV_STR_' in res:
+        res = res.replace('enum', '').replace('{', '').replace(',', '').replace('}', '')
+        res = ['extern const char LV_{0}[4] = LV_{0};'.format(item.strip().replace('_LV_STR_', '')) for item in res.split('\n') if item.strip()]
+        res = '\n'.join(res)
+
+    return res
+
+
 CDEF = """
 #define INT32_MAX 2147483647
 typedef char* va_list;
@@ -240,11 +250,15 @@ build.ast = ast
 old_visit = c_generator.CGenerator.visit
 old_visit_FuncDecl = c_generator.CGenerator.visit_FuncDecl
 old_visit_Typedef = c_generator.CGenerator.visit_Typedef
+old_visit_Enum = c_generator.CGenerator.visit_Enum
+
 
 # putting the updated functions in place
 setattr(c_generator.CGenerator, 'visit', visit)
 setattr(c_generator.CGenerator, 'visit_FuncDef', visit_FuncDef)
 setattr(c_generator.CGenerator, 'visit_Typedef', visit_Typedef)
+setattr(c_generator.CGenerator, 'visit_Enum', visit_Enum)
+
 
 generator = c_generator.CGenerator()
 ffibuilder = cffi.FFI()
@@ -257,6 +271,7 @@ cdef = CDEF.format(ast=str(generator.visit(ast)))
 setattr(c_generator.CGenerator, 'visit', old_visit)
 setattr(c_generator.CGenerator, 'visit_FuncDecl', old_visit_FuncDecl)
 setattr(c_generator.CGenerator, 'visit_Typedef', old_visit_Typedef)
+setattr(c_generator.CGenerator, 'visit_Enum', old_visit_Enum)
 
 # my monkey patchs were not perfect and when I removed all of the
 # typedefs put in place from the fake lib c header files

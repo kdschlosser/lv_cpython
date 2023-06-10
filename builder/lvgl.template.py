@@ -1,14 +1,14 @@
 from typing import Union, Any, Callable, Optional, List  # NOQA
 
 try:
-    from . import __lib_lvgl as _lib_lvgl  # NOQA
-except ImportError:
     import __lib_lvgl as _lib_lvgl  # NOQA
-
-_MPY_API = False
+except ImportError:
+    from . import __lib_lvgl as _lib_lvgl  # NOQA
 
 
 __version__ = "0.1.1b"
+
+_MPY = False
 
 
 def binding_version():
@@ -222,12 +222,14 @@ class _Array(list):
         if self.__obj is None:
             c_array = []
             dim = self._dim
+            self._dirty = True
 
             for item in self._array:
+                if isinstance(item, _StructUnion):
+                    c_array.append(item.as_dict())
+                else:
+                    c_array.append(_get_c_obj(item, self._c_type))
 
-                c_obj = _get_c_obj(item, self._c_type)
-                py_obj = _get_py_obj(c_obj, self._c_type)
-                c_array.append(py_obj.as_dict())
                 if isinstance(item, _Array):
                     dim += item._dim
 
@@ -304,21 +306,32 @@ class _Array(list):
     def __init__(self):
         self.__obj = None
         self._array = []
+        self._dirty = False
         list.__init__(self)
 
     def __len__(self):
+        self.__handle_dirty()
         return len(self._array)
 
     def __iter__(self):
+        self.__handle_dirty()
         return iter(self._array)
 
     def __getitem__(self, item):
+        self.__handle_dirty()
         return self._array[item]
 
     def __setitem__(self, key, value):
         self.__check_locked()
 
         self._array[key] = value
+
+    def __handle_dirty(self):
+        if self._dirty:
+            obj = self._obj
+            self.__obj = None
+            self._obj = obj
+            self._dirty = False
 
     @property
     def is_locked(self):
@@ -358,6 +371,8 @@ class _Array(list):
         )
 
         instance = cls()
+
+        self.__handle_dirty()
 
         if self.__class__.__name__.count('[') > 1:
             for item in self._array:
@@ -454,6 +469,7 @@ class _Array(list):
         return self
 
     def __contains__(self, obj: Any) -> bool:
+        self.__handle_dirty()
         return obj in self._array
 
     def __reversed__(self) -> "_Array":
@@ -462,21 +478,27 @@ class _Array(list):
         return self
 
     def __gt__(self, x: "_Array") -> bool:
+        self.__handle_dirty()
         return self._array > x._array
 
     def __ge__(self, x: "_Array") -> bool:
+        self.__handle_dirty()
         return self._array >= x._array
 
     def __lt__(self, x: "_Array") -> bool:
+        self.__handle_dirty()
         return self._array < x._array
 
     def __le__(self, x: "_Array") -> bool:
+        self.__handle_dirty()
         return self._array <= x._array
 
     def __eq__(self, other: "_Array") -> bool:
+        self.__handle_dirty()
         return self._array == other._array
 
     def __ne__(self, other: "_Array") -> bool:
+        self.__handle_dirty()
         return not self.__eq__(other)
 
     def extend(self, obj: Union[list, "_Array"]) -> None:
@@ -505,18 +527,11 @@ class _Array(list):
                 dim.append(item)
 
             return
-        try:
-            if self._c_type in (
-            py_obj._c_type, py_obj.__class__.__name__):  # NOQA
-                self._array.append(py_obj)
-                return
 
-        except AttributeError:
-            if isinstance(py_obj, (int, str, float, bytes, bool)):
-                py_type = _convert_basic_type(py_obj, self._c_type)
-                self._array.append(py_type)
+        self._array.append(py_obj)
 
     def as_dict(self):
+        self.__handle_dirty()
         return [item.as_dict() for item in self]
 
     def __str__(self):
@@ -754,9 +769,13 @@ class _StructUnionMeta(type):
     _calling_from_meta = False
 
     def __init__(cls, name, bases, dct):
+        global _MPY
+
         super().__init__(name, bases, dct)
 
         if '.mpy.' in str(bases[0]) or f'lvgl.{name}' in str(bases[0]):
+            _MPY = True
+
             if name not in _StructUnionMeta._wrapped_classes:
                 _StructUnionMeta._wrapped_classes[name] = cls
 
@@ -769,11 +788,16 @@ class _StructUnionMeta(type):
                     cls = _StructUnionMeta._wrapped_classes[name[:-2]]  # NOQA
                 elif name.startswith('_') and name[1:] in _StructUnionMeta._wrapped_classes:
                     cls = _StructUnionMeta._wrapped_classes[name[1:]]  # NOQA
+                elif name.startswith('_') and name.endswith('_t') and name[1:-2] in _StructUnionMeta._wrapped_classes:
+                    cls = _StructUnionMeta._wrapped_classes[name[1:-2]]  # NOQA
                 elif name in _StructUnionMeta._wrapped_classes:
                     cls = _StructUnionMeta._wrapped_classes[name]  # NOQA
 
         _StructUnionMeta._calling_from_meta = True
-        instance = super(_StructUnionMeta, cls).__call__(*args, **kwargs)
+        try:
+            instance = super(_StructUnionMeta, cls).__call__(*args, **kwargs)
+        except TypeError:
+            instance = super(_StructUnionMeta, cls).__call__(_DefaultArg)
         _StructUnionMeta._calling_from_meta = False
         return instance
 
@@ -820,10 +844,20 @@ class _StructUnion(_AsArrayMixin, metaclass=_StructUnionMeta):
 
     def _set_field(self, field_name, py_obj, c_type):
         def _setattr():
-            setattr(self._obj, field_name, c_obj)
+            try:
+                setattr(self._obj, field_name, c_obj)
+            except TypeError:
+                size = len(py_obj)
+                cast = _lib_lvgl.ffi.cast(f'{c_type}[{size}]', c_obj)
+                setattr(self._obj, field_name, cast)
             self.__dict__['__py_{0}__'.format(field_name)] = py_obj
             self.__dict__['__c_{0}__'.format(field_name)] = c_obj
 
+        if isinstance(py_obj, _Array):
+            c_type = c_type.split('[')[-1][:-1]
+            c_obj = py_obj._obj  # NOQA
+            _setattr()
+            return
 
         if isinstance(py_obj, list):
             c_obj = [item.as_dict() for item in py_obj]
@@ -846,5 +880,246 @@ class _StructUnion(_AsArrayMixin, metaclass=_StructUnionMeta):
 
         return res
 
+
 _PY_C_TYPES = (_Float, _Integer, _String, _StructUnion)
 _global_cb_store = _CBStore()
+
+
+def main_loop():
+
+    if not is_initialized():  # NOQA
+        raise RuntimeError('lvgl is not initialized')
+
+    import time
+
+    start = time.time()
+
+    while True:
+        stop = time.time()
+        diff = int((stop * 1000) - (start * 1000))
+
+        if diff >= 2:
+            start = stop
+            tick_inc(diff)  # NOQA
+            task_handler()  # NOQA
+
+
+class __fs_driver(object):
+
+    def __init__(self):
+        import sys
+
+        sys.modules['fs_driver'] = self
+        self.__open_files = []
+
+    def __fs_open_cb(self, _, path, mode):
+        if mode == FS_MODE_WR:  # NOQA
+            p_mode = 'wb'
+        elif mode == FS_MODE_RD:  # NOQA
+            p_mode = 'rb'
+        elif mode == FS_MODE_WR | FS_MODE_RD:  # NOQA
+            p_mode = 'rb+'
+        else:
+            raise RuntimeError(
+                "fs_open_callback() - "
+                "open mode error, {0} is invalid mode".format(mode)
+            )
+
+        try:
+            f = open(path, p_mode)
+        except OSError as e:
+            raise RuntimeError(
+                "fs_open_callback('{0}')".format(path)
+            ) from e
+
+        res = dict(file=f, path=path)
+        handle = _lib_lvgl.ffi.new_handle(res)
+        self.__open_files.append(handle)
+
+        return handle
+
+    def __fs_close_cb(self, _, fs_file):
+        file_cont = _lib_lvgl.ffi.from_handle(fs_file)
+
+        try:
+            file_cont['file'].close()
+        except OSError as e:
+            raise RuntimeError(
+                "fs_close_callback('{0}')".format(file_cont['path'])
+            ) from e
+
+        self.__open_files.remove(fs_file)
+
+        return FS_RES_OK  # NOQA
+
+    def __fs_read_cb(  # NOQA
+            self,
+        _,
+        fs_file,
+        buf,
+        num_bytes_to_read,
+        num_bytes_read
+    ):
+        file_cont = _lib_lvgl.ffi.from_handle(fs_file)
+
+        try:
+            data = file_cont['file'].read(num_bytes_to_read)
+            num_bytes_read[0] = len(data)
+            _lib_lvgl.ffi.buffer(buf)[:] = bytes(data)
+
+        except OSError as e:
+            raise RuntimeError(
+                "fs_read_callback('{0}')".format(file_cont['path'])
+            ) from e
+
+        return FS_RES_OK  # NOQA
+
+    def __fs_seek_cb(self, _, fs_file, pos, whence):  # NOQA
+        file_cont = _lib_lvgl.ffi.from_handle(fs_file)
+
+        try:
+            file_cont['file'].seek(pos, whence)
+        except OSError as e:
+            raise RuntimeError(
+                "fs_seek_callback('{0}')".format(file_cont['path'])
+            ) from e
+
+        return FS_RES_OK  # NOQA
+
+    def __fs_tell_cb(self, _, fs_file, pos):  # NOQA
+        file_cont = _lib_lvgl.ffi.from_handle(fs_file)
+
+        try:
+            tpos = file_cont['file'].tell()
+            pos[0] = tpos
+        except OSError as e:
+            raise RuntimeError(
+                "fs_tell_callback('{0}')".format(file_cont['path'])
+            ) from e
+
+        return FS_RES_OK  # NOQA
+
+    def __fs_write_cb(self, _, fs_file, buf, btw, bw):  # NOQA
+        file_cont = _lib_lvgl.ffi.from_handle(fs_file)
+
+        try:
+            num_bytes = file_cont['file'].write(buf[:btw])
+            bw[0] = num_bytes
+        except OSError as e:
+            raise RuntimeError(
+                "fs_write_callback('{0}')".format(file_cont['path'])
+            ) from e
+
+        return FS_RES_OK  # NOQA
+
+    def fs_register(self, fs_drv, letter, cache_size=500):
+        fs_drv.init()
+        fs_drv.letter = ord(letter)
+        fs_drv.open_cb = self.__fs_open_cb
+        fs_drv.read_cb = self.__fs_read_cb
+        fs_drv.write_cb = self.__fs_write_cb
+        fs_drv.seek_cb = self.__fs_seek_cb
+        fs_drv.tell_cb = self.__fs_tell_cb
+        fs_drv.close_cb = self.__fs_close_cb
+
+        if cache_size >= 0:
+            fs_drv.cache_size = cache_size
+
+        fs_drv.register()
+
+
+__fs_driver()
+
+
+# This next code block overrides the default imnport machinery in Python
+# This allows me to inject a non existant module into the import system.
+# the "dynamic" module being injected is the display_driver module that runs
+# the code to create the SDL window, mouse and keyboard drivers
+
+__SDL_DISPLAY = None
+
+import sys
+import os
+
+from importlib.abc import (
+    Loader as __Loader,
+    MetaPathFinder as __MetaPathFinder
+)
+
+from importlib.util import (  # NOQA
+    spec_from_file_location as __spec_from_file_location
+)
+
+
+class __MyMetaFinder(__MetaPathFinder):
+
+    def find_spec(self, fullname, path, target=None):
+        if fullname == 'display_driver':
+            return globals()['__spec_from_file_location'](
+                fullname,
+                f"{fullname}.py",
+                loader=globals()['__MyLoader'](fullname),
+                submodule_search_locations=None
+            )
+
+        if path is None or path == "":
+            path = [os.getcwd()]  # top level import --
+        if "." in fullname:
+            *parents, name = fullname.split(".")
+        else:
+            name = fullname
+        for entry in path:
+            if os.path.isdir(os.path.join(entry, name)):
+                # this module has child modules
+                filename = os.path.join(entry, name, "__init__.py")
+                submodule_locations = [os.path.join(entry, name)]
+            else:
+                filename = os.path.join(entry, f"{name}.py")
+                submodule_locations = None
+            if not os.path.exists(filename):
+                continue
+
+            return globals()['__spec_from_file_location'](
+                fullname,
+                filename,
+                loader=globals()['__MyLoader'](filename),
+                submodule_search_locations=submodule_locations
+            )
+
+        return None  # we don't know how to import this
+
+
+class __MyLoader(__Loader):
+
+    def __init__(self, filename):
+        self.filename = filename
+
+    def create_module(self, spec):
+        return None  # use default module creation semantics
+
+    def exec_module(self, module):
+        if self.filename != 'display_driver':
+            with open(self.filename) as f:
+                data = f.read()
+        else:
+            if globals()['__SDL_DISPLAY'] is None:
+                data = [
+                    'import lvgl',
+                    'if not lvgl.is_initialized():',
+                    '    lvgl.init()',
+                    '',
+                    'display = lvgl.sdl_window_create(480, 320)',
+                    'mouse = lvgl.sdl_mouse_create()',
+                    'keyboard = lvgl.sdl_keyboard_create()'
+                ]
+
+                data = '\n'.join(data)
+            else:
+                data = ''
+
+        exec(data, vars(module))
+
+
+sys.meta_path.insert(0, __MyMetaFinder())
+
+del sys
