@@ -155,7 +155,7 @@ void _lv_img_decoder_init(void);
  * @return LV_RES_OK: success; LV_RES_INV: wasn't able to get info about the image
  */
 
-lv_res_t lv_img_decoder_get_info(const void src[], lv_img_header_t * header);
+lv_res_t lv_img_decoder_get_info(const void * src, lv_img_header_t * header);
 
 /**
  * Open an image.
@@ -170,7 +170,7 @@ lv_res_t lv_img_decoder_get_info(const void src[], lv_img_header_t * header);
  * @return LV_RES_OK: opened the image. `dsc->img_data` and `dsc->header` are set.
  *         LV_RES_INV: none of the registered image decoders were able to open the image.
  */
-lv_res_t lv_img_decoder_open(lv_img_decoder_dsc_t * dsc, const void src[], lv_color_t color, int32_t frame_id);
+lv_res_t lv_img_decoder_open(lv_img_decoder_dsc_t * dsc, const void * src, lv_color_t color, int32_t frame_id);
 
 /**
  * Read a line from an opened image

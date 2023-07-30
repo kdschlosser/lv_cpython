@@ -86,7 +86,7 @@ void lv_draw_sw_mask_init(void)
 }
 
 
-LV_ATTRIBUTE_FAST_MEM lv_draw_sw_mask_res_t lv_draw_sw_mask_apply(void * list[], lv_opa_t * mask_buf, lv_coord_t abs_x,
+LV_ATTRIBUTE_FAST_MEM lv_draw_sw_mask_res_t lv_draw_sw_mask_apply(void ** list, lv_opa_t * mask_buf, lv_coord_t abs_x,
                                                                   lv_coord_t abs_y,
                                                                   lv_coord_t len)
 {

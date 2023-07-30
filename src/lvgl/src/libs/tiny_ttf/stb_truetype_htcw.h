@@ -1247,7 +1247,7 @@ static stbtt_uint32 stbtt__buf_get(stbtt__buf * b, int n)
 #ifdef STBTT_STREAM_TYPE
     static stbtt__buf stbtt__new_buf(STBTT_STREAM_TYPE s, size_t size)
 #else
-    static stbtt__buf stbtt__new_buf(const void p[], size_t size)
+    static stbtt__buf stbtt__new_buf(const void * p, size_t size)
 #endif
 {
     stbtt__buf r;

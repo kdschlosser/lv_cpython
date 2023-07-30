@@ -47,7 +47,7 @@ typedef struct _gd_GIF {
 
 gd_GIF * gd_open_gif_file(const char * fname);
 
-gd_GIF * gd_open_gif_data(const void data[]);
+gd_GIF * gd_open_gif_data(const void * data);
 
 void gd_render_frame(gd_GIF * gif, uint8_t buffer[]);
 

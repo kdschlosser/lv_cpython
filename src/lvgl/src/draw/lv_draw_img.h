@@ -84,7 +84,7 @@ void lv_draw_layer(struct _lv_layer_t * layer, const lv_draw_img_dsc_t * dsc, co
  *  - or a symbol (e.g. LV_SYMBOL_CLOSE)
  * @return type of the image source LV_IMG_SRC_VARIABLE/FILE/SYMBOL/UNKNOWN
  */
-lv_img_src_t lv_img_src_get_type(const void src[]);
+lv_img_src_t lv_img_src_get_type(const void * src);
 
 #ifdef __cplusplus
 } /*extern "C"*/

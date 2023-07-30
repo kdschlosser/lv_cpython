@@ -76,7 +76,7 @@ lv_obj_t * lv_animimg_create(lv_obj_t * parent);
  * @param dsc pointer to a series images
  * @param num images' number
  */
-void lv_animimg_set_src(lv_obj_t * img, const void * dsc[], uint8_t num);
+void lv_animimg_set_src(lv_obj_t * img, const void ** dsc, uint8_t num);
 
 /**
  * Startup the image animation.
