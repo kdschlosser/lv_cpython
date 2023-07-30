@@ -67,7 +67,7 @@ def visit(self, node):
     if last_node is None:
         last_node = node
     elif last_node == node:
-        print('ERROR:', node)
+        # ('ERROR:', node)
         return ''
 
     ret = getattr(self, method, self.generic_visit)(node)
@@ -246,9 +246,9 @@ def visit_Decl(self, n, no_type=False):
     <class 'pycparser.c_ast.Decl'>: extern const <class 'pycparser.c_ast.IdentifierType'>: lv_font_t lv_font_montserrat_8;
     '''
     if isinstance(n.type, c_ast.TypeDecl):
-        print(n.name)
-        print(n.type.type)
-        print(n.type.declname)
+        # print(n.name)
+        # print(n.type.type)
+        # print(n.type.declname)
 
         if n.name.startswith('lv_font_'):
             type_ = n.type.type.names[0]
@@ -390,7 +390,7 @@ class Enumerator(c_ast.Enumerator):
         try:
             value = generator.visit(self.value)
         except RecursionError:
-            print('ENUM_ERROR:', name)
+            # print('ENUM_ERROR:', name)
             return None, None, ''
 
         if not value.strip():
@@ -948,7 +948,7 @@ class FuncDecl(c_ast.FuncDecl):
                 continue
 
             if p_type is None:
-                print('nested callback func:', param, type(param), p_name, name, o_func_name)
+                # print('nested callback func:', param, type(param), p_name, name, o_func_name)
                 continue
 
             if 'va_list' in p_type:
@@ -960,7 +960,7 @@ class FuncDecl(c_ast.FuncDecl):
             if name in py_callback_names:
                 return None, None, None, 0
 
-            print('CALLBACK:', name, o_func_name)
+            # print('CALLBACK:', name, o_func_name)
             return None, None, None, 0
 
         func.restype = FunctionRetval(type_, r_ptr)
@@ -1620,7 +1620,7 @@ class RootTypedef(Typedef):
                         return
 
         t_name = format_name(self.name)
-        print(type(self.type))
+        # print(type(self.type))
         name, type_, code, ptr = self.type.gen_py()
 
         if name == 'vaformat_t':
@@ -2048,7 +2048,8 @@ class Pragma(c_ast.Pragma):
         super().__init__(string, coord)
 
     def gen_py(self):
-        print('Pragma: ', self.string, self.coord)
+        # print('Pragma: ', self.string, self.coord)
+        pass
 
 
 class RootPragma(Pragma):
@@ -2059,7 +2060,7 @@ class RootPragma(Pragma):
     def gen_py(self):
         global pragma_pack
 
-        print(self.string)
+        # print(self.string)
         if '(' not in self.string:
             return
 
@@ -2079,7 +2080,8 @@ class StaticAssert(c_ast.StaticAssert):
         super().__init__(cond, message, coord)
 
     def gen_py(self):
-        print('StaticAssert: ', self.cond, self.message, self.coord)
+        # print('StaticAssert: ', self.cond, self.message, self.coord)
+        pass
 
 
 class RootStaticAssert(StaticAssert):
@@ -2088,7 +2090,8 @@ class RootStaticAssert(StaticAssert):
         super().__init__(cond, message, coord)
 
     def gen_py(self):
-        print('RootStaticAssert: ', self.cond, self.message, self.coord)
+        # print('RootStaticAssert: ', self.cond, self.message, self.coord)
+        pass
 
 
 

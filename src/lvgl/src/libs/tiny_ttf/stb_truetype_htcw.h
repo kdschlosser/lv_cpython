@@ -621,7 +621,7 @@ typedef struct stbrp_rect stbrp_rect;
 /// @endcond
 
 #endif
-STBTT_DEF int  stbtt_PackBegin(stbtt_pack_context * spc, unsigned char pixels[], int width, int height,
+STBTT_DEF int  stbtt_PackBegin(stbtt_pack_context * spc, unsigned char * pixels, int width, int height,
                                int stride_in_bytes, int padding, void * alloc_context);
 
 // Initializes a packing context stored in the passed-in stbtt_pack_context.
@@ -678,10 +678,10 @@ STBTT_DEF void stbtt_GetPackedQuad(const stbtt_packedchar * chardata, int pw, in
                                    int align_to_integer);
 
 STBTT_DEF int  stbtt_PackFontRangesGatherRects(stbtt_pack_context * spc, const stbtt_fontinfo * info,
-                                               stbtt_pack_range ranges[], int num_ranges, stbrp_rect * rects);
-STBTT_DEF void stbtt_PackFontRangesPackRects(stbtt_pack_context * spc, stbrp_rect rects[], int num_rects);
+                                               stbtt_pack_range * ranges, int num_ranges, stbrp_rect * rects);
+STBTT_DEF void stbtt_PackFontRangesPackRects(stbtt_pack_context * spc, stbrp_rect * rects, int num_rects);
 STBTT_DEF int  stbtt_PackFontRangesRenderIntoRects(stbtt_pack_context * spc, const stbtt_fontinfo * info,
-                                                   stbtt_pack_rang ranges[], int num_ranges, stbrp_rect * rects);
+                                                   stbtt_pack_range * ranges, int num_ranges, stbrp_rect * rects);
 // Calling these functions in sequence is roughly equivalent to calling
 // stbtt_PackFontRanges(). If you more control over the packing of multiple
 // fonts, or if you want to pack custom data into a font texture, take a look
@@ -715,7 +715,7 @@ struct stbtt_pack_context {
 #ifdef STBTT_STREAM_TYPE
 STBTT_DEF int stbtt_GetNumberOfFonts(STBTT_STREAM_TYPE data);
 #else
-STBTT_DEF int stbtt_GetNumberOfFonts(const unsigned char data[]);
+STBTT_DEF int stbtt_GetNumberOfFonts(const unsigned char * data);
 #endif
 // This function will determine the number of fonts in a font file.  TrueType
 // collection (.ttc) files may contain multiple fonts, while TrueType font
@@ -725,7 +725,7 @@ STBTT_DEF int stbtt_GetNumberOfFonts(const unsigned char data[]);
 #ifdef STBTT_STREAM_TYPE
 STBTT_DEF int stbtt_GetFontOffsetForIndex(STBTT_STREAM_TYPE, int index);
 #else
-STBTT_DEF int stbtt_GetFontOffsetForIndex(const unsigned char data[], int index);
+STBTT_DEF int stbtt_GetFontOffsetForIndex(const unsigned char * data, int index);
 #endif
 
 // Each .ttf/.ttc file may have more than one font. Each font has a sequential
@@ -761,7 +761,7 @@ struct stbtt_fontinfo {
 #ifdef STBTT_STREAM_TYPE
 STBTT_DEF int stbtt_InitFont(stbtt_fontinfo * info, STBTT_STREAM_TYPE data, int offset);
 #else
-STBTT_DEF int stbtt_InitFont(stbtt_fontinfo * info, const unsigned char data[], int offset);
+STBTT_DEF int stbtt_InitFont(stbtt_fontinfo * info, const unsigned char * data, int offset);
 #endif
 // Given an offset into the file that defines a font, this function builds
 // the necessary cached info for the rest of the system. You must allocate
@@ -843,7 +843,7 @@ typedef struct _stbtt_kerningentry {
 } stbtt_kerningentry;
 
 STBTT_DEF int  stbtt_GetKerningTableLength(const stbtt_fontinfo * info);
-STBTT_DEF int  stbtt_GetKerningTable(const stbtt_fontinfo * info, stbtt_kerningentry table[], int table_length);
+STBTT_DEF int  stbtt_GetKerningTable(const stbtt_fontinfo * info, stbtt_kerningentry * table, int table_length);
 // Retrieves a complete list of all of the kerning pairs provided by the font
 // stbtt_GetKerningTable never writes more than table_length entries and returns how many entries it did write.
 // The table will be sorted by (a.glyph1 == b.glyph1)?(a.glyph2 < b.glyph2):(a.glyph1 < b.glyph1)
@@ -901,7 +901,7 @@ STBTT_DEF int stbtt_GetGlyphSVG(const stbtt_fontinfo * info, int gl, stbtt_uint3
 // BITMAP RENDERING
 //
 
-STBTT_DEF void stbtt_FreeBitmap(unsigned char bitmap[], void * userdata);
+STBTT_DEF void stbtt_FreeBitmap(unsigned char * bitmap, void * userdata);
 // frees the bitmap allocated below
 
 STBTT_DEF unsigned char * stbtt_GetCodepointBitmap(const stbtt_fontinfo * info, float scale_x, float scale_y,
@@ -919,19 +919,19 @@ STBTT_DEF unsigned char * stbtt_GetCodepointBitmapSubpixel(const stbtt_fontinfo 
 // the same as stbtt_GetCodepoitnBitmap, but you can specify a subpixel
 // shift for the character
 
-STBTT_DEF void stbtt_MakeCodepointBitmap(const stbtt_fontinfo * info, unsigned char output[], int out_w, int out_h,
+STBTT_DEF void stbtt_MakeCodepointBitmap(const stbtt_fontinfo * info, unsigned char * output, int out_w, int out_h,
                                          int out_stride, float scale_x, float scale_y, int codepoint);
 // the same as stbtt_GetCodepointBitmap, but you pass in storage for the bitmap
 // in the form of 'output', with row spacing of 'out_stride' bytes. the bitmap
 // is clipped to out_w/out_h bytes. Call stbtt_GetCodepointBitmapBox to get the
 // width and height and positioning info for it first.
 
-STBTT_DEF void stbtt_MakeCodepointBitmapSubpixel(const stbtt_fontinfo * info, unsigned char output[], int out_w,
+STBTT_DEF void stbtt_MakeCodepointBitmapSubpixel(const stbtt_fontinfo * info, unsigned char * output, int out_w,
                                                  int out_h, int out_stride, float scale_x, float scale_y, float shift_x, float shift_y, int codepoint);
 // same as stbtt_MakeCodepointBitmap, but you can specify a subpixel
 // shift for the character
 
-STBTT_DEF void stbtt_MakeCodepointBitmapSubpixelPrefilter(const stbtt_fontinfo * info, unsigned char output[],
+STBTT_DEF void stbtt_MakeCodepointBitmapSubpixelPrefilter(const stbtt_fontinfo * info, unsigned char * output,
                                                           int out_w, int out_h, int out_stride, float scale_x, float scale_y, float shift_x, float shift_y, int oversample_x,
                                                           int oversample_y, float * sub_x, float * sub_y, int codepoint);
 // same as stbtt_MakeCodepointBitmapSubpixel, but prefiltering
@@ -956,11 +956,11 @@ STBTT_DEF unsigned char * stbtt_GetGlyphBitmap(const stbtt_fontinfo * info, floa
                                                int * width, int * height, int * xoff, int * yoff);
 STBTT_DEF unsigned char * stbtt_GetGlyphBitmapSubpixel(const stbtt_fontinfo * info, float scale_x, float scale_y,
                                                        float shift_x, float shift_y, int glyph, int * width, int * height, int * xoff, int * yoff);
-STBTT_DEF void stbtt_MakeGlyphBitmap(const stbtt_fontinfo * info, unsigned char output[], int out_w, int out_h,
+STBTT_DEF void stbtt_MakeGlyphBitmap(const stbtt_fontinfo * info, unsigned char * output, int out_w, int out_h,
                                      int out_stride, float scale_x, float scale_y, int glyph);
-STBTT_DEF void stbtt_MakeGlyphBitmapSubpixel(const stbtt_fontinfo * info, unsigned char output[], int out_w, int out_h,
+STBTT_DEF void stbtt_MakeGlyphBitmapSubpixel(const stbtt_fontinfo * info, unsigned char * output, int out_w, int out_h,
                                              int out_stride, float scale_x, float scale_y, float shift_x, float shift_y, int glyph);
-STBTT_DEF void stbtt_MakeGlyphBitmapSubpixelPrefilter(const stbtt_fontinfo * info, unsigned char output[], int out_w,
+STBTT_DEF void stbtt_MakeGlyphBitmapSubpixelPrefilter(const stbtt_fontinfo * info, unsigned char * output, int out_w,
                                                       int out_h, int out_stride, float scale_x, float scale_y, float shift_x, float shift_y, int oversample_x,
                                                       int oversample_y, float * sub_x, float * sub_y, int glyph);
 STBTT_DEF void stbtt_GetGlyphBitmapBox(const stbtt_fontinfo * font, int glyph, float scale_x, float scale_y, int * ix0,
@@ -978,7 +978,7 @@ typedef struct {
 // rasterize a shape with quadratic beziers into a bitmap
 STBTT_DEF void stbtt_Rasterize(stbtt__bitmap * result,       // 1-channel bitmap to draw into
                                float flatness_in_pixels,     // allowable error of curve in pixels
-                               stbtt_vertex vertices[],      // array of vertices defining shape
+                               stbtt_vertex * vertices,      // array of vertices defining shape
                                int num_verts,                // number of vertices in above array
                                float scale_x, float scale_y, // scale applied to input vertices
                                float shift_x, float shift_y, // translation applied to input vertices

@@ -98,7 +98,7 @@ typedef int            stbrp_coord;
 #endif
 
 
-STBRP_DEF int stbrp_pack_rects(stbrp_context * context, stbrp_rect rects[], int num_rects);
+STBRP_DEF int stbrp_pack_rects(stbrp_context * context, stbrp_rect * rects, int num_rects);
 // Assign packed locations to rectangles. The rectangles are of type
 // 'stbrp_rect' defined below, stored in the array 'rects', and there
 // are 'num_rects' many of them.
@@ -137,7 +137,7 @@ struct stbrp_rect {
 }; // 16 bytes, nominally
 
 
-STBRP_DEF void stbrp_init_target(stbrp_context * context, int width, int height, stbrp_node nodes[], int num_nodes);
+STBRP_DEF void stbrp_init_target(stbrp_context * context, int width, int height, stbrp_node * nodes, int num_nodes);
 // Initialize a rectangle packer to:
 //    pack a rectangle that is 'width' by 'height' in dimensions
 //    using temporary storage provided by the array 'nodes', which is 'num_nodes' long
@@ -264,7 +264,7 @@ STBRP_DEF void stbrp_setup_allow_out_of_mem(stbrp_context * context, int allow_o
     }
 }
 
-STBRP_DEF void stbrp_init_target(stbrp_context * context, int width, int height, stbrp_node nodes[], int num_nodes)
+STBRP_DEF void stbrp_init_target(stbrp_context * context, int width, int height, stbrp_node * nodes, int num_nodes)
 {
     int i;
 
@@ -547,7 +547,7 @@ static int STBRP__CDECL rect_original_order(const void * a, const void * b)
     return (p->was_packed < q->was_packed) ? -1 : (p->was_packed > q->was_packed);
 }
 
-STBRP_DEF int stbrp_pack_rects(stbrp_context * context, stbrp_rect rects[], int num_rects)
+STBRP_DEF int stbrp_pack_rects(stbrp_context * context, stbrp_rect * rects, int num_rects)
 {
     int i, all_rects_packed = 1;
 

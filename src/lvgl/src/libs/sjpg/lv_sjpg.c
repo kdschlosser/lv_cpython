@@ -157,7 +157,7 @@ static lv_res_t decoder_info(lv_img_decoder_t * decoder, const void * src, lv_im
     lv_res_t ret = LV_RES_OK;
 
     if(src_type == LV_IMG_SRC_VARIABLE) {
-        lv_img_dsc_t * img_dsc = (lv_img_dsc_t *)src;
+        const lv_img_dsc_t * img_dsc = src;
         uint8_t * raw_sjpeg_data = (uint8_t *)img_dsc->data;
         const uint32_t raw_sjpeg_data_size = img_dsc->data_size;
 
