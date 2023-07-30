@@ -49,7 +49,7 @@ gd_GIF * gd_open_gif_file(const char * fname);
 
 gd_GIF * gd_open_gif_data(const void * data);
 
-void gd_render_frame(gd_GIF * gif, uint8_t buffer[]);
+void gd_render_frame(gd_GIF * gif, uint8_t * buffer);
 
 int gd_get_frame(gd_GIF * gif);
 void gd_rewind(gd_GIF * gif);

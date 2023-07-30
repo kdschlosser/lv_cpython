@@ -28,7 +28,7 @@ extern "C" {
  **********************/
 typedef struct {
     pthread_t thread;
-    void (*callback)(void * p);
+    void (*callback)(void *);
     void * user_data;
 } lv_thread_t;
 

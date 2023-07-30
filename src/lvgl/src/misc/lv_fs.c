@@ -159,12 +159,12 @@ static lv_fs_res_t lv_fs_read_cached(lv_fs_file_t * file_p, char * buf, uint32_t
             uint32_t bytes_read_to_buffer = 0;
             if(btr - buffer_remaining_length > buffer_size) {
                 /*If remaining data chuck is bigger than buffer size, then do not use cache, instead read it directly from FS*/
-                res = file_p->drv->read_cb(file_p->drv, file_p->file_d, (void **)(buf + buffer_remaining_length),
+                res = file_p->drv->read_cb(file_p->drv, file_p->file_d, (void *)(buf + buffer_remaining_length),
                                            btr - buffer_remaining_length, &bytes_read_to_buffer);
             }
             else {
                 /*If remaining data chunk is smaller than buffer size, then read into cache buffer*/
-                res = file_p->drv->read_cb(file_p->drv, file_p->file_d, (void **)buffer, buffer_size, &bytes_read_to_buffer);
+                res = file_p->drv->read_cb(file_p->drv, file_p->file_d, (void *)buffer, buffer_size, &bytes_read_to_buffer);
                 file_p->cache->start = file_p->cache->end + 1;
                 file_p->cache->end = file_p->cache->start + bytes_read_to_buffer - 1;
 
@@ -181,7 +181,7 @@ static lv_fs_res_t lv_fs_read_cached(lv_fs_file_t * file_p, char * buf, uint32_t
         /*Data is not in cache buffer*/
         if(btr > buffer_size) {
             /*If bigger data is requested, then do not use cache, instead read it directly*/
-            res = file_p->drv->read_cb(file_p->drv, file_p->file_d, (void **)buf, btr, br);
+            res = file_p->drv->read_cb(file_p->drv, file_p->file_d, (void *)buf, btr, br);
         }
         else {
             /*If small data is requested, then read from FS into cache buffer*/
@@ -194,7 +194,7 @@ static lv_fs_res_t lv_fs_read_cached(lv_fs_file_t * file_p, char * buf, uint32_t
 
 
             uint32_t bytes_read_to_buffer = 0;
-            res = file_p->drv->read_cb(file_p->drv, file_p->file_d, (void **)buffer, buffer_size, &bytes_read_to_buffer);
+            res = file_p->drv->read_cb(file_p->drv, file_p->file_d, (void *)buffer, buffer_size, &bytes_read_to_buffer);
             file_p->cache->start = file_position;
             file_p->cache->end = file_p->cache->start + bytes_read_to_buffer - 1;
 
@@ -224,7 +224,7 @@ lv_fs_res_t lv_fs_read(lv_fs_file_t * file_p, void * buf, uint32_t btr, uint32_t
         res = lv_fs_read_cached(file_p, (char *)buf, btr, &br_tmp);
     }
     else {
-        res = file_p->drv->read_cb(file_p->drv, file_p->file_d, &buf, btr, &br_tmp);
+        res = file_p->drv->read_cb(file_p->drv, file_p->file_d, buf, btr, &br_tmp);
     }
 
     if(br != NULL) *br = br_tmp;

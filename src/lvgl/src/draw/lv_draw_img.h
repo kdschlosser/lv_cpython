@@ -70,6 +70,7 @@ void lv_draw_img_dsc_init(lv_draw_img_dsc_t * dsc);
  * @param draw_ctx      pointer to the current draw context
  * @param dsc           pointer to an initialized `lv_draw_img_dsc_t` variable
  * @param coords        the coordinates of the image
+ * @param src           pointer to a lv_color_t array which contains the pixels of the image
  */
 void lv_draw_img(struct _lv_layer_t * layer, const lv_draw_img_dsc_t * dsc, const lv_area_t * coords);
 

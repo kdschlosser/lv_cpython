@@ -83,16 +83,13 @@ void lv_barcode_set_scale(lv_obj_t * obj, uint16_t scale)
     barcode->scale = scale;
 }
 
-lv_res_t lv_barcode_update(lv_obj_t * obj, uint8_t buf[])
+lv_res_t lv_barcode_update(lv_obj_t * obj, const char * data)
 {
-    const char * data = buf;
-
     LV_ASSERT_OBJ(obj, MY_CLASS);
     LV_ASSERT_NULL(data);
 
     lv_res_t res = LV_RES_INV;
     lv_barcode_t * barcode = (lv_barcode_t *)obj;
-
 
     if(data == NULL || lv_strlen(data) == 0) {
         LV_LOG_WARN("data is empty");

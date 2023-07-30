@@ -212,7 +212,7 @@ typedef struct {
  * @param bitmap_out        pointer to an array to store the output A8 bitmap
  * @return pointer to an A8 bitmap (not necessarily bitmap_out) or NULL if `unicode_letter` not found
  */
-const uint8_t * lv_font_get_bitmap_fmt_txt(const lv_font_t * font, uint32_t unicode_letter, uint8_t bitmap_out[]);
+const uint8_t * lv_font_get_bitmap_fmt_txt(const lv_font_t * font, uint32_t unicode_letter, uint8_t * bitmap_out);
 
 
 /**

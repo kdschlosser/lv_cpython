@@ -92,12 +92,12 @@ void lv_draw_img(lv_layer_t * layer, const lv_draw_img_dsc_t * dsc, const lv_are
  *  - or a symbol (e.g. LV_SYMBOL_CLOSE)
  * @return type of the image source LV_IMG_SRC_VARIABLE/FILE/SYMBOL/UNKNOWN
  */
-lv_img_src_t lv_img_src_get_type(const * void src)
+lv_img_src_t lv_img_src_get_type(const void * src)
 {
     lv_img_src_t img_src_type = LV_IMG_SRC_UNKNOWN;
 
     if(src == NULL) return img_src_type;
-    const uint8_t * u8_p = (const uint8_t *)src;
+    const uint8_t * u8_p = src;
 
     /*The first byte shows the type of the image source*/
     if(u8_p[0] >= 0x20 && u8_p[0] <= 0x7F) {

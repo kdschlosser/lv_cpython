@@ -66,7 +66,7 @@ typedef enum {
  * @param user_data     arbitrary data, will be available in the callback
  * @return              LV_RES_OK: success; LV_RES_INV: failure
  */
-lv_res_t lv_thread_init(lv_thread_t * thread, lv_thread_prio_t prio, void (*callback)(void * p), size_t stack_size,
+lv_res_t lv_thread_init(lv_thread_t * thread, lv_thread_prio_t prio, void (*callback)(void *), size_t stack_size,
                         void * user_data);
 
 /**

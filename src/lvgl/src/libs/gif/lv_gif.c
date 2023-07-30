@@ -68,7 +68,7 @@ void lv_gif_set_src(lv_obj_t * obj, const void * src)
     }
 
     if(lv_img_src_get_type(src) == LV_IMG_SRC_VARIABLE) {
-        lv_img_dsc_t * img_dsc = (lv_img_dsc_t *)src;
+        const lv_img_dsc_t * img_dsc = src;
         gifobj->gif = gd_open_gif_data(img_dsc->data);
     }
     else if(lv_img_src_get_type(src) == LV_IMG_SRC_FILE) {

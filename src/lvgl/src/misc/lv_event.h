@@ -25,6 +25,8 @@ extern "C" {
 /**********************
  *      TYPEDEFS
  **********************/
+struct _lv_event_t;
+
 typedef void (*lv_event_cb_t)(struct _lv_event_t * e);
 
 
@@ -102,6 +104,7 @@ typedef enum {
     LV_EVENT_RENDER_START,
     LV_EVENT_RENDER_READY,
     LV_EVENT_RESOLUTION_CHANGED,
+    LV_EVENT_REFR_REQUEST,
     LV_EVENT_REFR_START,
     LV_EVENT_REFR_FINISH,
     LV_EVENT_FLUSH_START,

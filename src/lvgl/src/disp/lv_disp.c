@@ -39,6 +39,7 @@ static void set_x_anim(void * obj, int32_t v);
 static void set_y_anim(void * obj, int32_t v);
 static void scr_anim_ready(lv_anim_t * a);
 static bool is_out_anim(lv_scr_load_anim_t a);
+static void disp_event_cb(lv_event_t * e);
 
 /**********************
  *  STATIC VARIABLES
@@ -120,6 +121,8 @@ lv_disp_t * lv_disp_create(lv_coord_t hor_res, lv_coord_t ver_res)
 
     disp_def = disp_def_tmp; /*Revert the default display*/
     if(disp_def == NULL) disp_def = disp; /*Initialize the default display*/
+
+    lv_disp_add_event(disp, disp_event_cb, LV_EVENT_REFR_REQUEST, NULL);
 
     lv_timer_ready(disp->refr_timer); /*Be sure the screen will be refreshed immediately on start up*/
 
@@ -673,7 +676,7 @@ bool lv_disp_remove_event(lv_disp_t * disp, uint32_t index)
     return lv_event_remove(&disp->event_list, index);
 }
 
-lv_res_t lv_disp_send_event(lv_disp_t * disp, lv_event_code_t code, void * user_data)
+lv_res_t lv_disp_send_event(lv_disp_t * disp, lv_event_code_t code, void * param)
 {
 
     lv_event_t e;
@@ -681,7 +684,7 @@ lv_res_t lv_disp_send_event(lv_disp_t * disp, lv_event_code_t code, void * user_
     e.code = code;
     e.current_target = disp;
     e.original_target = disp;
-    e.param = user_data;
+    e.param = param;
     lv_res_t res;
     res = lv_event_send(&disp->event_list, &e, true);
     if(res != LV_RES_OK) return res;
@@ -932,4 +935,18 @@ static bool is_out_anim(lv_scr_load_anim_t anim_type)
            anim_type == LV_SCR_LOAD_ANIM_OUT_RIGHT ||
            anim_type == LV_SCR_LOAD_ANIM_OUT_TOP   ||
            anim_type == LV_SCR_LOAD_ANIM_OUT_BOTTOM;
+}
+
+static void disp_event_cb(lv_event_t * e)
+{
+    lv_event_code_t code = lv_event_get_code(e);
+    lv_disp_t * disp = lv_event_get_target(e);
+    switch(code) {
+        case LV_EVENT_REFR_REQUEST:
+            if(disp->refr_timer) lv_timer_resume(disp->refr_timer);
+            break;
+
+        default:
+            break;
+    }
 }

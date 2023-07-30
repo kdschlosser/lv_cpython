@@ -72,7 +72,7 @@ void lv_barcode_set_scale(lv_obj_t * obj, uint16_t scale);
  * @param data data to display
  * @return LV_RES_OK: if no error; LV_RES_INV: on error
  */
-lv_res_t lv_barcode_update(lv_obj_t * obj, uint8_t data[]);
+lv_res_t lv_barcode_update(lv_obj_t * obj, const char * data);
 
 /**
  * Get the dark color of a barcode object

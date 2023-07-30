@@ -74,19 +74,19 @@ void _lv_img_decoder_init(void)
  * @param header the image info will be stored here
  * @return LV_RES_OK: success; LV_RES_INV: wasn't able to get info about the image
  */
-
 lv_res_t lv_img_decoder_get_info(const void * src, lv_img_header_t * header)
 {
     lv_memzero(header, sizeof(lv_img_header_t));
-    if(src == NULL) return 1;
+
+    if(src == NULL) return LV_RES_INV;
 
     lv_img_src_t src_type = lv_img_src_get_type(src);
     if(src_type == LV_IMG_SRC_VARIABLE) {
-        lv_img_dsc_t * img_dsc = (lv_img_dsc_t *)src;
-        if(img_dsc->data == NULL) return 2;
+        const lv_img_dsc_t * img_dsc = src;
+        if(img_dsc->data == NULL) return LV_RES_INV;
     }
 
-    lv_res_t res = 3;
+    lv_res_t res = LV_RES_INV;
     lv_img_decoder_t * d;
     _LV_LL_READ(&LV_GC_ROOT(_lv_img_decoder_ll), d) {
         if(d->info_cb) {
@@ -105,7 +105,7 @@ lv_res_t lv_img_decoder_open(lv_img_decoder_dsc_t * dsc, const void * src, lv_co
     if(src == NULL) return LV_RES_INV;
     lv_img_src_t src_type = lv_img_src_get_type(src);
     if(src_type == LV_IMG_SRC_VARIABLE) {
-        lv_img_dsc_t * img_dsc = (lv_img_dsc_t *)src;
+        const lv_img_dsc_t * img_dsc = src;
         if(img_dsc->data == NULL) return LV_RES_INV;
     }
 
@@ -352,7 +352,7 @@ lv_res_t lv_img_decoder_built_in_open(lv_img_decoder_t * decoder, lv_img_decoder
     if(dsc->src_type == LV_IMG_SRC_VARIABLE) {
         lv_img_dsc_t * img_dsc = (lv_img_dsc_t *)dsc->src;
         lv_color_format_t cf = img_dsc->header.cf;
-        if(cf >= LV_COLOR_FORMAT_I1 && cf <= LV_COLOR_FORMAT_I8) {
+        if(LV_COLOR_FORMAT_IS_INDEXED(cf)) {
             switch(cf) {
                 case LV_COLOR_FORMAT_I1:
                     dsc->palette_size = 2;
@@ -404,7 +404,7 @@ void lv_img_decoder_built_in_close(lv_img_decoder_t * decoder, lv_img_decoder_ds
     LV_UNUSED(decoder); /*Unused*/
     lv_img_dsc_t * img_dsc = (lv_img_dsc_t *)dsc->src;
     lv_color_format_t cf = img_dsc->header.cf;
-    if(cf >= LV_COLOR_FORMAT_I1 && cf <= LV_COLOR_FORMAT_I8) {
+    if(LV_COLOR_FORMAT_IS_INDEXED(cf)) {
         lv_free((void *)dsc->img_data);
     }
 }

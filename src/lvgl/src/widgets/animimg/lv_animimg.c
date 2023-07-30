@@ -64,7 +64,7 @@ lv_obj_t * lv_animimg_create(lv_obj_t * parent)
     return obj;
 }
 
-void lv_animimg_set_src(lv_obj_t * obj, const void ** dsc, uint8_t num)
+void lv_animimg_set_src(lv_obj_t * obj, const void * dsc[], uint8_t num)
 {
     LV_ASSERT_OBJ(obj, MY_CLASS);
     lv_animimg_t * animimg = (lv_animimg_t *)obj;
@@ -144,7 +144,8 @@ static void lv_animimg_constructor(const lv_obj_class_t * class_p, lv_obj_t * ob
 
     animimg->dsc = NULL;
     animimg->pic_count = -1;
-    //initial animation
+
+    /*initial animation*/
     lv_anim_init(&animimg->anim);
     lv_anim_set_var(&animimg->anim, obj);
     lv_anim_set_time(&animimg->anim, 30);

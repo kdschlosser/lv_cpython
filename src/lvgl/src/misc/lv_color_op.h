@@ -28,7 +28,7 @@ extern "C" {
 
 struct _lv_color_filter_dsc_t;
 
-typedef lv_color_t (*lv_color_filter_cb_t)(const struct _lv_color_filter_dsc_t * dsc, lv_color_t color, lv_opa_t opa);
+typedef lv_color_t (*lv_color_filter_cb_t)(const struct _lv_color_filter_dsc_t *, lv_color_t, lv_opa_t);
 
 typedef struct _lv_color_filter_dsc_t {
     lv_color_filter_cb_t filter_cb;

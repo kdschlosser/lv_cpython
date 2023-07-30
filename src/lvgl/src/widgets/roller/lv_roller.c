@@ -179,7 +179,7 @@ void lv_roller_set_selected(lv_obj_t * obj, uint16_t sel_opt, lv_anim_enable_t a
             uint16_t act_opt = roller->sel_opt_id - current_page * real_option_cnt;
             int32_t sel_opt_signed = sel_opt;
             /*Huge jump? Probably from last to first or first to last option.*/
-            if(LV_ABS((int16_t)act_opt - sel_opt) > real_option_cnt / 2) {
+            if((uint16_t)LV_ABS((int16_t)act_opt - sel_opt) > real_option_cnt / 2) {
                 if(act_opt > sel_opt) sel_opt_signed += real_option_cnt;
                 else sel_opt_signed -= real_option_cnt;
             }
@@ -317,8 +317,9 @@ static void lv_roller_constructor(const lv_obj_class_t * class_p, lv_obj_t * obj
     LV_LOG_INFO("begin");
     lv_obj_t * label = lv_obj_class_create_obj(&lv_roller_label_class, obj);
     lv_obj_class_init_obj(label);
+#if LV_WIDGETS_HAS_DEFAULT_VALUE
     lv_roller_set_options(obj, "Option 1\nOption 2\nOption 3\nOption 4\nOption 5", LV_ROLLER_MODE_NORMAL);
-
+#endif
     LV_LOG_TRACE("finshed");
 }
 

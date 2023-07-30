@@ -108,7 +108,7 @@ uint16_t _lv_bidi_get_visual_pos(const char * str_in, char ** bidi_txt, uint16_t
  * @param pos_conv_len length of `pos_conv_out` in element count
  */
 void _lv_bidi_process_paragraph(const char * str_in, char * str_out, uint32_t len, lv_base_dir_t base_dir,
-                                uint16_t pos_conv_out[], uint16_t pos_conv_len);
+                                uint16_t * pos_conv_out, uint16_t pos_conv_len);
 
 /**
  * Get the real text alignment from the a text alignment, base direction and a text.

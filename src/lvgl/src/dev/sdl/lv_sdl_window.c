@@ -97,15 +97,13 @@ lv_disp_t * lv_sdl_window_create(lv_coord_t hor_res, lv_coord_t ver_res)
 
     lv_disp_set_flush_cb(disp, flush_cb);
 #if LV_SDL_PARTIAL_MODE
-    uint32_t px_size = lv_disp_get_hor_res(disp) * lv_disp_get_hor_res(disp) * lv_color_format_get_size(lv_disp_get_color_format(disp));
-    uint8_t * buf1 = malloc(px_size);
-    uint8_t * buf2 = malloc(px_size);
-
-    lv_disp_set_draw_buffers(disp, buf1, buf2,
-         lv_disp_get_hor_res(disp) * lv_disp_get_hor_res(disp), LV_DISP_RENDER_MODE_PARTIAL);
+    uint8_t * buf = malloc(32 * 1024);
+    lv_disp_set_draw_buffers(disp, buf, NULL,
+                             32 * 1024, LV_DISP_RENDER_MODE_PARTIAL);
 #else
     uint32_t px_size = lv_color_format_get_size(lv_disp_get_color_format(disp));
-    lv_disp_set_draw_buffers(disp, dsc->fb, NULL, lv_disp_get_hor_res(disp) * lv_disp_get_hor_res(disp) * px_size, LV_DISP_RENDER_MODE_DIRECT);
+    lv_disp_set_draw_buffers(disp, dsc->fb, NULL,
+                             lv_disp_get_hor_res(disp) * lv_disp_get_hor_res(disp) * px_size, LV_DISP_RENDER_MODE_DIRECT);
 #endif
     lv_disp_add_event(disp, res_chg_event_cb, LV_EVENT_RESOLUTION_CHANGED, NULL);
 

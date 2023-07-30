@@ -146,6 +146,7 @@ struct _lv_disp_t {
     /** The area being refreshed*/
     lv_area_t refreshed_area;
 };
+
 /**********************
  * GLOBAL PROTOTYPES
  **********************/
