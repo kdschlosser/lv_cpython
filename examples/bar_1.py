@@ -1,13 +1,10 @@
-try:
-    import lvgl as lv
-except ImportError:
-    import os
-    import sys
+import os
+import sys
 
-    base_path = os.path.dirname(__file__)
-    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+base_path = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
 
-    import lvgl as lv
+import lvgl as lv
 
 import time
 
@@ -48,16 +45,16 @@ lv.anim_set_playback_time(a, 3000)
 lv.anim_set_var(a, bar)
 lv.anim_set_values(a, -20, 40)
 lv.anim_set_repeat_count(a, lv.ANIM_REPEAT_INFINITE)
-lv.anim_set_custom_exec_cb(a, lambda a, val: set_temp(bar,val))
+lv.anim_set_custom_exec_cb(a, lambda a, val: set_temp(bar, val))
 lv.anim_start(a)
 
 
 start = time.time()
 
 while True:
+    time.sleep(0.001)
     stop = time.time()
     diff = int((stop * 1000) - (start * 1000))
-    if diff >= 1:
-        start = stop
-        lv.tick_inc(diff)
-        lv.task_handler()
+    start = stop
+    lv.tick_inc(diff)
+    lv.task_handler()

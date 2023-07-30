@@ -1,13 +1,10 @@
-try:
-    import lvgl as lv
-except ImportError:
-    import os
-    import sys
+import os
+import sys
 
-    base_path = os.path.dirname(__file__)
-    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+base_path = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
 
-    import lvgl as lv
+import lvgl as lv
 
 import time
 
@@ -67,7 +64,7 @@ cont = lv.obj_create(lv.scr_act())
 lv.obj_set_size(cont, 200, 200)
 lv.obj_center(cont)
 lv.obj_set_flex_flow(cont, lv.FLEX_FLOW_COLUMN)
-lv.obj_add_event(cont, scroll_event_cb, lv.EVENT_SCROLL)
+lv.obj_add_event(cont, scroll_event_cb, lv.EVENT_SCROLL, None)
 lv.obj_set_style_radius(cont, lv.RADIUS_CIRCLE, 0)
 lv.obj_set_style_clip_corner(cont, True, 0)
 lv.obj_set_scroll_dir(cont, lv.DIR_VER)
@@ -95,9 +92,9 @@ for i in range(20):
 start = time.time()
 
 while True:
+    time.sleep(0.001)
     stop = time.time()
     diff = int((stop * 1000) - (start * 1000))
-    if diff >= 1:
-        start = stop
-        lv.tick_inc(diff)
-        lv.task_handler()
+    start = stop
+    lv.tick_inc(diff)
+    lv.task_handler()

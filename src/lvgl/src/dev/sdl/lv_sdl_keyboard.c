@@ -9,8 +9,9 @@
 #include "lv_sdl_keyboard.h"
 #if LV_USE_SDL
 
-#include "../../core/lv_indev.h"
+#include "../../indev/lv_indev.h"
 #include "../../core/lv_group.h"
+#include "../../stdlib/lv_string.h"
 #include LV_SDL_INCLUDE_PATH
 
 /*********************
@@ -54,7 +55,7 @@ lv_indev_t * lv_sdl_keyboard_create(void)
     }
 
     lv_indev_set_type(indev, LV_INDEV_TYPE_KEYPAD);
-    lv_indev_set_read_cb(indev, sdl_keyboard_read, NULL);
+    lv_indev_set_read_cb(indev, sdl_keyboard_read);
     lv_indev_set_driver_data(indev, dsc);
 
     return indev;

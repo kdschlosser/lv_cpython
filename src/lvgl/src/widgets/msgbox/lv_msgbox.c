@@ -13,8 +13,9 @@
 #include "../btn/lv_btn.h"
 #include "../btnmatrix/lv_btnmatrix.h"
 #include "../../misc/lv_assert.h"
-#include "../../core/lv_disp.h"
+#include "../../disp/lv_disp.h"
 #include "../../layouts/flex/lv_flex.h"
+#include "../../stdlib/lv_string.h"
 
 /*********************
  *      DEFINES
@@ -111,6 +112,9 @@ lv_obj_t * lv_msgbox_create(lv_obj_t * parent, const char * title, const char * 
     }
 
     mbox->content = lv_obj_class_create_obj(&lv_msgbox_content_class, obj);
+    LV_ASSERT_MALLOC(obj);
+    if(mbox->content == NULL) return NULL;
+    lv_obj_class_init_obj(mbox->content);
 
     bool has_txt = txt && lv_strlen(txt) > 0;
     if(has_txt) {

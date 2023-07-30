@@ -43,8 +43,7 @@ struct _lv_anim_t;
 struct _lv_timer_t;
 
 /** Get the current value during an animation*/
-typedef int32_t (*lv_anim_path_cb_t)(const struct _lv_anim_t * anim);
-
+typedef int32_t (*lv_anim_path_cb_t)(const struct _lv_anim_t *);
 
 /** Generic prototype of "animator" functions.
  * First parameter is the variable to animate.
@@ -52,7 +51,7 @@ typedef int32_t (*lv_anim_path_cb_t)(const struct _lv_anim_t * anim);
  * Compatible with `lv_xxx_set_yyy(obj, value)` functions
  * The `x` in `_xcb_t` means it's not a fully generic prototype because
  * it doesn't receive `lv_anim_t *` as its first argument*/
-typedef void (*lv_anim_exec_xcb_t)(void *, int32_t value);
+typedef void (*lv_anim_exec_xcb_t)(void * variable, int32_t new_value);
 
 /** Same as `lv_anim_exec_xcb_t` but receives `lv_anim_t *` as the first parameter.
  * It's more consistent but less convenient. Might be used by binding generator functions.*/
@@ -69,7 +68,6 @@ typedef int32_t (*lv_anim_get_value_cb_t)(struct _lv_anim_t * anim);
 
 /** Callback used when the animation is deleted*/
 typedef void (*lv_anim_deleted_cb_t)(struct _lv_anim_t * anim);
-
 
 /** Describes an animation*/
 typedef struct _lv_anim_t {
@@ -140,7 +138,6 @@ static inline void lv_anim_set_exec_cb(lv_anim_t * a, lv_anim_exec_xcb_t exec_cb
 {
     a->exec_cb = exec_cb;
 }
-
 
 /**
  * Set the duration of an animation
@@ -240,7 +237,6 @@ static inline void lv_anim_set_deleted_cb(lv_anim_t * a, lv_anim_deleted_cb_t de
 {
     a->deleted_cb = deleted_cb;
 }
-
 
 /**
  * Make the animation to play back to when the forward direction is ready
@@ -365,7 +361,6 @@ static inline void * lv_anim_get_user_data(lv_anim_t * a)
  * @return          true: at least 1 animation is deleted, false: no animation is deleted
  */
 bool lv_anim_del(void * var, lv_anim_exec_xcb_t exec_cb);
-
 
 /**
  * Delete all the animations

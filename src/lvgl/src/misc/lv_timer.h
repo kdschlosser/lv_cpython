@@ -13,7 +13,7 @@ extern "C" {
  *      INCLUDES
  *********************/
 #include "../lv_conf_internal.h"
-#include "../hal/lv_hal_tick.h"
+#include "../tick/lv_tick.h"
 
 #include <stdint.h>
 #include <stdbool.h>
@@ -36,7 +36,7 @@ struct _lv_timer_t;
 /**
  * Timers execute this type of functions.
  */
-typedef void (*lv_timer_cb_t)(struct _lv_timer_t * timer);
+typedef void (*lv_timer_cb_t)(struct _lv_timer_t * t);
 
 /**
  * Descriptor of a lv_timer
@@ -73,19 +73,25 @@ LV_ATTRIBUTE_TIMER_HANDLER uint32_t lv_timer_handler(void);
  * Call it in the super-loop of main() or threads. It will run lv_timer_handler()
  * with a given period in ms. You can use it with sleep or delay in OS environment.
  * This function is used to simplify the porting.
- * @param ms the period for running lv_timer_handler()
+ * @param period the period for running lv_timer_handler()
+ * @return the time after which it must be called again
  */
-static inline LV_ATTRIBUTE_TIMER_HANDLER uint32_t lv_timer_handler_run_in_period(uint32_t ms)
+static inline LV_ATTRIBUTE_TIMER_HANDLER uint32_t lv_timer_handler_run_in_period(uint32_t period)
 {
     static uint32_t last_tick = 0;
-    uint32_t curr_tick = lv_tick_get();
 
-    if((curr_tick - last_tick) >= (ms)) {
-        last_tick = curr_tick;
+    if(lv_tick_elaps(last_tick) >= period) {
+        last_tick = lv_tick_get();
         return lv_timer_handler();
     }
     return 1;
 }
+
+/**
+ * Call it in the super-loop of main() or threads. It will automatically call lv_timer_handler() at the right time.
+ * This function is used to simplify the porting.
+ */
+LV_ATTRIBUTE_TIMER_HANDLER void lv_timer_periodic_handler(void);
 
 /**
  * Create an "empty" timer. It needs to be initialized with at least
@@ -164,6 +170,12 @@ void lv_timer_enable(bool en);
  * @return the lv_timer idle in percentage
  */
 uint8_t lv_timer_get_idle(void);
+
+/**
+ * Get the time remaining until the next timer will run
+ * @return the time remaining in ms
+ */
+uint32_t lv_timer_get_time_until_next(void);
 
 /**
  * Iterate through the timers

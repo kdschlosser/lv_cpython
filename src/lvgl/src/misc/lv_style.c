@@ -7,8 +7,8 @@
  *      INCLUDES
  *********************/
 #include "lv_style.h"
-#include "../misc/lv_gc.h"
-#include "../misc/lv_mem.h"
+#include "lv_gc.h"
+#include "../stdlib/lv_mem.h"
 #include "lv_assert.h"
 #include "lv_types.h"
 
@@ -47,12 +47,12 @@ const uint8_t _lv_style_builtin_prop_flag_lookup_table[_LV_STYLE_NUM_BUILT_IN_PR
     [LV_STYLE_X] =                        LV_STYLE_PROP_FLAG_LAYOUT_UPDATE,
     [LV_STYLE_Y] =                        LV_STYLE_PROP_FLAG_LAYOUT_UPDATE,
     [LV_STYLE_ALIGN] =                    LV_STYLE_PROP_FLAG_LAYOUT_UPDATE,
-    [LV_STYLE_TRANSFORM_WIDTH] =           LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE,
-    [LV_STYLE_TRANSFORM_HEIGHT] =          LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE,
+    [LV_STYLE_TRANSFORM_WIDTH] =           LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE | LV_STYLE_PROP_FLAG_TRANSFORM,
+    [LV_STYLE_TRANSFORM_HEIGHT] =          LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE | LV_STYLE_PROP_FLAG_TRANSFORM,
     [LV_STYLE_TRANSLATE_X] =               LV_STYLE_PROP_FLAG_LAYOUT_UPDATE | LV_STYLE_PROP_FLAG_PARENT_LAYOUT_UPDATE,
     [LV_STYLE_TRANSLATE_Y] =               LV_STYLE_PROP_FLAG_LAYOUT_UPDATE | LV_STYLE_PROP_FLAG_PARENT_LAYOUT_UPDATE,
-    [LV_STYLE_TRANSFORM_ZOOM] =            LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE | LV_STYLE_PROP_FLAG_LAYER_UPDATE,
-    [LV_STYLE_TRANSFORM_ANGLE] =           LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE | LV_STYLE_PROP_FLAG_LAYER_UPDATE,
+    [LV_STYLE_TRANSFORM_ZOOM] =            LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE | LV_STYLE_PROP_FLAG_LAYER_UPDATE | LV_STYLE_PROP_FLAG_TRANSFORM,
+    [LV_STYLE_TRANSFORM_ANGLE] =           LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE | LV_STYLE_PROP_FLAG_LAYER_UPDATE | LV_STYLE_PROP_FLAG_TRANSFORM,
 
     [LV_STYLE_PAD_TOP] =                   LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE | LV_STYLE_PROP_FLAG_LAYOUT_UPDATE,
     [LV_STYLE_PAD_BOTTOM] =                LV_STYLE_PROP_FLAG_EXT_DRAW_UPDATE | LV_STYLE_PROP_FLAG_LAYOUT_UPDATE,
@@ -423,6 +423,7 @@ static void lv_style_set_prop_internal(lv_style_t * style, lv_style_prop_t prop_
     }
 
     lv_style_prop_t prop_id = LV_STYLE_PROP_ID_MASK(prop_and_meta);
+    LV_ASSERT(prop_id != LV_STYLE_PROP_INV);
 
     if(style->prop_cnt > 1) {
         uint8_t * tmp = style->v_p.values_and_props + style->prop_cnt * sizeof(lv_style_value_t);

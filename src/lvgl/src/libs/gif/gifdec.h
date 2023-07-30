@@ -20,14 +20,6 @@ typedef struct _gd_GCE {
 } gd_GCE;
 
 
-typedef void (*gd_GIF_plain_text_xcb_t)(
-    struct _gd_GIF * gif, uint16_t tx, uint16_t ty,
-    uint16_t tw, uint16_t th, uint8_t cw, uint8_t ch,
-    uint8_t fg, uint8_t bg
-);
-typedef void (*gd_GIF_comment_xcb_t)(struct _gd_GIF * gif);
-typedef void (*gd_GIF_application_xcb_t)(struct _gd_GIF * gif, char id[8], char auth[3]);
-
 
 typedef struct _gd_GIF {
     lv_fs_file_t fd;
@@ -41,9 +33,13 @@ typedef struct _gd_GIF {
     gd_GCE gce;
     gd_Palette * palette;
     gd_Palette lct, gct;
-    gd_GIF_plain_text_xcb_t plain_text;
-    gd_GIF_comment_xcb_t comment;
-    gd_GIF_application_xcb_t application;
+    void (*plain_text)(
+        struct _gd_GIF * gif, uint16_t tx, uint16_t ty,
+        uint16_t tw, uint16_t th, uint8_t cw, uint8_t ch,
+        uint8_t fg, uint8_t bg
+    );
+    void (*comment)(struct _gd_GIF * gif);
+    void (*application)(struct _gd_GIF * gif, char id[8], char auth[3]);
     uint16_t fx, fy, fw, fh;
     uint8_t bgindex;
     uint8_t * canvas, *frame;
@@ -51,9 +47,9 @@ typedef struct _gd_GIF {
 
 gd_GIF * gd_open_gif_file(const char * fname);
 
-gd_GIF * gd_open_gif_data(const void * data);
+gd_GIF * gd_open_gif_data(const void data[]);
 
-void gd_render_frame(gd_GIF * gif, uint8_t * buffer);
+void gd_render_frame(gd_GIF * gif, uint8_t buffer[]);
 
 int gd_get_frame(gd_GIF * gif);
 void gd_rewind(gd_GIF * gif);

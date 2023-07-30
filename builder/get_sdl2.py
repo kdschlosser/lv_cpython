@@ -63,4 +63,4 @@ def get_sdl2(path, url=SDL2_URL):
     zf.close()
     stream.close()
 
-    return sdl_include_path, dll_path
+    return os.path.abspath(sdl_include_path), dll_path

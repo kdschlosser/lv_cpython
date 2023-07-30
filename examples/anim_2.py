@@ -1,13 +1,11 @@
-try:
-    import lvgl as lv
-except ImportError:
-    import os
-    import sys
 
-    base_path = os.path.dirname(__file__)
-    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+import os
+import sys
 
-    import lvgl as lv
+base_path = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
+
+import lvgl as lv
 
 import time
 
@@ -26,7 +24,6 @@ def anim_x(a, v):
 
 def anim_size(a, v):
     lv.obj_set_size(obj, v, v)
-
 
 #
 # Create a playback animation
@@ -67,6 +64,7 @@ lv.anim_start(a2)
 start = time.time()
 
 while True:
+    time.sleep(0.001)
     stop = time.time()
     diff = int((stop * 1000) - (start * 1000))
     start = stop

@@ -1,13 +1,10 @@
-try:
-    import lvgl as lv
-except ImportError:
-    import os
-    import sys
+import os
+import sys
 
-    base_path = os.path.dirname(__file__)
-    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+base_path = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
 
-    import lvgl as lv
+import lvgl as lv
 
 import time
 
@@ -64,7 +61,7 @@ lv.style_set_bg_grad_color(style_pr, lv.palette_darken(lv.PALETTE_BLUE, 4))
 # Add a transition to the outline
 trans = lv.style_transition_dsc_t()
 
-lv.style_transition_dsc_init(trans, [lv.STYLE_OUTLINE_WIDTH, lv.STYLE_OUTLINE_OPA, 0], lv.anim_path_linear, 300, 0)
+lv.style_transition_dsc_init(trans, [lv.STYLE_OUTLINE_WIDTH, lv.STYLE_OUTLINE_OPA, 0], lv.anim_path_linear, 300, 0, None)
 
 lv.style_set_transition(style_pr, trans)
 
@@ -83,9 +80,9 @@ lv.obj_center(label)
 start = time.time()
 
 while True:
+    time.sleep(0.001)
     stop = time.time()
     diff = int((stop * 1000) - (start * 1000))
-    if diff >= 1:
-        start = stop
-        lv.tick_inc(diff)
-        lv.task_handler()
+    start = stop
+    lv.tick_inc(diff)
+    lv.task_handler()

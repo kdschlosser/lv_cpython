@@ -3,7 +3,7 @@ import os
 import sys
 
 base_path = os.path.dirname(__file__)
-sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
 
 import lvgl as lv
 
@@ -12,35 +12,15 @@ import math
 import time
 
 
-last_tick = time.time()
+if __name__ == '__main__':
+    lv.init()
 
-
-def tick_cb(_):
-    global last_tick
-
-    curr_tick = time.time()
-    diff = (curr_tick * 1000) - (last_tick * 1000)
-
-    int_diff = int(diff)
-    remainder = diff - int_diff
-
-    curr_tick -= remainder / 1000
-    last_tick = curr_tick
-
-    lv.tick_inc(int_diff)
-
-
-lv.init()
-
-tick_dsc = lv.tick_dsc_t()
-lv.tick_set_cb(tick_dsc, tick_cb)
-
-disp = lv.sdl_window_create(800, 600)
-group = lv.group_create()
-lv.group_set_default(group)
-mouse = lv.sdl_mouse_create()
-keyboard = lv.sdl_keyboard_create()
-lv.indev_set_group(keyboard, group)
+    disp = lv.sdl_window_create(800, 600)
+    group = lv.group_create()
+    lv.group_set_default(group)
+    mouse = lv.sdl_mouse_create()
+    keyboard = lv.sdl_keyboard_create()
+    lv.indev_set_group(keyboard, group)
 
 
 LV_PART_KNOB_CENTER = 0x090000
@@ -90,6 +70,7 @@ class Point(object):
 class seg(object):
 
     def __init__(self, line_width, end1, end2, line):
+        print('seg')
         self.end1 = end1
         self.end2 = end2
         self.line = line
@@ -99,18 +80,43 @@ class seg(object):
         self.on_color = lv.color_hex(0x17F203)
         self.on_opa = 255
 
-        poly_dsc = self.poly_dsc = lv.draw_rect_dsc_t()
-        lv.draw_rect_dsc_init(poly_dsc)
-        poly_dsc.bg_color = self.off_color
-        poly_dsc.bg_opa = 255
+        print('seg')
 
         line_dsc = self.line_dsc = lv.draw_line_dsc_t()
         lv.draw_line_dsc_init(line_dsc)
-        line_dsc.color = self.off_color
+        print('seg')
+        line_dsc.color = lv.color_hex(0x191919)
+        print('seg')
         line_dsc.width = line_width
+        print('seg')
         line_dsc.opa = 255
-        line_dsc.round_start = False
-        line_dsc.round_end = False
+        print('seg')
+        line_dsc.round_start = 0
+        print('seg')
+        line_dsc.round_end = 0
+        print('seg')
+        line_dsc.p1 = line[0]
+        print('seg')
+        line_dsc.p2 = line[1]
+        print('seg')
+
+        seg_end1 = self.seg_end1 = lv.draw_triangle_dsc_t()
+        seg_end2 = self.seg_end2 = lv.draw_triangle_dsc_t()
+        print('seg')
+
+        lv.draw_triangle_dsc_init(seg_end1)
+        lv.draw_triangle_dsc_init(seg_end2)
+        print('seg')
+
+        seg_end1.p = (lv.point_t * 3)(*end1)
+        seg_end2.p = (lv.point_t * 3)(*end2)
+        print('seg')
+        seg_end1.bg_opa = 255
+        seg_end2.bg_opa = 255
+        print('seg')
+        seg_end1.bg_color = lv.color_hex(0x191919)
+        seg_end2.bg_color = lv.color_hex(0x191919)
+        print('seg')
 
     def set_color(self, color, opa):
         self.on_color = color
@@ -126,21 +132,24 @@ class seg(object):
         self._is_lit = value
 
         if value:
-            self.poly_dsc.bg_color = self.on_color
+            self.seg_end1.bg_color = self.on_color
+            self.seg_end2.bg_color = self.on_color
             self.line_dsc.color = self.on_color
         else:
-            self.poly_dsc.bg_color = self.off_color
+            self.seg_end1.bg_color = self.off_color
+            self.seg_end2.bg_color = self.off_color
             self.line_dsc.color = self.off_color
 
-    def draw(self, canvas):
-        lv.canvas_draw_line(canvas, self.line, 2, self.line_dsc)
-        lv.canvas_draw_polygon(canvas, self.end1, 3, self.poly_dsc)
-        lv.canvas_draw_polygon(canvas, self.end2, 3, self.poly_dsc)
+    def draw(self, layer):
+        lv.draw_line(layer, self.line_dsc)
+        lv.draw_triangle(layer, self.seg_end1)
+        lv.draw_triangle(layer, self.seg_end2)
 
 
 class digit(object):
 
     def __init__(self, x, y, width, height, only_one=False):
+        # 11 0 23 44 True
         self.x = x
         self.y = y
         self.width = width
@@ -188,7 +197,6 @@ class digit(object):
             Point(x + 1, center_y),
             Point(x + offset_x - 1, center_y)
         )
-
         seg1 = (
             (seg1[0].lv_point, Point(
                 seg1[0].x - seg_end_center,
@@ -207,7 +215,6 @@ class digit(object):
             (Point(seg1[0].x, seg1[0].y - seg_end_height).lv_point,
              Point(seg1[1].x, seg1[1].y + seg_end_height).lv_point)
         )
-
         seg2 = (
             (seg2[0].lv_point, Point(
                 seg2[0].x + seg_end_height,
@@ -226,7 +233,6 @@ class digit(object):
             (Point(seg2[0].x + seg_end_height, seg2[0].y).lv_point,
              Point(seg2[1].x - seg_end_height, seg2[1].y).lv_point)
         )
-
         seg3 = (
             (seg3[0].lv_point, Point(
                 seg3[0].x - seg_end_center,
@@ -245,7 +251,6 @@ class digit(object):
             (Point(seg3[0].x, seg3[0].y + seg_end_height).lv_point,
              Point(seg3[1].x, seg3[1].y - seg_end_height).lv_point)
         )
-
         seg4 = (
             (seg4[0].lv_point, Point(
                 seg4[0].x - seg_end_center,
@@ -264,7 +269,6 @@ class digit(object):
             (Point(seg4[0].x, seg4[0].y + seg_end_height).lv_point,
              Point(seg4[1].x, seg4[1].y - seg_end_height).lv_point)
         )
-
         seg5 = (
             (seg5[0].lv_point, Point(
                 seg5[0].x + seg_end_height,
@@ -283,7 +287,6 @@ class digit(object):
             (Point(seg5[0].x + seg_end_height, seg5[0].y).lv_point,
              Point(seg5[1].x - seg_end_height, seg5[1].y).lv_point)
         )
-
         seg6 = (
             (seg6[0].lv_point, Point(
                 seg6[0].x - seg_end_center,
@@ -302,7 +305,6 @@ class digit(object):
             (Point(seg6[0].x, seg6[0].y - seg_end_height).lv_point,
              Point(seg6[1].x, seg6[1].y + seg_end_height).lv_point)
         )
-
         seg7 = (
             (seg7[0].lv_point, Point(
                 seg7[0].x + seg_end_height,
@@ -321,7 +323,6 @@ class digit(object):
             (Point(seg7[0].x + seg_end_height, seg7[0].y).lv_point,
              Point(seg7[1].x - seg_end_height, seg7[1].y).lv_point)
         )
-
         seg1 = seg(seg_width, *seg1)
         seg2 = seg(seg_width, *seg2)
         seg3 = seg(seg_width, *seg3)
@@ -370,9 +371,9 @@ class digit(object):
                 else:
                     s.is_lit = False
 
-    def draw(self, dsc):
+    def draw(self, layer):
         for s in self.all_segs:
-            s.draw(dsc)
+            s.draw(layer)
 
     def set_color(self, color, opa):
         for s in self.all_segs:
@@ -398,19 +399,18 @@ ui_img_gradient = lv.img_dsc_t(
 )
 
 
-class segmented_display(lv.obj_t):
+class segmented_display(object):
 
     def __init__(self, parent):
         super().__init__()
-        obj = lv.obj_create(parent)
-        obj.cast(self)
+        self.obj = lv.obj_create(parent.obj)
 
-        self.canvas = lv.canvas_create(self)
+        self.canvas = lv.canvas_create(self.obj)
 
         self._max_value = 0
         self.digits = []
 
-        self.glass_img = glass_img = lv.img_create(self)
+        self.glass_img = glass_img = lv.img_create(self.obj)
         lv.img_set_src(glass_img, glass)
         lv.obj_set_width(glass_img, lv.SIZE_CONTENT)  # NOQA
         lv.obj_set_height(glass_img, lv.SIZE_CONTENT)  # NOQA
@@ -424,16 +424,19 @@ class segmented_display(lv.obj_t):
 
         lv.obj_set_style_img_recolor(glass_img, self._bg_color, 0)
         lv.obj_set_style_img_recolor_opa(glass_img, 25, 0)
+        self.layer = lv.layer_t()
 
-        self.cbuf = bytes(lv.color_t.sizeof() * 2 * 2)
-        lv.canvas_set_buffer(self.canvas, self.cbuf,
-                             2, 2, lv.COLOR_FORMAT_NATIVE)
+        self.py_buf = (lv.uint8_t * (2 * 2 * 4))()
+        # self.cbuf = lv.void_t(id(self.py_buf))
+        lv.canvas_set_buffer(self.canvas, self.py_buf, 2, 2, lv.COLOR_FORMAT_NATIVE)
+
+        lv.canvas_init_layer(self.canvas, self.layer)
         lv.obj_center(self.canvas)
-        zoom = int(remap(lv.obj_get_width(self), 0, 100, 0, 255))
+        zoom = int(remap(lv.obj_get_width(self.obj), 0, 100, 0, 255))
         lv.img_set_zoom(glass_img, zoom)
 
-        lv.obj_set_style_bg_color(self, self._bg_color, 0)
-        lv.obj_set_style_bg_opa(self, 255, 0)
+        lv.obj_set_style_bg_color(self.obj, self._bg_color, 0)
+        lv.obj_set_style_bg_opa(self.obj, 255, 0)
 
         # self.set_style_outline_color(lv.color_hex(0x000000), 0)
         # self.set_style_outline_width(1, 0)
@@ -463,14 +466,21 @@ class segmented_display(lv.obj_t):
             d.set_color(self.on_color, opa)
 
     def set_size(self, diameter):
-        lv.obj_set_size(self, diameter, diameter)
+        lv.obj_set_size(self.obj, diameter, diameter)
 
         height = int(diameter / 3)
         width = int(diameter * 0.90)
 
-        self.cbuf = bytes(lv.color_t.sizeof() * width * height)
-        lv.canvas_set_buffer(self.canvas, self.cbuf, width,
-                             height, lv.COLOR_FORMAT_NATIVE)
+        self.py_buf = (lv.uint8_t * (width * height * 4))()
+        # self.cbuf = lv.void_t(id(self.py_buf))
+        lv.canvas_set_buffer(
+            self.canvas,
+            self.py_buf,
+            width,
+            height,
+            lv.COLOR_FORMAT_NATIVE
+        )
+
         lv.canvas_fill_bg(self.canvas, self._bg_color, lv.OPA_COVER)
 
         zoom = int(remap(diameter, 0, 100, 0, 255))
@@ -478,7 +488,7 @@ class segmented_display(lv.obj_t):
         self.__draw()
 
     def set_style_bg_color(self, color, selector):
-        lv.obj_set_style_bg_color(self, color, selector)
+        lv.obj_set_style_bg_color(self.obj, color, selector)
         self._bg_color = color
         lv.canvas_fill_bg(self.canvas, color, lv.OPA_COVER)
         # self.glass_img.set_style_img_recolor(self._bg_color, 0)
@@ -487,11 +497,14 @@ class segmented_display(lv.obj_t):
 
     def set_max_value(self, value):
         value = str(value)
+        print('11a')
         self.digits.clear()
+        print('11b')
 
-        lv.obj_update_layout(self)
-        diameter = lv.obj_get_width(self)
-
+        lv.obj_update_layout(self.obj)
+        print('11c')
+        diameter = lv.obj_get_width(self.obj)
+        print('11d')
         height = int(diameter / 3)
         width = int(diameter * 0.90)
 
@@ -509,16 +522,21 @@ class segmented_display(lv.obj_t):
 
             if only_one:
                 x -= int(character_width / 2)
-
+            print(78)
+            print(x, y, character_width, height, only_one)
             self.digits.append(digit(x, y, character_width, height, only_one))
+            print(79)
             x += character_width + spacing
 
+        print('11e')
         lv.canvas_fill_bg(self.canvas, self._bg_color, lv.OPA_COVER)
+        print('11f')
         self.__draw()
+        print('11g')
 
     def __draw(self):
         for d in self.digits:
-            d.draw(self.canvas)
+            d.draw(self.layer)
 
     def set_value(self, val):
         val = list(str(int(val)))
@@ -600,17 +618,16 @@ class _tick(lv.obj_t):
 
     def __init__(self, parent):
         super().__init__()
-        obj = lv.obj_create(parent)
-        obj.cast(self)
+        self.obj = lv.obj_create(parent.obj)
 
         self._points = None
         self._major = False
         self._width = None
-        lv.obj_add_style(self, _style, 0)
-        lv.obj_set_style_shadow_width(self, 20, 0)
+        lv.obj_add_style(self.obj, _style, 0)
+        lv.obj_set_style_shadow_width(self.obj, 20, 0)
         # set_style_shadow_color
-        lv.obj_set_style_shadow_opa(self, 0, 0)
-        lv.obj_set_style_shadow_spread(self, 0, 0)
+        lv.obj_set_style_shadow_opa(self.obj, 0, 0)
+        lv.obj_set_style_shadow_spread(self.obj, 0, 0)
 
     @property
     def is_major(self):
@@ -621,18 +638,18 @@ class _tick(lv.obj_t):
         self._major = value
 
     def get_style_line_color(self, selector):
-        return lv.obj_get_style_bg_color(self, selector)
+        return lv.obj_get_style_bg_color(self.obj, selector)
 
     def set_style_line_color(self, color, selector):
-        lv.obj_set_style_bg_color(self, color, selector)
-        lv.obj_set_style_shadow_color(self, color, selector)
+        lv.obj_set_style_bg_color(self.obj, color, selector)
+        lv.obj_set_style_shadow_color(self.obj, color, selector)
 
     def set_style_line_opa(self, opa, selector):
-        lv.obj_set_style_bg_opa(self, opa, selector)
-        lv.obj_set_style_shadow_opa(self, opa, selector)
+        lv.obj_set_style_bg_opa(self.obj, opa, selector)
+        lv.obj_set_style_shadow_opa(self.obj, opa, selector)
 
     def get_style_line_opa(self, selector):
-        return lv.obj_get_style_bg_opa(self, selector)
+        return lv.obj_get_style_bg_opa(self.obj, selector)
 
     def set_points(self, points, length):
         self._points = points
@@ -641,7 +658,7 @@ class _tick(lv.obj_t):
             self.__set_position()
 
     def __set_position(self):
-        lv.obj_set_style_transform_angle(self, 0, 0)
+        lv.obj_set_style_transform_angle(self.obj, 0, 0)
 
         p1, p2 = self._points
         height = _get_distance(p1.x, p1.y, p2.x, p2.y)
@@ -653,7 +670,7 @@ class _tick(lv.obj_t):
         center_y = int(lv.obj_get_height(parent) / 2)
         radius = _get_distance(center_x, center_y, p1.x, p1.y)
 
-        lv.obj_set_height(self, int(height))
+        lv.obj_set_height(self.obj, int(height))
 
         radius -= int(height / 2)
 
@@ -665,9 +682,9 @@ class _tick(lv.obj_t):
         #     radius
         #     )
 
-        lv.obj_set_x(self, p1.x)
-        lv.obj_set_y(self, p1.y)
-        lv.obj_set_style_transform_angle(self, int((angle - 270) * 10), 0)
+        lv.obj_set_x(self.obj, p1.x)
+        lv.obj_set_y(self.obj, p1.y)
+        lv.obj_set_style_transform_angle(self.obj, int((angle - 270) * 10), 0)
 
     def get_points(self):
         return self._points
@@ -677,7 +694,7 @@ class _tick(lv.obj_t):
 
     def set_style_line_width(self, width, selector):
         # lv.obj_set_style_shadow_spread(self, 0, 0)  # max(1, int(width / 4)), 0)
-        lv.obj_set_width(self, max(1, int(width * 0.75)))
+        lv.obj_set_width(self.obj, max(1, int(width * 0.75)))
         self._width = width
         if self._points is not None:
             self.__set_position()
@@ -700,29 +717,29 @@ class _tick(lv.obj_t):
 
         return math.degrees(math.atan2(p1.y, p1.x))
 
+import ctypes
 
-class knob_ctrl(lv.obj_t):
+
+class knob_ctrl(object):
 
     def __init__(self, parent):
-        super().__init__()
-        obj = lv.obj_create(parent)
-        obj.cast(self)
+        self.obj = lv.obj_create(parent)
 
-        lv.obj_add_style(self, _style, 0)
-        lv.obj_add_flag(self, lv.OBJ_FLAG_OVERFLOW_VISIBLE)
+        lv.obj_add_style(self.obj, _style, 0)
+        # lv.obj_add_flag(self, lv.OBJ_FLAG_OVERFLOW_VISIBLE)
 
         lv.obj_update_layout(parent)
         size = 320
         size -= 20
 
-        lv.obj_set_width(self, size)
-        lv.obj_set_height(self, size)
-        lv.obj_clear_flag(self, lv.OBJ_FLAG_SCROLLABLE)
-        lv.obj_set_align(self, lv.ALIGN_CENTER)
+        lv.obj_set_width(self.obj, size)
+        lv.obj_set_height(self.obj, size)
+        lv.obj_clear_flag(self.obj, lv.OBJ_FLAG_SCROLLABLE)
+        lv.obj_set_align(self.obj, lv.ALIGN_CENTER)
 
         shadow_size = int(round(size * 0.7))
 
-        self._shadow = shadow = lv.obj_create(self)
+        self._shadow = shadow = lv.obj_create(self.obj)
         lv.obj_set_width(shadow, shadow_size)
         lv.obj_set_height(shadow, shadow_size)
         lv.obj_add_style(shadow, _style, 0)
@@ -738,7 +755,7 @@ class knob_ctrl(lv.obj_t):
         lv.obj_clear_flag(shadow, lv.OBJ_FLAG_SCROLLABLE)
         lv.obj_clear_flag(shadow, lv.OBJ_FLAG_CLICKABLE)
 
-        self._glow = glow = lv.obj_create(self)
+        self._glow = glow = lv.obj_create(self.obj)
         lv.obj_set_width(glow, shadow_size)
         lv.obj_set_height(glow, shadow_size)
         lv.obj_set_align(glow, lv.ALIGN_CENTER)
@@ -772,7 +789,7 @@ class knob_ctrl(lv.obj_t):
         self._seg_color = None
         self._seg_opa = None
 
-        self._indent = indent = lv.obj_create(self)
+        self._indent = indent = lv.obj_create(self.obj)
         lv.obj_set_width(indent, indent_size)
         lv.obj_set_height(indent, indent_size)
         lv.obj_set_align(indent, lv.ALIGN_CENTER)
@@ -807,7 +824,7 @@ class knob_ctrl(lv.obj_t):
                 (((shadow_size - indent_size) / 2) + indent_size) / 2
         )
 
-        self._knob_glow = knob_glow = lv.obj_create(self)
+        self._knob_glow = knob_glow = lv.obj_create(self.obj)
 
         lv.obj_set_width(knob_glow, knob_size)
         lv.obj_set_height(knob_glow, knob_size)
@@ -847,11 +864,13 @@ class knob_ctrl(lv.obj_t):
             knob_glow,
             self.__drag_event_handler,
             lv.EVENT_PRESSING,
+            None
         )
         lv.obj_add_event(
             knob_img,
             self.__drag_event_handler,
             lv.EVENT_PRESSING,
+            None
         )
         self._captured = False
 
@@ -907,15 +926,11 @@ class knob_ctrl(lv.obj_t):
             )
         last_tick_num = self._last_tick_num
 
-        if abs(tick_num - last_tick_num) <= 10:
-            if self._tick_pass:
-                self._tick_pass = False
-                return
-            else:
-                self._tick_pass = True
-
-        elif self._tick_pass:
+        if self._tick_pass:
             self._tick_pass = False
+            return
+        else:
+            self._tick_pass = True
 
         if last_tick_num < tick_num:
             ticks = list(range(last_tick_num + 1, tick_num + 1, 1))
@@ -1023,10 +1038,10 @@ class knob_ctrl(lv.obj_t):
     def set_segment_display(self, value):
         if value:
             if self._segmented_display is None:
-                lv.obj_update_layout(self)
+                lv.obj_update_layout(self.obj)
 
-                width = lv.obj_get_width(self)
-                height = lv.obj_get_height(self)
+                width = lv.obj_get_width(self.obj)
+                height = lv.obj_get_height(self.obj)
 
                 size = min(height, width)
 
@@ -1035,29 +1050,42 @@ class knob_ctrl(lv.obj_t):
                 shadow_size = int(round(size * 0.7))
                 indent_size = int(shadow_size * 0.7)
                 seg_size = int(indent_size * 0.9)
-                seg_display.set_size(seg_size)
-                lv.obj_set_align(seg_display, lv.ALIGN_CENTER)
-                lv.obj_clear_flag(seg_display, lv.OBJ_FLAG_SCROLLABLE)
-                lv.obj_clear_flag(seg_display, lv.OBJ_FLAG_CLICKABLE)
-                lv.obj_add_style(seg_display, _style, 0)
-                seg_display.set_style_bg_color(lv.color_hex(0x000000), 0)
-                lv.obj_set_style_bg_opa(seg_display, 255, 0)
-                lv.obj_set_style_radius(seg_display, int(seg_size / 2), 0)
 
+                print('1')
+                seg_display.set_size(seg_size)
+                print('2')
+
+                lv.obj_set_align(seg_display.obj, lv.ALIGN_CENTER)
+                print('3')
+                lv.obj_clear_flag(seg_display.obj, lv.OBJ_FLAG_SCROLLABLE)
+                print('4')
+                lv.obj_clear_flag(seg_display.obj, lv.OBJ_FLAG_CLICKABLE)
+                print('5')
+                lv.obj_add_style(seg_display.obj, _style, 0)
+                print('6')
+                seg_display.set_style_bg_color(lv.color_hex(0x000000), 0)
+                print('7')
+                lv.obj_set_style_bg_opa(seg_display.obj, 255, 0)
+                print('8')
+                lv.obj_set_style_radius(seg_display.obj, int(seg_size / 2), 0)
+                print('9')
                 if self._seg_color is not None:
                     seg_display.set_style_text_color(self._seg_color, 0)
-
+                print('10')
                 if self._seg_opa is not None:
                     seg_display.set_style_text_opa(self._seg_opa, 0)
-
+                print('11')
                 seg_display.set_max_value(int(self._max_value))
+                print('12')
                 seg_display.set_value(int(self._value))
+                print('13')
                 self.__set_knob(self._value)
+                print('14')
 
         elif self._segmented_display is not None:
-            lv.obj_del(self._segmented_display)
+            lv.obj_del(self._segmented_display.obj)
             self._segmented_display = None
-            lv.obj_invalidate(self)
+            lv.obj_invalidate(self.obj)
             self.__set_knob(self._value)
 
     def set_scale_ticks(self, count, line_width, length):
@@ -1067,15 +1095,15 @@ class knob_ctrl(lv.obj_t):
                 if tick is None or tick.is_major:
                     continue
 
-                lv.timer_del(tick)
+                lv.timer_del(tick.obj)
                 self._ticks[i] = None
             return
 
         else:
             self._scale_ticks = (count, line_width, length)
 
-        width = lv.obj_get_width(self)
-        height = lv.obj_get_height(self)
+        width = lv.obj_get_width(self.obj)
+        height = lv.obj_get_height(self.obj)
 
         center_x = int(width / 2)
         center_y = int(height / 2)
@@ -1147,14 +1175,14 @@ class knob_ctrl(lv.obj_t):
                 continue
 
             if tick not in ticks:
-                tick.delete()
+                lv.obj_del(tick.obj)
 
         self._ticks.clear()
         self._ticks.extend(ticks[:])
 
     def set_scale_major_ticks(self, increment, line_width, length):
-        width = lv.obj_get_width(self)
-        height = lv.obj_get_height(self)
+        width = lv.obj_get_width(self.obj)
+        height = lv.obj_get_height(self.obj)
 
         center_x = int(width / 2.0)
         center_y = int(height / 2.0)
@@ -1167,7 +1195,7 @@ class knob_ctrl(lv.obj_t):
                     continue
 
                 if self._scale_ticks is None:
-                    lv.timer_del(tick)
+                    lv.timer_del(tick.obj)
                 else:
                     line_width, length = self._scale_ticks[1:]
                     p1, p2 = tick.get_points()
@@ -1249,7 +1277,7 @@ class knob_ctrl(lv.obj_t):
 
         if self._tick_fade:
             if self._fade_timer is None:
-                self._fade_timer = lv.timer_create(self.__tick_fade, 1)
+                self._fade_timer = lv.timer_create(self.__tick_fade, 1, None)
 
         elif self._tick_match_value:
             for i, tick in enumerate(self._ticks):
@@ -1270,8 +1298,8 @@ class knob_ctrl(lv.obj_t):
         point = lv.point_t()
         lv.indev_get_point(indev, point)  # NOQA
 
-        knob_x1 = lv.obj_get_x(self) + lv.obj_get_x(self._knob_glow)
-        knob_y1 = lv.obj_get_y(self) + lv.obj_get_y(self._knob_glow)
+        knob_x1 = lv.obj_get_x(self.obj) + lv.obj_get_x(self._knob_glow)
+        knob_y1 = lv.obj_get_y(self.obj) + lv.obj_get_y(self._knob_glow)
         knob_x2 = knob_x1 + lv.obj_get_x(self._knob_glow)
         knob_y2 = knob_y1 + lv.obj_get_y(self._knob_glow)
 
@@ -1337,10 +1365,10 @@ class knob_ctrl(lv.obj_t):
         # lv.event_send(self, lv.EVENT.VALUE_CHANGED, None)
 
     def __set_sizes(self):
-        lv.obj_update_layout(self)
+        lv.obj_update_layout(self.obj)
 
-        width = lv.obj_get_width(self)
-        height = lv.obj_get_height(self)
+        width = lv.obj_get_width(self.obj)
+        height = lv.obj_get_height(self.obj)
         size = min(width, height)
 
         shadow_size = int(size * 0.7)
@@ -1421,7 +1449,7 @@ class knob_ctrl(lv.obj_t):
             lv.obj_set_style_bg_color(self._knob_glow, color, selector)
 
         else:
-            lv.obj_set_style_bg_color(self, color, selector)
+            lv.obj_set_style_bg_color(self.obj, color, selector)
 
     def set_style_bg_opa(self, opa, selector):
         if selector | lv.PART_KNOB == selector:
@@ -1456,7 +1484,7 @@ class knob_ctrl(lv.obj_t):
             lv.obj_set_style_bg_opa(self._knob_glow, opa, selector)
 
         else:
-            lv.obj_set_style_bg_opa(self, opa, selector)
+            lv.obj_set_style_bg_opa(self.obj, opa, selector)
 
     def set_style_bg_grad_color(self, color, selector):
         if selector | lv.PART_KNOB == selector:
@@ -1485,7 +1513,7 @@ class knob_ctrl(lv.obj_t):
             lv.obj_set_style_img_recolor(self._knob_img, color, selector)
 
         else:
-            lv.obj_set_style_bg_grad_color(self, color, selector)
+            lv.obj_set_style_bg_grad_color(self.obj, color, selector)
 
     def set_style_bg_main_stop(self, *args, **kwargs):
         raise NotImplementedError
@@ -1497,7 +1525,7 @@ class knob_ctrl(lv.obj_t):
         gradient = []
 
         last_color = None
-        stops = grad_desc.stops
+        stops = grad_desc.stops * grad_desc.stops_count
         time.sleep(1)
         for i in range(grad_desc.stops_count):
             stop = stops[i]
@@ -1914,21 +1942,21 @@ class knob_ctrl(lv.obj_t):
         raise NotImplementedError
 
     def set_width(self, value):
-        lv.obj_update_layout(self)
-        self.set_size(value, lv.obj_get_height(self))
+        lv.obj_update_layout(self.obj)
+        self.set_size(value, lv.obj_get_height(self.obj))
 
     def set_height(self, value):
-        lv.obj_update_layout(self)
-        self.set_size(lv.obj_get_height(self), value)
+        lv.obj_update_layout(self.obj)
+        self.set_size(lv.obj_get_height(self.obj), value)
 
     def set_size(self, width, height):
-        lv.obj_update_layout(self)
+        lv.obj_update_layout(self.obj)
 
-        old_width = lv.obj_get_width(self)
-        old_height = lv.obj_get_height(self)
+        old_width = lv.obj_get_width(self.obj)
+        old_height = lv.obj_get_height(self.obj)
         old_diameter = min(old_width, old_height)
 
-        lv.obj_set_size(self, width, height)
+        lv.obj_set_size(self.obj, width, height)
         self.__set_sizes()
 
         new_diameter = min(width, height)
@@ -1958,16 +1986,18 @@ class knob_ctrl(lv.obj_t):
             )
 
 
-screen = lv.scr_act()
-lv.obj_set_style_bg_color(screen, lv.color_hex(0x2D2D2D), 0)
-lv.obj_set_style_bg_opa(screen, 255, 0)
-lv.obj_set_scrollbar_mode(screen, lv.SCROLLBAR_MODE_OFF)
+if __name__ == '__main__':
+    screen = lv.scr_act()
+    lv.obj_set_style_bg_color(screen, lv.color_hex(0x2D2D2D), 0)
+    lv.obj_set_style_bg_opa(screen, 255, 0)
+    lv.obj_set_scrollbar_mode(screen, lv.SCROLLBAR_MODE_OFF)
 
-volume = knob_ctrl(screen)
-lv.obj_center(volume)
-volume.set_segment_display(True)
-volume.set_size(550, 550)
+    volume = knob_ctrl(screen)
+    lv.obj_center(volume.obj)
+    volume.set_segment_display(True)
+    volume.set_size(250, 250)
 
-while True:
-    time.sleep(0.001)
-    lv.task_handler()
+    while True:
+        time.sleep(0.001)
+        lv.tick_inc(1)
+        lv.task_handler()

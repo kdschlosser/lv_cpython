@@ -16,7 +16,7 @@ extern "C" {
 #include <stddef.h>
 #include <stdbool.h>
 #include "../misc/lv_anim.h"
-#include "../core/lv_disp.h"
+#include "../disp/lv_disp.h"
 
 /*********************
  *      DEFINES
@@ -37,7 +37,7 @@ typedef enum {
     LV_OBJ_TREE_WALK_END,
 } lv_obj_tree_walk_res_t;
 
-typedef lv_obj_tree_walk_res_t (*lv_obj_tree_walk_cb_t)(struct _lv_obj_t * obj, void * user_data);
+typedef lv_obj_tree_walk_res_t (*lv_obj_tree_walk_cb_t)(struct _lv_obj_t *, void *);
 
 /**********************
  * GLOBAL PROTOTYPES

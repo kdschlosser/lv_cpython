@@ -82,13 +82,13 @@ typedef bool (*lv_fs_drv_ready_cb_t)(struct _lv_fs_drv_t * drv);
 
 typedef void * (*lv_fs_drv_open_cb_t)(struct _lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode);
 typedef lv_fs_res_t (*lv_fs_drv_close_cb_t)(struct _lv_fs_drv_t * drv, void * file_p);
-typedef lv_fs_res_t (*lv_fs_drv_read_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, void * buf, uint32_t btr, uint32_t * br);
-typedef lv_fs_res_t (*lv_fs_drv_write_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, const void * buf, uint32_t btw, uint32_t * bw);
+typedef lv_fs_res_t (*lv_fs_drv_read_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, void * buf, uint32_t btr, uint32_t ** br);
+typedef lv_fs_res_t (*lv_fs_drv_write_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, const void * buf, uint32_t btw, uint32_t ** bw);
 typedef lv_fs_res_t (*lv_fs_drv_seek_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t pos, lv_fs_whence_t whence);
-typedef lv_fs_res_t (*lv_fs_drv_tell_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t * pos_p);
+typedef lv_fs_res_t (*lv_fs_drv_tell_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t ** pos_p);
 
 typedef void * (*lv_fs_drv_dir_open_cb_t)(struct _lv_fs_drv_t * drv, const char * path);
-typedef lv_fs_res_t (*lv_fs_drv_dir_read_cb_t)(struct _lv_fs_drv_t * drv, void * rddir_p, char * fn);
+typedef lv_fs_res_t (*lv_fs_drv_dir_read_cb_t)(struct _lv_fs_drv_t * drv, void * rddir_p, char ** fn);
 typedef lv_fs_res_t (*lv_fs_drv_dir_close_cb_t)(struct _lv_fs_drv_t * drv, void * rddir_p);
 
 typedef struct _lv_fs_drv_t {

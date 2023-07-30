@@ -23,20 +23,18 @@ extern "C" {
  *      TYPEDEFS
  **********************/
 
-
-/*Data of anim_timeline_dsc*/
+ /*Data of anim_timeline_dsc*/
 typedef struct {
     lv_anim_t anim;
     uint32_t start_time;
 } lv_anim_timeline_dsc_t;
 
 /*Data of anim_timeline*/
-typedef struct _lv_anim_timeline_t {
+typedef struct {
     lv_anim_timeline_dsc_t * anim_dsc;  /**< Dynamically allocated anim dsc array*/
     uint32_t anim_dsc_cnt;              /**< The length of anim dsc array*/
     bool reverse;                       /**< Reverse playback*/
 } lv_anim_timeline_t;
-
 
 /**********************
 * GLOBAL PROTOTYPES

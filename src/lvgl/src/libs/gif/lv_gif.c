@@ -68,7 +68,7 @@ void lv_gif_set_src(lv_obj_t * obj, const void * src)
     }
 
     if(lv_img_src_get_type(src) == LV_IMG_SRC_VARIABLE) {
-        const lv_img_dsc_t * img_dsc = src;
+        lv_img_dsc_t * img_dsc = (lv_img_dsc_t *)src;
         gifobj->gif = gd_open_gif_data(img_dsc->data);
     }
     else if(lv_img_src_get_type(src) == LV_IMG_SRC_FILE) {
@@ -81,7 +81,7 @@ void lv_gif_set_src(lv_obj_t * obj, const void * src)
 
     gifobj->imgdsc.data = gifobj->gif->canvas;
     gifobj->imgdsc.header.always_zero = 0;
-    gifobj->imgdsc.header.cf = LV_COLOR_FORMAT_NATIVE_ALPHA;
+    //    gifobj->imgdsc.header.cf = LV_COLOR_FORMAT_NATIVE_ALPHA; TODO
     gifobj->imgdsc.header.h = gifobj->gif->height;
     gifobj->imgdsc.header.w = gifobj->gif->width;
     gifobj->last_call = lv_tick_get();

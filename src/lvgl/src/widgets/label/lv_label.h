@@ -56,15 +56,14 @@ typedef _lv_label_long_mode_t lv_label_long_mode_t;
 typedef uint8_t lv_label_long_mode_t;
 #endif /*DOXYGEN*/
 
-typedef union {
-    char * tmp_ptr; /*Pointer to the allocated memory containing the character replaced by dots*/
-    char tmp[LV_LABEL_DOT_NUM + 1]; /*Directly store the characters if <=4 characters*/
-} lv_label_dot_t;
 
 typedef struct {
     lv_obj_t obj;
     char * text;
-    lv_label_dot_t dot;
+    union {
+        char * tmp_ptr; /*Pointer to the allocated memory containing the character replaced by dots*/
+        char tmp[LV_LABEL_DOT_NUM + 1]; /*Directly store the characters if <=4 characters*/
+    } dot;
     uint32_t dot_end;  /*The real text length, used in dot mode*/
 
 #if LV_LABEL_LONG_TXT_HINT

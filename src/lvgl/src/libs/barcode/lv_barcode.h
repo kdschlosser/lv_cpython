@@ -27,8 +27,8 @@ extern "C" {
 /*Data of barcode*/
 typedef struct {
     lv_canvas_t canvas;
-    lv_color32_t dark_color;
-    lv_color32_t light_color;
+    lv_color_t dark_color;
+    lv_color_t light_color;
     uint16_t scale;
 } lv_barcode_t;
 
@@ -50,14 +50,14 @@ lv_obj_t * lv_barcode_create(lv_obj_t * parent);
  * @param obj pointer to barcode object
  * @param color dark color of the barcode
  */
-void lv_barcode_set_dark_color(lv_obj_t * obj, lv_color32_t color);
+void lv_barcode_set_dark_color(lv_obj_t * obj, lv_color_t color);
 
 /**
  * Set the light color of a barcode object
  * @param obj pointer to barcode object
  * @param color light color of the barcode
  */
-void lv_barcode_set_light_color(lv_obj_t * obj, lv_color32_t color);
+void lv_barcode_set_light_color(lv_obj_t * obj, lv_color_t color);
 
 /**
  * Set the scale of a barcode object
@@ -72,21 +72,21 @@ void lv_barcode_set_scale(lv_obj_t * obj, uint16_t scale);
  * @param data data to display
  * @return LV_RES_OK: if no error; LV_RES_INV: on error
  */
-lv_res_t lv_barcode_update(lv_obj_t * obj, const char * data);
+lv_res_t lv_barcode_update(lv_obj_t * obj, uint8_t data[]);
 
 /**
  * Get the dark color of a barcode object
  * @param obj pointer to barcode object
  * @return dark color of the barcode
  */
-lv_color32_t lv_barcode_get_dark_color(lv_obj_t * obj);
+lv_color_t lv_barcode_get_dark_color(lv_obj_t * obj);
 
 /**
  * Get the light color of a barcode object
  * @param obj pointer to barcode object
  * @return light color of the barcode
  */
-lv_color32_t lv_barcode_get_light_color(lv_obj_t * obj);
+lv_color_t lv_barcode_get_light_color(lv_obj_t * obj);
 
 /**
  * Get the scale of a barcode object

@@ -97,7 +97,7 @@ void lv_calendar_set_highlighted_dates(lv_obj_t * obj, lv_calendar_date_t highli
  *                      E.g. `const char * days[7] = {"Sun", "Mon", ...}`
  *                      Only the pointer will be saved so this variable can't be local which will be destroyed later.
  */
-void lv_calendar_set_day_names(lv_obj_t * obj, const char ** day_names);
+void lv_calendar_set_day_names(lv_obj_t * obj, const char * day_names[]);
 
 /*=====================
  * Getter functions

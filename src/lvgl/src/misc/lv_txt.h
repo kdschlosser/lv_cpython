@@ -19,15 +19,12 @@ extern "C" {
 #include <stdarg.h>
 #include "lv_area.h"
 #include "../font/lv_font.h"
-#include "lv_printf.h"
+#include "../stdlib/lv_sprintf.h"
 #include "lv_types.h"
 
 /*********************
  *      DEFINES
  *********************/
-#ifndef LV_TXT_COLOR_CMD
-#define LV_TXT_COLOR_CMD "#"
-#endif
 
 #define LV_TXT_ENC_UTF8 1
 #define LV_TXT_ENC_ASCII 2
@@ -51,21 +48,6 @@ enum _lv_text_flag_t {
 typedef _lv_text_flag_t lv_text_flag_t;
 #else
 typedef uint8_t lv_text_flag_t;
-#endif /*DOXYGEN*/
-
-
-/**
- * State machine for text renderer.*/
-enum _lv_text_cmd_state_t {
-    LV_TEXT_CMD_STATE_WAIT, /**< Waiting for command*/
-    LV_TEXT_CMD_STATE_PAR,  /**< Processing the parameter*/
-    LV_TEXT_CMD_STATE_IN,   /**< Processing the command*/
-};
-
-#ifdef DOXYGEN
-typedef _lv_text_cmd_state_t lv_text_cmd_state_t;
-#else
-typedef uint8_t lv_text_cmd_state_t;
 #endif /*DOXYGEN*/
 
 
@@ -126,21 +108,9 @@ uint32_t _lv_txt_get_next_line(const char * txt, const lv_font_t * font, lv_coor
  * UTF-8)
  * @param font pointer to a font
  * @param letter_space letter space
- * @param flag settings for the text from 'txt_flag_t' enum
  * @return length of a char_num long text
  */
-lv_coord_t lv_txt_get_width(const char * txt, uint32_t length, const lv_font_t * font, lv_coord_t letter_space,
-                            lv_text_flag_t flag);
-
-/**
- * Check next character in a string and decide if the character is part of the command or not
- * @param state pointer to a txt_cmd_state_t variable which stores the current state of command
- * processing
- * @param c the current character
- * @return true: the character is part of a command and should not be written,
- *         false: the character should be written
- */
-bool _lv_txt_is_cmd(lv_text_cmd_state_t * state, uint32_t c);
+lv_coord_t lv_txt_get_width(const char * txt, uint32_t length, const lv_font_t * font, lv_coord_t letter_space);
 
 /**
  * Insert a string into an other
@@ -238,14 +208,14 @@ static inline bool _lv_txt_is_a_word(uint32_t letter)
  * @param str pointer to a character in a string
  * @return length of the encoded character (1,2,3 ...). O in invalid
  */
-extern uint8_t (*_lv_txt_encoded_size)(const char *);
+extern uint8_t (*_lv_txt_encoded_size)(const char * txt);
 
 /**
  * Convert a Unicode letter to encoded
  * @param letter_uni a Unicode letter
  * @return Encoded character in Little Endian to be compatible with C chars (e.g. 'Á', 'Ü')
  */
-extern uint32_t (*_lv_txt_unicode_to_encoded)(uint32_t);
+extern uint32_t (*_lv_txt_unicode_to_encoded)(uint32_t letter);
 
 /**
  * Convert a wide character, e.g. 'Á' little endian to be compatible with the encoded format.
@@ -262,7 +232,7 @@ extern uint32_t (*_lv_txt_encoded_conv_wc)(uint32_t c);
  *                NULL to use txt[0] as index
  * @return the decoded Unicode character or 0 on invalid data code
  */
-extern uint32_t (*_lv_txt_encoded_next)(const char *, uint32_t *);
+extern uint32_t (*_lv_txt_encoded_next)(const char * txt, uint32_t * start_index);
 
 /**
  * Get the previous encoded character form a string.
@@ -271,7 +241,7 @@ extern uint32_t (*_lv_txt_encoded_next)(const char *, uint32_t *);
  * encoded char in 'txt'.
  * @return the decoded Unicode character or 0 on invalid data
  */
-extern uint32_t (*_lv_txt_encoded_prev)(const char *, uint32_t *);
+extern uint32_t (*_lv_txt_encoded_prev)(const char * txt, uint32_t * start_index);
 
 /**
  * Convert a letter index (in the encoded text) to byte index.
@@ -280,7 +250,7 @@ extern uint32_t (*_lv_txt_encoded_prev)(const char *, uint32_t *);
  * @param enc_id letter index
  * @return byte index of the 'enc_id'th letter
  */
-extern uint32_t (*_lv_txt_encoded_get_byte_id)(const char *, uint32_t);
+extern uint32_t (*_lv_txt_encoded_get_byte_id)(const char * txt, uint32_t letter_index);
 
 /**
  * Convert a byte index (in an encoded text) to character index.
@@ -289,7 +259,7 @@ extern uint32_t (*_lv_txt_encoded_get_byte_id)(const char *, uint32_t);
  * @param byte_id byte index
  * @return character index of the letter at 'byte_id'th position
  */
-extern uint32_t (*_lv_txt_encoded_get_char_id)(const char *, uint32_t);
+extern uint32_t (*_lv_txt_encoded_get_char_id)(const char * txt, uint32_t byte_index);
 
 /**
  * Get the number of characters (and NOT bytes) in a string.
@@ -297,7 +267,7 @@ extern uint32_t (*_lv_txt_encoded_get_char_id)(const char *, uint32_t);
  * @param txt a '\0' terminated char string
  * @return number of characters
  */
-extern uint32_t (*_lv_txt_get_encoded_length)(const char *);
+extern uint32_t (*_lv_txt_get_encoded_length)(const char * txt);
 
 /**********************
  *      MACROS

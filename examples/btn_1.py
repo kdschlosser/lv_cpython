@@ -1,13 +1,10 @@
-try:
-    import lvgl as lv
-except ImportError:
-    import os
-    import sys
+import os
+import sys
 
-    base_path = os.path.dirname(__file__)
-    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+base_path = os.path.dirname(__file__)
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
 
-    import lvgl as lv
+import lvgl as lv
 
 import time
 
@@ -61,9 +58,9 @@ lv.obj_center(label3)
 start = time.time()
 
 while True:
+    time.sleep(0.001)
     stop = time.time()
     diff = int((stop * 1000) - (start * 1000))
-    if diff >= 1:
-        start = stop
-        lv.tick_inc(diff)
-        lv.task_handler()
+    start = stop
+    lv.tick_inc(diff)
+    lv.task_handler()
