@@ -145,8 +145,6 @@ class build(_build):
             sdl_include = 'LV_SDL_INCLUDE_PATH'
             macros = ''
 
-        print(self.lvgl_include_dirs)
-
         # {macros}
         # define SDL_MAIN_HANDLED
         # #include {sdl_include}

@@ -1,11 +1,11 @@
 import pathlib
-from typing import Union, Any, Callable, Optional, List, TYPE_CHECKING # NOQA
+from typing import Union, Any, Optional, List, TYPE_CHECKING # NOQA
 import ctypes as _ctypes
 import os
 import sys
 import inspect  # NOQA
 import weakref  # NOQA
-
+from collections.abc import Callable  # NOQA
 
 base_path = os.path.dirname(__file__)
 
@@ -109,7 +109,6 @@ class _PythonObjectCache(object):
             del self._py_obj_storage[ref]
 
     def __call__(self):
-
         address = id(self)
 
         if address in self._py_obj_storage:
@@ -124,12 +123,26 @@ class _PythonObjectCache(object):
 class _ArrayWrapper(object):
 
     _c_obj = None
+    _len = None
+
+    @property
+    def __SIZE__(self):
+        return _ctypes.sizeof(self._c_obj)
+
+    def __len__(self):
+        if self._len is not None:
+            return self._len
+
+        return -1
 
     def __mul__(self, other):
         if not isinstance(other, int):
             raise TypeError(
                 'to convert to an array an integer needs to be used'
             )
+
+        if self._len is None:
+            self._len = other
 
         array = _ctypes.cast(
             self._c_obj,
@@ -156,6 +169,50 @@ class _ArrayWrapper(object):
             res = [array[i]() for i in range(other)]
 
         return res
+
+    def __getitem__(self, item):
+        if self._c_obj is not None:
+            if isinstance(item, slice):
+                start = item.start
+                stop = item.stop
+                step = item.step
+
+                if start is None:
+                    start = 0
+
+                if step is None:
+                    step = 1
+
+                if item.stop is None:
+                    raise ValueError(
+                        'slicing an array MUST have a stop position'
+                    )
+
+                array = _ctypes.cast(
+                    self._c_obj,
+                    _ctypes.POINTER(self.__class__ * stop)
+                ).contents
+
+                if isinstance(self, char_t):
+                    res = b''
+                    for i in range(start, stop, step):
+                        c = bytes(array[i])
+                        if c == b'\x00':
+                            break
+                        res += c
+
+                    res = res.decode('utf-8')
+
+                elif isinstance(self, uint8_t):
+                    res = b''
+                    for i in range(start, stop, step):
+                        c = bytes(array[i])
+                        res += c
+
+                else:
+                    res = [array[i]() for i in range(start, stop, step)]
+
+                return res
 
 
 class void_t(_ctypes.c_void_p, _PythonObjectCache, _ArrayWrapper):
@@ -216,41 +273,6 @@ class char_t(_ctypes.c_char, _PythonObjectCache, _ArrayWrapper):
 
 class mem_pool_t(_ctypes.c_void_p, _PythonObjectCache, _ArrayWrapper):
     pass
-
-
-def uint_buffer(data_or_size: Union[bytes, bytearray, str, int]):
-    if isinstance(data_or_size, int):
-        res = (uint8_t * data_or_size)()
-
-    else:
-        if isinstance(data_or_size, str):
-            data_or_size = data_or_size.encode('utf-8')
-        elif isinstance(data_or_size, bytearray):
-            data_or_size = bytes(data_or_size)
-
-        res = (uint8_t * len(data_or_size))(*data_or_size)
-
-    setattr(res, '__ADDRESS__', id(res))
-    return res
-
-
-def char_buffer(data_or_size: Union[bytes, bytearray, str, int]):
-    if isinstance(data_or_size, int):
-        res = (char_t * data_or_size)()
-
-    else:
-        if isinstance(data_or_size, str):
-            data_or_size = data_or_size.encode('utf-8')
-        elif isinstance(data_or_size, bytearray):
-            data_or_size = bytes(data_or_size)
-
-        if not data_or_size.endswith(b'\x00'):
-            data_or_size += b'\x00'
-
-        res = (char_t * len(data_or_size))(*data_or_size)
-
-    setattr(res, '__ADDRESS__', id(res))
-    return res
 
 
 class _Structure(_ctypes.Structure, _PythonObjectCache, _ArrayWrapper):
@@ -1627,6 +1649,8 @@ __fs_driver()
 # *****************  FUNCTIONS  ******************
 # func_restypes
 
+['~py_types~']  # NOQA
+
 ['~functions~']  # NOQA
 # ************************************************
 
@@ -1634,4 +1658,4 @@ __fs_driver()
 
 # ************************************************
 
-['~py_types~']  # NOQA
+

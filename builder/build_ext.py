@@ -18,8 +18,6 @@ class build_ext(_build_ext.build_ext):
         return name + ext
 
     def build_extension(self, ext):
-        print(self.debug)
-
         if self.debug:
             _build_ext.build_ext.build_extension(self, ext)
             return

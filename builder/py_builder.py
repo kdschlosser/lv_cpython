@@ -930,42 +930,90 @@ class FuncDecl(c_ast.FuncDecl):
         if name.startswith('_txt_encoded'):
             return None, None, None, 0
 
-        func = Function(name, o_func_name)
+        if possible_callback:
+            param_name_counter = 0
+            param_names = []
+            params = []
+            param_types = []
 
-        for param in args:
-            if isinstance(param, (Decl, Typename)):
-                param_name = param.name
-                p_name, p_type, code, p_ptr = param.gen_py()
-            elif isinstance(param, EllipsisParam):
-                return None, None, None, 0
-            else:
-                raise RuntimeError(str(type(param)))
+            for param in args:
 
-            if param_name is None:
-                if p_type not in ('None', 'void_t'):
+                if isinstance(param, (Decl, Typename)):
+                    param_name = param.name
+                    p_name, p_type, code, p_ptr = param.gen_py()
+                    if 'va_list' in p_type:
+                        return None, None, None, 0
+                elif isinstance(param, EllipsisParam):
+                    return None, None, None, 0
+                else:
+                    raise RuntimeError(type(param))
+
+                if param_name is None:
+                    if p_type not in ('None', 'void_t'):
+                        param_name_counter += 1
+                        param_name = 'arg' + str(param_name_counter)
+                        param_names.append(param_name)
+
+                if p_ptr and p_type in ('None', None):
+                    p_type = 'void_t'
+
+                param_types.append(
+                    format_pointer(
+                        p_ptr,
+                        p_type.replace('"', '')
+                    )
+                )
+                params.append(f'{param_name}: {p_type}')
+
+            if r_ptr and type_ in (None, 'None'):
+                type_ = 'void_t'
+
+            type_ = str(type_).replace('"', '')
+
+            type_ = format_pointer(r_ptr, type_)
+
+            param_types = [
+                str(pt).replace('"', '') for pt in param_types
+            ]
+
+            temp = CBFunc(
+                None,
+                type_,
+                param_types
+            )
+
+            name = get_py_type(name).replace('"', '')
+            return name, temp, None, 0
+        else:
+            func = Function(name, o_func_name)
+
+            for param in args:
+                if isinstance(param, (Decl, Typename)):
+                    param_name = param.name
+                    p_name, p_type, code, p_ptr = param.gen_py()
+                elif isinstance(param, EllipsisParam):
+                    return None, None, None, 0
+                else:
+                    raise RuntimeError(str(type(param)))
+
+                if param_name is None:
+                    if p_type not in ('None', 'void_t'):
+                        return None, None, None, 0
+
+                    continue
+
+                if p_type is None:
+                    print('nested callback func:', param, type(param), p_name, name, o_func_name)
+                    continue
+
+                if 'va_list' in p_type:
                     return None, None, None, 0
 
-                continue
+                func.append(p_name, p_type, p_ptr)
 
-            if p_type is None:
-                # print('nested callback func:', param, type(param), p_name, name, o_func_name)
-                continue
+            func.restype = FunctionRetval(type_, r_ptr)
 
-            if 'va_list' in p_type:
-                return None, None, None, 0
-
-            func.append(p_name, p_type, p_ptr)
-
-        if possible_callback:
-            if name in py_callback_names:
-                return None, None, None, 0
-
-            # print('CALLBACK:', name, o_func_name)
-            return None, None, None, 0
-
-        func.restype = FunctionRetval(type_, r_ptr)
-
-        return name, type_, str(func), r_ptr
+            return name, type_, str(func), r_ptr
 
 
 class Typename(c_ast.Typename):
@@ -1126,6 +1174,7 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
 
     def gen_py(self):
         s_name = format_name(self.name)
+        output_code = ''
 
         params = []
         nested_structs = []
@@ -1142,121 +1191,164 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
             if isinstance(field, Decl):
                 name, type_, code, ptr = field.gen_py()
 
-                if isinstance(field.type, PtrDecl):
-                    if code and code.startswith('def '):
-                        if isinstance(field.type.type, FuncDecl):
+                if isinstance(type_, CBFunc):
+                    param_names.append(name + '=' + name)
+
+                    py_properties.append(
+                        self.property_template.format(
+                            field_name=name,
+                            field_type=type_.py_type
+                        )
+                    )
+                    fields.append(
+                        StructField(name, None, str(type_))
+                    )
+                    param_evals.append(
+                        self.param_eval.format(param_name=name)
+                    )
+
+                    params.append(
+                        self.param_template.format(
+                            field_name=name,
+                            field_type=type_.py_type
+                        )
+                    )
+                else:
+                    if isinstance(field.type, PtrDecl):
+                        if code and code.startswith('def '):
+                            if isinstance(field.type.type, FuncDecl):
+                                continue
+
+                    elif isinstance(field.type, TypeDecl):
+                        if isinstance(field.type.type, (Union, Struct)) and code:
+
+                            if f'class {field.name}' in code:
+                                code = (
+                                    '\n'.join(
+                                        f'    {line}'
+                                        for line in code.rstrip().split('\n')
+                                    )
+                                )
+
+                                code = code.replace(field.name, f'_{field.name}')
+                                size = f"    setattr(_{field.name}, '__SIZE__', "
+                                size += f"_ctypes.sizeof(_{field.name}))"
+
+                                field.type.type.fields.name = (
+                                    f'{s_name}._{field.type.type.fields.name}'
+                                )
+
+                                for nested in field.type.type.nested_structs:
+                                    nested.fields.name = (
+                                        f'{s_name}._{nested.fields.name}'
+                                    )
+
+                                self.nested_structs.append(field.type.type)
+                                nested_structs.append(code + f'\n\n{size}')
+                                # field_names.append(name)
+                                param_names.append(f'{field.name}={field.name}')
+                                p_field = f'{field.name}: Optional[_{field.name}]'
+                                p_field += ' = _DefaultArg'
+                                params.append(p_field)
+                                field.name = f'{s_name}._{field.name}'
+                                py_properties.append(
+                                    self.property_template.format(
+                                        field_name=name,
+                                        field_type=f'_{name}'
+                                    )
+                                )
+                                fields.append(
+                                    StructField(name, None, f'{s_name}._{name}')
+                                    )
+                            else:
+                                f_name = field.type.type.fields.name
+                                output_code += code
+                                size = f"    setattr(_{field.name}, '__SIZE__', "
+                                size += f"_ctypes.sizeof(_{field.name}))"
+                                param_names.append(f'{field.name}={f_name}')
+                                p_field = f'{field.name}: Optional[{f_name}]'
+                                p_field += ' = _DefaultArg'
+                                params.append(p_field)
+                                py_properties.append(
+                                    self.property_template.format(
+                                        field_name=name,
+                                        field_type=f_name
+                                    )
+                                )
+
+                            param_evals.append(self.param_eval.format(
+                                param_name=name
+                            ))
+
                             continue
 
-                elif isinstance(field.type, TypeDecl):
-                    if isinstance(field.type.type, (Union, Struct)) and code:
-                        code = (
-                            '\n'.join(
-                                f'    {line}'
-                                for line in code.rstrip().split('\n')
-                            )
-                        )
-                        code = code.replace(field.name, f'_{field.name}')
-                        field.type.type.fields.name = (
-                            f'{s_name}._{field.type.type.fields.name}'
-                        )
-                        for nested in field.type.type.nested_structs:
-                            nested.fields.name = (
-                                f'{s_name}._{nested.fields.name}'
-                            )
+                    if not code:
+                        code = type_
 
-                        self.nested_structs.append(field.type.type)
+                    if type_ in (None, 'None'):
+                        type_ = 'Any'
 
-                        size = f"    setattr(_{field.name}, '__SIZE__', "
-                        size += f"_ctypes.sizeof(_{field.name}))"
+                    if not name:
+                        raise RuntimeError(f'{repr(type_)} : {repr(code)}')
 
-                        nested_structs.append(code + f'\n\n{size}')
-                        # field_names.append(name)
-                        param_names.append(f'{field.name}={field.name}')
-                        p_field = f'{field.name}: Optional[_{field.name}]'
-                        p_field += ' = _DefaultArg'
-                        params.append(p_field)
-                        field.name = f'{s_name}._{field.name}'
-
-                        py_properties.append(
-                            self.property_template.format(
-                                field_name=name,
-                                field_type=f'_{name}'
-                            )
-                        )
-                        fields.append(StructField(name, None, f'{s_name}._{name}'))
-                        param_evals.append(self.param_eval.format(
-                            param_name=name
-                        ))
-
-                        continue
-
-                if not code:
-                    code = type_
-
-                if type_ in (None, 'None'):
-                    type_ = 'Any'
-
-                if not name:
-                    raise RuntimeError(f'{repr(type_)} : {repr(code)}')
-
-                for item in ('Any', 'List', 'bool'):
-                    if type_.startswith(item):
-                        break
-                else:
-                    if '"' not in type_:
-                        type_ = '"' + type_ + '"'
-
-                param_names.append(name + '=' + name)
-
-                if type_.replace('"', '').replace('Any', 'void_t') == 'va_list':
-                    return None, None, None
-
-                prop_type = type_
-                if f'_type_{prop_type}' in int_typeing_names:
-                    prop_type = f'_type_{prop_type}'
-                else:
-                    for t in int_typeing_names:
-                        if t[5:] in prop_type:
-                            prop_type.replace(t[5:], t)
+                    for item in ('Any', 'List', 'bool'):
+                        if type_.startswith(item):
                             break
-                        if t[6:] in prop_type:
-                            prop_type.replace(t[6:], t)
-                            break
+                    else:
+                        if '"' not in type_:
+                            type_ = '"' + type_ + '"'
 
-                py_properties.append(
-                    self.property_template.format(
-                        field_name=name,
-                        field_type=prop_type
-                    )
-                )
-                fields.append(
-                    StructField(
-                        name,
-                        field.bitsize,
-                        format_pointer(
-                            ptr,
-                            type_.replace('"', '').replace('Any', 'void_t')
+                    param_names.append(name + '=' + name)
+
+                    if type_.replace('"', '').replace('Any', 'void_t') == 'va_list':
+                        return None, None, None
+
+                    prop_type = type_
+                    if f'_type_{prop_type}' in int_typeing_names:
+                        prop_type = f'_type_{prop_type}'
+                    else:
+                        for t in int_typeing_names:
+                            if t[5:] in prop_type:
+                                prop_type.replace(t[5:], t)
+                                break
+                            if t[6:] in prop_type:
+                                prop_type.replace(t[6:], t)
+                                break
+
+                    py_properties.append(
+                        self.property_template.format(
+                            field_name=name,
+                            field_type=prop_type
                         )
                     )
-                )
-                param_evals.append(
-                    self.param_eval.format(param_name=name)
-                )
-
-                if type_.startswith('List'):
-                    special_types.append(
-                        self.special_types_template.format(
-                            param_name=name,
-                            param_type='list'
+                    fields.append(
+                        StructField(
+                            name,
+                            field.bitsize,
+                            format_pointer(
+                                ptr,
+                                type_.replace('"', '').replace('Any', 'void_t')
+                            )
                         )
                     )
-
-                params.append(
-                    self.param_template.format(
-                        field_name=name,
-                        field_type=type_
+                    param_evals.append(
+                        self.param_eval.format(param_name=name)
                     )
-                )
+
+                    if type_.startswith('List'):
+                        special_types.append(
+                            self.special_types_template.format(
+                                param_name=name,
+                                param_type='list'
+                            )
+                        )
+
+                    params.append(
+                        self.param_template.format(
+                            field_name=name,
+                            field_type=type_
+                        )
+                    )
 
             else:
                 raise RuntimeError(str(type(field)))
@@ -1292,7 +1384,10 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
         else:
             pack = f'\n    _pack_ = {pragma_pack}'
 
-        return s_name, None, self.template.format(
+        if output_code:
+            output_code += '\n\n'
+
+        output_code += self.template.format(
             pack=pack,
             base_type=self._base_type,
             struct_name=s_name,
@@ -1302,6 +1397,8 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
             params=params,
             special_types=special_types
         )
+
+        return s_name, None, output_code
 
 
 class Union(Struct):
@@ -1381,6 +1478,79 @@ class CBFunc(object):
         self.restype = restype
         self.param_types = param_types
 
+    @property
+    def py_type(self):
+        template = 'Callable[[{argtypes}], {retval}]'
+
+        real_restype = get_type_from_py_type(self.restype)
+
+        if self.restype == 'None':
+            restype = self.restype
+        elif (
+            not real_restype.startswith('_') and
+            f'_{real_restype}' in py_struct_names
+        ):
+            restype = f'_{real_restype}'
+        elif (
+            not real_restype.startswith('_') and
+            real_restype in py_typedef_names
+        ):
+            for t_def in py_typedefs:
+                if isinstance(t_def, TDef) and t_def.name == real_restype:
+                    restype = t_def.type.replace('"', '')
+                    break
+            else:
+                restype = real_restype
+        else:
+            restype = real_restype
+
+        if restype != 'None':
+            restype = (
+                '"' + get_type_from_py_type(restype).replace('"', '') + '"'
+            )
+
+        param_types = []
+        for type_ in self.param_types:
+            temp_type = type_
+            real_type = get_type_from_py_type(type_)
+
+            if real_type is None:
+                real_type = 'void_t'
+
+            if (
+                not real_type.startswith('_') and
+                f'_{real_type}' in py_struct_names
+            ):
+                type_ = f'_{real_type}'
+            elif (
+                not real_type.startswith('_') and
+                real_type in py_typedef_names
+            ):
+                for t_def in py_typedefs:
+                    if (
+                        isinstance(t_def, TDef) and
+                        t_def.name == real_type and
+                        t_def.type is not None
+                    ):
+                        type_ = t_def.type
+                        break
+                else:
+                    type_ = real_type
+            else:
+                type_ = real_type
+
+            if temp_type != real_type:
+                type_ = temp_type.replace(real_type, type_)
+
+            param_types.append(
+                '"' + get_type_from_py_type(type_).replace('"', '') + '"'
+            )
+
+        return template.format(
+            retval=restype,
+            argtypes=', '.join(param_types)
+        )
+
     def __str__(self):
         real_restype = get_type_from_py_type(self.restype)
 
@@ -1440,14 +1610,18 @@ class CBFunc(object):
 
             param_types.append(type_)
 
-        res = f"{self.name} = CFUNCTYPE({restype}, "
-        res += f"{', '.join(param_types)})"
-        if len(res) > 80:
-            res = f"{self.name} = CFUNCTYPE(\n"
-            res += f"    {restype},\n"
-            param_types = ',\n'.join('    ' + p for p in param_types)
-            res += param_types
-            res += '\n)'
+        if self.name is None:
+            res = f"CFUNCTYPE({restype}, "
+            res += f"{', '.join(param_types)})"
+        else:
+            res = f"{self.name} = CFUNCTYPE({restype}, "
+            res += f"{', '.join(param_types)})"
+            if len(res) > 80:
+                res = f"{self.name} = CFUNCTYPE(\n"
+                res += f"    {restype},\n"
+                param_types = ',\n'.join('    ' + p for p in param_types)
+                res += param_types
+                res += '\n)'
 
         return res
 
@@ -1637,6 +1811,7 @@ class RootTypedef(Typedef):
                         name not in py_struct_names and
                         type_ not in py_struct_names
                     ):
+
                         py_struct_names.append(type_)
                         py_struct_names.append(name)
                         py_structs.append(code)
@@ -1644,7 +1819,7 @@ class RootTypedef(Typedef):
                         size += f"_ctypes.sizeof({name}))"
                         py_struct_sizes.append(size)
 
-                        if code.startswith('class ' + type_):
+                        if f'class {type_}' in code:
                             if name not in py_typedef_names:
                                 py_typedef_names.append(name)
                                 py_typedefs.append(

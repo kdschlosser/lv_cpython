@@ -171,3 +171,5 @@ cython_debug/
 /sdl_temp/
 /SDL2/
 /SDL2/
+/lvgl/_lib_lvgl.dll
+/lvgl/SDL2.dll

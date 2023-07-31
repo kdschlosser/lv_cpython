@@ -8,7 +8,6 @@ def run(lib_path):
     lvgl_path = os.path.join(lib_path, 'lvgl')
     sys.path.insert(0, lib_path)
 
-
     import lvgl
 
     functions = {}
