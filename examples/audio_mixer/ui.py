@@ -5,16 +5,24 @@
 
 import os
 import sys
-
-base_path = os.path.dirname(__file__)
-lib_path = os.path.abspath(os.path.join(base_path, '..', '..'))
-sys.path.insert(0, lib_path)
-
-import lvgl as lv
 import time
 
 
-lv.init()
+try:
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
+
+    import lvgl as lv
+
+    lv.init()
+
+except (ImportError, AttributeError):
+    sys.path.pop(0)
+
+    import lvgl as lv
+
+    lv.init()
+
 
 disp = lv.sdl_window_create(480, 800)
 

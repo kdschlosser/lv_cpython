@@ -1,13 +1,27 @@
 import os
 import sys
+import time
 
-base_path = os.path.dirname(__file__)
-lib_path = os.path.abspath(os.path.join(base_path, '..'))
-sys.path.insert(0, lib_path)
 
-import lvgl as lv
+try:
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
 
-import display_driver
+    import lvgl as lv
+
+
+    lv.init()
+
+except (ImportError, AttributeError):
+    sys.path.pop(0)
+
+    import lvgl as lv
+
+
+    lv.init()
+
+
+import display_driver  # NOQA
 
 
 ui_Screen1 = lv.obj_create(None)
@@ -204,8 +218,6 @@ for arc in arcs:
     lv.obj_update_layout(arc)
 
 
-import gc
-
 def timer_cb(_):
     for i, arc in enumerate(arcs):
         value = lv.arc_get_value(arc)
@@ -232,7 +244,7 @@ def timer_cb(_):
 
 
 timer = lv.timer_create_basic()
-lv.timer_set_period(timer, 1)
+lv.timer_set_period(timer, 30)
 lv.timer_set_cb(timer, timer_cb)
 
 lv.main_loop()

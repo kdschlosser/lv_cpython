@@ -33,6 +33,18 @@ class _DefaultArg:
     pass
 
 
+class _HashWrapper(object):
+
+    def __init__(self, obj):
+        self.obj = obj
+
+    def __hash__(self):
+        try:
+            return hash(self.obj)
+        except:
+            return hash(_ctypes.addressof(self.obj))
+
+
 def _POINTER(obj):
     pointer = _ctypes.POINTER(obj)
 
@@ -633,6 +645,9 @@ class __IntMixin(object):
         if isinstance(x, (int, float)):
             return x != val1
 
+        val2 = x.value
+        return val2 != val1
+
     def __lt__(self, x):
         val1 = self.value
 
@@ -731,7 +746,10 @@ class _Structure(_ctypes.Structure, __PyObjectStore):
         _ctypes.Structure.__setattr__(self, '__references__', {})
 
     def __convert_to_ctype__(self, obj, type_):
-        if isinstance(obj, list):
+
+        if not isinstance(obj, (list, tuple)):
+            ref_obj = _HashWrapper(obj)
+        elif isinstance(obj, list):
             ref_obj = tuple(obj)
         else:
             ref_obj = obj
@@ -765,9 +783,7 @@ class _Structure(_ctypes.Structure, __PyObjectStore):
                     array = array(*obj)
             else:
                 array = type_ * len(obj)
-                array = array()
-                for i, item in enumerate(obj):
-                    array[i] = item
+                array = array(*obj)
 
             self.__references__[ref_obj] = array
             return array
@@ -825,7 +841,7 @@ class _Structure(_ctypes.Structure, __PyObjectStore):
                 except:
                     raise TypeError
 
-            self.__references__[obj] = value
+            self.__references__[_HashWrapper(obj)] = value
             return value
 
         if pointer_count:
@@ -834,7 +850,7 @@ class _Structure(_ctypes.Structure, __PyObjectStore):
             except:
                 value = _pointer(type_(obj))
 
-            self.__references__[obj] = value
+            self.__references__[_HashWrapper(obj)] = value
             return value
 
         if (
@@ -844,7 +860,7 @@ class _Structure(_ctypes.Structure, __PyObjectStore):
         ):
             try:
                 value = obj.value
-                self.__references__[obj] = value
+                self.__references__[_HashWrapper(obj)] = value
                 return value
             except AttributeError:
                 pass
@@ -861,21 +877,15 @@ class _Structure(_ctypes.Structure, __PyObjectStore):
                 pass
         except TypeError:
             print(type(value))
-        print('FIELD_STOP:')
-        fields = _ctypes.Structure.__getattribute__(self, '_fields_')
-        for field in fields:
-            if len(field) == 2:
-                field_name, field_type = field
-            else:
-                field_name, field_type = field[:-1]
 
-            if field_name != key:
-                continue
+        if not isinstance(value, (list, tuple)):
+            hash_value = _HashWrapper(value)
+        elif isinstance(value, list):
+            hash_value = tuple(value)
+        else:
+            hash_value = value
 
-            if field_name == 'stops':
-                print('FIELD_STOP:', field_type)
-
-        if isinstance(value, (list, tuple)) or value not in self.__references__:
+        if isinstance(value, (list, tuple)) or hash_value not in self.__references__:
             fields = _ctypes.Structure.__getattribute__(self, '_fields_')
             for field in fields:
                 if len(field) == 2:

@@ -1,22 +1,31 @@
-
 import os
 import sys
-
-base_path = os.path.dirname(__file__)
-sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
-
-import lvgl as lv
-
 import time
 
 
-lv.init()
+try:
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
+
+    import lvgl as lv
+
+    lv.init()
+
+except (ImportError, AttributeError):
+    sys.path.pop(0)
+
+    import lvgl as lv
+
+    lv.init()
+
+
 disp = lv.sdl_window_create(400, 400)
 group = lv.group_create()
 lv.group_set_default(group)
 mouse = lv.sdl_mouse_create()
 keyboard = lv.sdl_keyboard_create()
 lv.indev_set_group(keyboard, group)
+
 
 def value_changed_event_cb(e, label):
 
@@ -46,27 +55,7 @@ lv.obj_add_event(arc, lambda e: value_changed_event_cb(e, label), lv.EVENT_VALUE
 lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)
 
 
-start = time.time()
-
-val = 10
-inc = 1
-
 while True:
-    stop = time.time()
-    diff = (stop * 1000) - (start * 1000)
-    while diff < 1.0:
-        stop = time.time()
-        diff = (stop * 1000) - (start * 1000)
-
-    val += inc
-    if val in (0, 100):
-        inc = -inc
-
-    lv.arc_set_value(arc, val)
-    lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)
-
-    stop = time.time()
-    diff = int((stop * 1000) - (start * 1000))
-    start = stop
-    lv.tick_inc(diff)
+    time.sleep(0.001)
+    lv.tick_inc(1)
     lv.task_handler()

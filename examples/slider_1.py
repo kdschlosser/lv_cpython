@@ -1,15 +1,24 @@
 import os
 import sys
-
-base_path = os.path.dirname(__file__)
-lib_path = os.path.abspath(os.path.join(base_path, '..'))
-sys.path.insert(0, lib_path)
-
-import lvgl as lv
 import time
 
 
-lv.init()
+try:
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
+
+    import lvgl as lv
+
+    lv.init()
+
+except (ImportError, AttributeError):
+    sys.path.pop(0)
+
+    import lvgl as lv
+
+    lv.init()
+
+
 disp = lv.sdl_window_create(lv.coord_t(480), 320)
 group = lv.group_create()
 lv.group_set_default(group)
@@ -19,10 +28,10 @@ lv.indev_set_group(keyboard, group)
 
 
 def slider_event_cb(e):
-    slider = lv.event_get_target_obj(e)
+    s = lv.event_get_target_obj(e)
 
     # Refresh the text
-    lv.label_set_text(label, str(lv.slider_get_value(slider)))
+    lv.label_set_text(label, str(lv.slider_get_value(s)))
 
 
 # Create a slider in the center of the display
@@ -36,8 +45,6 @@ label = lv.label_create(lv.scr_act())
 lv.label_set_text(label, "0")
 lv.obj_align_to(label, slider, lv.ALIGN_OUT_TOP_MID, 0, -15)
 
-
-start = time.time()
 
 while True:
     time.sleep(0.001)

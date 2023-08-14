@@ -1,14 +1,24 @@
 import os
 import sys
-
-base_path = os.path.dirname(__file__)
-sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
-
-import lvgl as lv
-
 import time
 
-lv.init()
+
+try:
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
+
+    import lvgl as lv
+
+    lv.init()
+
+except (ImportError, AttributeError):
+    sys.path.pop(0)
+
+    import lvgl as lv
+
+    lv.init()
+
+
 disp = lv.sdl_window_create(480, 320)
 group = lv.group_create()
 lv.group_set_default(group)
@@ -28,10 +38,8 @@ obj = lv.arc_create(lv.scr_act())
 lv.obj_add_style(obj, style, 0)
 lv.obj_center(obj)
 
-start = time.time()
 
 while True:
     time.sleep(0.001)
-    stop = time.time()
     lv.tick_inc(1)
     lv.task_handler()

@@ -1,14 +1,24 @@
 import os
 import sys
-
-base_path = os.path.dirname(__file__)
-sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
-
-import lvgl as lv
-
 import time
 
-lv.init()
+
+try:
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
+
+    import lvgl as lv
+
+    lv.init()
+
+except (ImportError, AttributeError):
+    sys.path.pop(0)
+
+    import lvgl as lv
+
+    lv.init()
+
+
 disp = lv.sdl_window_create(480, 320)
 group = lv.group_create()
 lv.group_set_default(group)
@@ -17,13 +27,13 @@ keyboard = lv.sdl_keyboard_create()
 lv.indev_set_group(keyboard, group)
 
 
-def set_temp(bar, temp):
-    lv.bar_set_value(bar, temp, lv.ANIM_ON)
+def set_temp(b, temp):
+    lv.bar_set_value(b, temp, lv.ANIM_ON)
+
 
 #
 # A temperature meter example
 #
-
 style_indic = lv.style_t()
 
 lv.style_init(style_indic)
@@ -45,16 +55,11 @@ lv.anim_set_playback_time(a, 3000)
 lv.anim_set_var(a, bar)
 lv.anim_set_values(a, -20, 40)
 lv.anim_set_repeat_count(a, lv.ANIM_REPEAT_INFINITE)
-lv.anim_set_custom_exec_cb(a, lambda a, val: set_temp(bar, val))
+lv.anim_set_custom_exec_cb(a, lambda _, val: set_temp(bar, val))
 lv.anim_start(a)
 
 
-start = time.time()
-
 while True:
     time.sleep(0.001)
-    stop = time.time()
-    diff = int((stop * 1000) - (start * 1000))
-    start = stop
-    lv.tick_inc(diff)
+    lv.tick_inc(1)
     lv.task_handler()

@@ -1,15 +1,24 @@
 import os
 import sys
-
-base_path = os.path.dirname(__file__)
-lib_path = os.path.abspath(os.path.join(base_path, '..'))
-sys.path.insert(0, lib_path)
-
-import lvgl as lv
 import time
 
 
-lv.init()
+try:
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
+
+    import lvgl as lv
+
+    lv.init()
+
+except (ImportError, AttributeError):
+    sys.path.pop(0)
+
+    import lvgl as lv
+
+    lv.init()
+
+
 disp = lv.sdl_window_create(lv.coord_t(480), 320)
 group = lv.group_create()
 lv.group_set_default(group)
@@ -52,14 +61,10 @@ lv.obj_center(sw)
 lv.obj_add_state(sw, lv.STATE_CHECKED)
 lv.obj_add_event(sw, sw_event_cb, lv.EVENT_VALUE_CHANGED, None)
 
-start = time.time()
 
 while True:
-    time.sleep(0.033)
-    stop = time.time()
-    diff = int((stop * 1000) - (start * 1000))
-    start = stop
-    lv.tick_inc(diff)
+    time.sleep(0.001)
+    lv.tick_inc(1)
     lv.task_handler()
 
 
