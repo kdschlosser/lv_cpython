@@ -22,7 +22,6 @@ del os
 del base_path
 del lib_path
 
-_MPY_API = False
 __version__ = "0.1.1b"
 
 
@@ -30,47 +29,163 @@ def binding_version():
     return __version__
 
 
+class _DefaultArg:
+    pass
+
+
+def _POINTER(obj):
+    pointer = _ctypes.POINTER(obj)
+
+    def __hash__(self):
+        return hash(_ctypes.addressof(self))
+
+    setattr(pointer, '__hash__', __hash__)
+
+    return pointer
+
+
+def _pointer(obj):
+    pointer = _ctypes.pointer(obj)
+
+    def __hash__(self):
+        return hash(_ctypes.addressof(self))
+
+    setattr(pointer, '__hash__', __hash__)
+
+    return pointer
+
+
 INT32_MAX = 0x7FFFFFFF
-ANIM_REPEAT_INFINITE = 0xFFFF
-ANIM_PLAYTIME_INFINITE = 0xFFFFFFFF
-
-BTNMATRIX_BTN_NONE = 0xFFFF
-
-_COORD_TYPE_SHIFT = 29
-_COORD_TYPE_SPEC = 1 << _COORD_TYPE_SHIFT
 
 
 def COORD_SET_SPEC(x):
     return x | _COORD_TYPE_SPEC
 
 
-SIZE_CONTENT = COORD_SET_SPEC(2001)
-COORD_MAX = (1 << _COORD_TYPE_SHIFT) - 1
-COORD_MIN = -COORD_MAX
+DISP_ROT_MAX_BUF = 1920 * 1080 * 4
 
+SPAN_SNIPPET_STACK_SIZE = 64
 
-class _DefaultArg:
-    pass
+_SWITCH_KNOB_EXT_AREA_CORRECTION = 2
 
+GRADIENT_MAX_STOPS = 32
+STYLE_SENTINEL_VALUE = 0xAABBCCDD
+
+BEZIER_VAL_SHIFT = 10
+TRIGO_SHIFT = 15
+BEZIER_VAL_MAX = 1 << BEZIER_VAL_SHIFT
+TRIGO_SIN_MAX = 32768
+RAND_MAX = 32767
+
+BTNMATRIX_BTN_NONE = 0xFFFF
+
+DRAW_SW_LAYER_SIMPLE_BUF_SIZE = 64 * 1024
+DRAW_SW_DRAW_UNIT_CNT = 1
+DRAW_SW_SHADOW_CACHE_SIZE = 1024
+
+SPINBOX_MAX_DIGIT_COUNT = 10
 
 DPI_DEF = 130
-DRAW_LABEL_NO_TXT_SEL = 0xFFFF
+RADIUS_CIRCLE = 0x7FFF
+OPA_MIN = 2
+OPA_MAX = 253
+OS_CUSTOM = 255
+LAYER_MAX_MEMORY_USAGE = 1024
 
-LABEL_WAIT_CHAR_COUNT = 3
-LABEL_DOT_NUM = 3
-LABEL_POS_LAST = 0xFFFF
-LABEL_TEXT_SELECTION_OFF = DRAW_LABEL_NO_TXT_SEL
+LED_BRIGHT_MIN = 80
+LED_BRIGHT_MAX = 255
 
-TEXTAREA_CURSOR_LAST = 0x7FFF
-
-TABLE_CELL_NONE = 0xFFFF
-
-DROPDOWN_POS_LAST = 0xFFFF
+FILE_EXPLORER_PATH_MAX_LEN = 128
 
 CHART_POINT_NONE = INT32_MAX
 
-ZOOM_NONE = 256
+DROPDOWN_POS_LAST = 0xFFFF
 
+NO_TIMER_READY = 0xFFFFFFFF
+NO_TASK_READY = NO_TIMER_READY
+
+LABEL_POS_LAST = 0xFFFF
+LABEL_WAIT_CHAR_COUNT = 3
+LABEL_DOT_NUM = 3
+LABEL_TEXT_SELECTION = 1
+DRAW_LABEL_NO_TXT_SEL = 0xFFFF
+LABEL_TEXT_SELECTION_OFF = DRAW_LABEL_NO_TXT_SEL
+
+IME_PINYIN_K9_CAND_TEXT_NUM = 3
+IME_PINYIN_CAND_TEXT_NUM = 6
+IME_PINYIN_K9_MAX_INPUT = 7
+
+THEME_DEFAULT_TRANSITION_TIME = 80
+
+TABLE_CELL_NONE = 0XFFFF
+
+_ZOOM_INV_UPSCALE = 5
+ZOOM_NONE = 256
+IMG_ZOOM_NONE = ZOOM_NONE
+
+IMGFONT_BPP = 9
+IMGFONT_PATH_MAX_LEN = 64
+IMGFONT_USE_IMG_CACHE_HEADER = 0
+
+COLOR_DEPTH = 32
+COLOR_SIZE = COLOR_DEPTH
+_COLOR_NATIVE_WITH_ALPHA_SIZE = 4
+
+FOPEN_MAX = 20
+FILENAME_MAX = 1024
+FS_MAX_PATH_LENGTH = 256
+FS_MAX_FN_LENGTH = 64
+
+LVGL_VERSION_MINOR = 0
+LVGL_VERSION_MAJOR = 9
+LVGL_VERSION_PATCH = 0
+LVGL_VERSION_INFO = b"dev"
+
+SEEK_SET = 0
+SEEK_CUR = 1
+SEEK_END = 2
+
+_FLEX_COLUMN = 1 << 0
+_FLEX_WRAP = 1 << 2
+_FLEX_REVERSE = 1 << 3
+
+_COORD_TYPE_SHIFT = 29
+_COORD_TYPE_PX = 0 << _COORD_TYPE_SHIFT
+_COORD_TYPE_SPEC = 1 << _COORD_TYPE_SHIFT
+_COORD_TYPE_MASK = 3 << _COORD_TYPE_SHIFT
+_COORD_TYPE_PX_NEG = 3 << _COORD_TYPE_SHIFT
+
+COORD_MAX = (1 << _COORD_TYPE_SHIFT) - 1
+COORD_MIN = -COORD_MAX
+
+SIZE_CONTENT = COORD_SET_SPEC(2001)
+
+GRID_CONTENT = COORD_MAX - 101
+GRID_TEMPLATE_LAST = COORD_MAX
+
+TXT_LINE_BREAK_LONG_PRE_MIN_LEN = 3
+TXT_LINE_BREAK_LONG_LEN = 0
+TXT_LINE_BREAK_LONG_POST_MIN_LEN = 3
+TXT_BREAK_CHARS = b" ,.;:-_)]}"
+TXT_ENC_UTF8 = 1
+TXT_ENC = TXT_ENC_UTF8
+
+TEXTAREA_DEF_PWD_SHOW_TIME = 1500
+TEXTAREA_CURSOR_LAST = 0x7FFF
+
+ANIM_PLAYTIME_INFINITE = 0xFFFFFFFF
+ANIM_REPEAT_INFINITE = 0xFFFF
+
+CALENDAR_DEFAULT_MONTH_NAMES = (
+    "January", "February", "March", "April", "May", "June", "July", "August",
+    "September", "October", "November", "December")
+USE_CALENDAR_HEADER_ARROW = 1
+CALENDAR_DEFAULT_DAY_NAMES = ("Su", "Mo", "Tu", "We", "Th", "Fr", "Sa")
+CALENDAR_WEEK_STARTS_MONDAY = 0
+
+STYLE_PROP_META_INITIAL = 0x4000
+STYLE_PROP_META_INHERIT = 0x8000
+STYLE_PROP_META_MASK = STYLE_PROP_META_INHERIT | STYLE_PROP_META_INITIAL
 STYLE_PROP_FLAG_NONE = 0
 STYLE_PROP_FLAG_INHERITABLE = 1 << 0
 STYLE_PROP_FLAG_EXT_DRAW_UPDATE = 1 << 1
@@ -79,19 +194,75 @@ STYLE_PROP_FLAG_PARENT_LAYOUT_UPDATE = 1 << 3
 STYLE_PROP_FLAG_LAYER_UPDATE = 1 << 4
 STYLE_PROP_FLAG_TRANSFORM = 1 << 5
 STYLE_PROP_FLAG_ALL = 0x3F
-STYLE_SENTINEL_VALUE = 0xAABBCCDD
 
-COLOR_DEPTH = 32
-_COLOR_NATIVE_WITH_ALPHA_SIZE = 4
+BIDI_LRO = b"\xE2\x80\xAD"
+BIDI_RLO = b"\xE2\x80\xAE"
 
-OPA_MIN = 2
-OPA_MAX = 253
+SYMBOL_AUDIO = b"\xEF\x80\x81"
+SYMBOL_BACKSPACE = b"\xEF\x95\x9A"
+SYMBOL_BARS = b"\xEF\x83\x89"
+SYMBOL_BATTERY_1 = b"\xEF\x89\x83"
+SYMBOL_BATTERY_2 = b"\xEF\x89\x82"
+SYMBOL_BATTERY_3 = b"\xEF\x89\x81"
+SYMBOL_BATTERY_EMPTY = b"\xEF\x89\x84"
+SYMBOL_BATTERY_FULL = b"\xEF\x89\x80"
+SYMBOL_BELL = b"\xEF\x83\xB3"
+SYMBOL_BLUETOOTH = b"\xEF\x8a\x93"
+SYMBOL_BULLET = b"\xE2\x80\xA2"
+SYMBOL_CALL = b"\xEF\x82\x95"
+SYMBOL_CHARGE = b"\xEF\x83\xA7"
+SYMBOL_CLOSE = b"\xEF\x80\x8D"
+SYMBOL_COPY = b"\xEF\x83\x85"
+SYMBOL_CUT = b"\xEF\x83\x84"
+SYMBOL_DIRECTORY = b"\xEF\x81\xBB"
+SYMBOL_DOWN = b"\xEF\x81\xB8"
+SYMBOL_DOWNLOAD = b"\xEF\x80\x99"
+SYMBOL_DRIVE = b"\xEF\x80\x9C"
+SYMBOL_DUMMY = b"\xEF\xA3\xBF"
+SYMBOL_EDIT = b"\xEF\x8C\x84"
+SYMBOL_EJECT = b"\xEF\x81\x92"
+SYMBOL_ENVELOPE = b"\xEF\x83\xA0"
+SYMBOL_EYE_CLOSE = b"\xEF\x81\xB0"
+SYMBOL_EYE_OPEN = b"\xEF\x81\xAE"
+SYMBOL_FILE = b"\xEF\x85\x9B"
+SYMBOL_GPS = b"\xEF\x84\xA4"
+SYMBOL_HOME = b"\xEF\x80\x95"
+SYMBOL_IMAGE = b"\xEF\x80\xBE"
+SYMBOL_KEYBOARD = b"\xEF\x84\x9C"
+SYMBOL_LEFT = b"\xEF\x81\x93"
+SYMBOL_LOOP = b"\xEF\x81\xB9"
+SYMBOL_LIST = b"\xEF\x80\x8B"
+SYMBOL_MINUS = b"\xEF\x81\xA8"
+SYMBOL_MUTE = b"\xEF\x80\xA6"
+SYMBOL_NEW_LINE = b"\xEF\xA2\xA2"
+SYMBOL_NEXT = b"\xEF\x81\x91"
+SYMBOL_OK = b"\xEF\x80\x8C"
+SYMBOL_PASTE = b"\xEF\x83\xAA"
+SYMBOL_PAUSE = b"\xEF\x81\x8C"
+SYMBOL_PLAY = b"\xEF\x81\x8B"
+SYMBOL_PLUS = b"\xEF\x81\xA7"
+SYMBOL_POWER = b"\xEF\x80\x91"
+SYMBOL_PREV = b"\xEF\x81\x88"
+SYMBOL_REFRESH = b"\xEF\x80\xA1"
+SYMBOL_RIGHT = b"\xEF\x81\x94"
+SYMBOL_SAVE = b"\xEF\x83\x87"
+SYMBOL_SD_CARD = b"\xEF\x9F\x82"
+SYMBOL_SETTINGS = b"\xEF\x80\x93"
+SYMBOL_SHUFFLE = b"\xEF\x81\xB4"
+SYMBOL_STOP = b"\xEF\x81\x8D"
+SYMBOL_TINT = b"\xEF\x81\x83"
+SYMBOL_TRASH = b"\xEF\x8B\xAD"
+SYMBOL_UP = b"\xEF\x81\xB7"
+SYMBOL_UPLOAD = b"\xEF\x82\x93"
+SYMBOL_USB = b"\xEF\x8a\x87"
+SYMBOL_VIDEO = b"\xEF\x80\x88"
+SYMBOL_VOLUME_MAX = b"\xEF\x80\xA8"
+SYMBOL_VOLUME_MID = b"\xEF\x80\xA7"
+SYMBOL_WARNING = b"\xEF\x81\xB1"
+SYMBOL_WIFI = b"\xEF\x87\xAB"
 
-RADIUS_CIRCLE = 0x7FFF
-GRID_CONTENT = COORD_MAX - 101
-GRID_TEMPLATE_LAST = COORD_MAX
 
-_PyCPointerType = type(_ctypes.POINTER(_ctypes.c_uint8))
+_PyCPointerType = type(_POINTER(_ctypes.c_uint8))
 _CArgObject = type(_ctypes.byref(_ctypes.c_uint8()))
 _PyCArrayType = type((_ctypes.c_uint8 * 1))
 _PyCSimpleType = type(_ctypes.c_uint8)
@@ -99,437 +270,56 @@ _PyCFuncPtrType = type(_ctypes.CFUNCTYPE(None))
 _PyCStructType = type(_ctypes.Structure)
 
 
-class _PythonObjectCache(object):
-
-    _py_obj_storage = {}
-
-    def _remove_ref(self, ref):
-        address = id(self)
-        if address in self._py_obj_storage:
-            del self._py_obj_storage[ref]
-
-    def __call__(self):
-        address = id(self)
-
-        if address in self._py_obj_storage:
-            return self._py_obj_storage[address]()
-
-        else:
-            ref = weakref.ref(self, self._remove_ref)
-            self._py_obj_storage[address] = ref
-            return self
-
-
-class _ArrayWrapper(object):
-
-    _c_obj = None
-    _len = None
-
-    @property
-    def __SIZE__(self):
-        return _ctypes.sizeof(self._c_obj)
-
-    def __len__(self):
-        if self._len is not None:
-            return self._len
-
-        return -1
-
-    def __mul__(self, other):
-        if not isinstance(other, int):
-            raise TypeError(
-                'to convert to an array an integer needs to be used'
-            )
-
-        if self._len is None:
-            self._len = other
-
-        array = _ctypes.cast(
-            self._c_obj,
-            _ctypes.POINTER(self.__class__ * other)
-        ).contents
-
-        if isinstance(self, char_t):
-            res = b''
-            for i in range(other):
-                c = bytes(array[i])
-                if c == b'\x00':
-                    break
-                res += c
-
-            res = res.decode('utf-8')
-
-        elif isinstance(self, uint8_t):
-            res = b''
-            for i in range(other):
-                c = bytes(array[i])
-                res += c
-
-        else:
-            res = [array[i]() for i in range(other)]
-
-        return res
+class __PyObjectStore(object):
+    __objects__ = {}
+    __obj__ = None
 
     def __getitem__(self, item):
-        if self._c_obj is not None:
-            if isinstance(item, slice):
-                start = item.start
-                stop = item.stop
-                step = item.step
+        if self.__obj__ is not None:
+            value = self.__obj__[item]
+            return value
 
-                if start is None:
-                    start = 0
-
-                if step is None:
-                    step = 1
-
-                if item.stop is None:
-                    raise ValueError(
-                        'slicing an array MUST have a stop position'
-                    )
-
-                array = _ctypes.cast(
-                    self._c_obj,
-                    _ctypes.POINTER(self.__class__ * stop)
-                ).contents
-
-                if isinstance(self, char_t):
-                    res = b''
-                    for i in range(start, stop, step):
-                        c = bytes(array[i])
-                        if c == b'\x00':
-                            break
-                        res += c
-
-                    res = res.decode('utf-8')
-
-                elif isinstance(self, uint8_t):
-                    res = b''
-                    for i in range(start, stop, step):
-                        c = bytes(array[i])
-                        res += c
-
-                else:
-                    res = [array[i]() for i in range(start, stop, step)]
-
-                return res
-
-
-class void_t(_ctypes.c_void_p, _PythonObjectCache, _ArrayWrapper):
-    _instances = {}
+        raise TypeError('this is not an array so it cannot be indexed')
 
     @classmethod
-    def _del_ref(cls, ref):
-        for key, value in cls._instances.items()[:]:
-            if value[0] == ref:
-                del cls._instances[key]
+    def as_array(cls, size):
+        return cls * size
+
+    @property
+    def __address__(self):
+        return _ctypes.addressof(self)
+
+    @classmethod
+    def __weakref_remove__(cls, ref):
+        for key, value in list(cls.__objects__[cls].items()):
+            if value == ref:
+                del cls.__objects__[cls][key]
                 return
 
     @classmethod
-    def from_buffer_py_obj(cls, source, offset=None):
-        if offset is None:
-            buf = cls.from_buffer(source)
-        else:
-            buf = cls.from_buffer(source, offset)
+    def __new__(cls, *args, **kwargs):
+        if cls not in cls.__objects__:
+            cls.__objects__[cls] = {}
 
-        address = buf.value
+        if '__object__' in kwargs:
+            obj = kwargs.pop('__object__')
 
-        if address in cls._instances:
-            return cls._instances[address][0]
+            try:
+                address = _ctypes.addressof(obj)
 
-        return source
-
-    @classmethod
-    def from_buffer_c_obj(cls, source, offset=None):
-        if offset is None:
-            buf = cls.from_buffer(source)
-        else:
-            buf = cls.from_buffer(source, offset)
-
-        address = buf.value
-
-        if address in cls._instances:
-            return cls._instances[address][1]
-
-        cls._instances[address] = (source, buf)
-        return buf
-
-
-class float_t(_ctypes.c_float, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class string_t(_ctypes.c_wchar_p, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class bool_t(_ctypes.c_bool, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class char_t(_ctypes.c_char, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class mem_pool_t(_ctypes.c_void_p, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class _Structure(_ctypes.Structure, _PythonObjectCache, _ArrayWrapper):
-    _instances = {}
-
-    def _weakref_delete(self, _):
-        cls = _ctypes.Structure.__getattribute__(self, '__class__')
-        instances = _ctypes.Structure.__getattribute__(self, '_instances')
-        address = id(self)
-
-        if address in instances[cls]:
-            del instances[cls][address]
-
-    def cast(self, type_):
-        cls = _ctypes.Structure.__getattribute__(self, '__class__')
-        instances = _ctypes.Structure.__getattribute__(self, '_instances')
-
-        if cls not in instances:
-            instances[cls] = {}
-
-        address = id(self)
-
-        if address not in instances[cls]:
-            weakref_delete = _ctypes.Structure.__getattribute__(
-                self,
-                '_weakref_delete'
-            )
-            instances[cls][address] = weakref.ref(self, weakref_delete)
-
-        if isinstance(type_, _PyCPointerType):
-            pointer_type = True
-            key = type_._type_  # NOQA
-        else:
-            pointer_type = False
-            key = type_
-            type_ = _ctypes.POINTER(type_)
-
-        casts = _ctypes.Structure.__getattribute__(self, '__CAST__')
-        if key not in casts:
-            pointer = _ctypes.pointer(self)
-            casts[key] = (_ctypes.cast(pointer, type_), pointer)
-
-        if pointer_type:
-            return casts[key]
-        else:
-            return casts[key][0]
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        _ctypes.Structure.__setattr__(self, '__CAST__', {})
-        _ctypes.Structure.__setattr__(self, '__ARRAYS__', {})
-
-    def _weakref_callback(self, ref):
-        storage = _ctypes.Structure.__getattribute__(self, '_callback_storage')
-        if ref in storage:
-            del storage[ref]
-
-    def _set_callback(self, field_type, func):
-        weakref_callback = (
-            _ctypes.Structure.__getattribute__(self, '_weakref_callback')
-        )
-        if inspect.ismethod(func):
-            # This has to be done this way because WeakMethod is not hashable so
-            # it cannot be stored in a dictionary and the __hash__ method is
-            # read only so it can only be added upon class creation. So we
-            # dynamically construct the class pointing __hash__ to the
-            # methods __hash__
-            weakmethod = type(
-                'weakmethod', (weakref.WeakMethod,), {'__hash__': func.__hash__}
-            )
-            ref = weakmethod(func, weakref_callback)
-        elif inspect.isfunction(func):
-            ref = weakref.ref(func, weakref_callback)
-        else:
-            raise TypeError
-
-        if not hasattr(self, '_callback_storage'):
-            _ctypes.Structure.__setattr__(self, '_callback_storage', {})
-
-        storage = _ctypes.Structure.__getattribute__(self, '_callback_storage')
-
-        if ref not in storage:
-            func = field_type(func)
-            storage[ref] = func
-        else:
-            func = storage[ref]
-
-        return func
-
-    def __setattr__(self, key, value):
-        fields = _ctypes.Structure.__getattribute__(self, '_fields_')
-        for field in fields:
-            if len(field) == 2:
-                field_name, field_type = field
-            else:
-                field_name, field_type = field[:-1]
-
-            if field_name != key:
-                continue
-
-            if inspect.isfunction(value) or inspect.ismethod(value):
-                set_callback = (
-                    _ctypes.Structure.__getattribute__(self, '_set_callback')
-                )
-                value = set_callback(field_type, value)
-
-            elif (
-                    isinstance(field_type, _PyCPointerType) and
-                    isinstance(type(value), (_PyCStructType, _PyCSimpleType))
-            ):
-                value = _ctypes.pointer(value)
-            else:
-                try:
-                    arrays = (
-                        _ctypes.Structure.__getattribute__(self, '__ARRAYS__')
-                    )
-                except AttributeError:
-                    _ctypes.Structure.__setattr__(self, '__CAST__', {})
-                    _ctypes.Structure.__setattr__(self, '__ARRAYS__', {})
-                    arrays = (
-                        _ctypes.Structure.__getattribute__(self, '__ARRAYS__')
+                if address not in cls.__objects__[cls]:
+                    cls.__objects__[cls][address] = (
+                        weakref.ref(obj, cls.__weakref_remove__)
                     )
 
-                if (
-                    isinstance(value, (str, bytes, bytearray)) and
-                    isinstance(field_type, _PyCPointerType)
-                ):
-                    if isinstance(value, str):
-                        value = value.encode('utf-8')
+                return cls.__objects__[cls][address]()
+            except:
+                pass
 
-                    elif isinstance(value, bytearray):
-                        value = bytes(value)
-
-                    type_ = field_type._type_  # NOQA
-                    if type_ == char_t and not value.endswith(b'\x00'):
-                        value += b'\x00'
-
-                    val_len = len(value)
-                    value = _struct_convert_to_ctype(value, field_type)
-                    # value = (type_ * val_len)(*value)
-                    arrays[key] = (val_len, value)
-                    # value = _ctypes.cast(value, field_type)
-                else:
-                    value = _struct_convert_to_ctype(value, field_type)
-
-            break
-
-        _ctypes.Structure.__setattr__(self, key, value)
-
-    # def __getattr__(self, item):
-    #     if item in self.__dict__:
-    #         return self.__dict__[item]
-    #
-    #     return _ctypes.Structure.__getattribute__(self, item)
-
-    def __getattribute__(self, item):
-        obj = _ctypes.Structure.__getattribute__(self, item)
-
-        fields = _ctypes.Structure.__getattribute__(self, '_fields_')
-        try:
-            arrays = _ctypes.Structure.__getattribute__(self, '__ARRAYS__')
-        except AttributeError:
-            _ctypes.Structure.__setattr__(self, '__CAST__', {})
-            _ctypes.Structure.__setattr__(self, '__ARRAYS__', {})
-            _ctypes.Structure.__setattr__(self, '_callback_storage', {})
-            arrays = _ctypes.Structure.__getattribute__(self, '__ARRAYS__')
-
-        for field in fields:
-            if len(field) == 2:
-                field_name, field_type = field
-            else:
-                field_name, field_type = field[:-1]
-
-            if item != field_name:
-                continue
-
-            if field_name in arrays:
-                val_len = arrays[field_name][0]
-            else:
-                val_len = None
-
-            return _convert_to_py_type(obj, field_type, val_len)
-
+        obj = super().__new__(cls, *args, **kwargs)
+        address = obj.__address__
+        cls.__objects__[cls][address] = weakref.ref(obj, cls.__weakref_remove__)
         return obj
-
-
-class _Union(_ctypes.Union, _PythonObjectCache, _ArrayWrapper):
-
-    def _weakref_callback(self, ref):
-        storage = _ctypes.Union.__getattribute__(self, '_callback_storage')
-        if ref in storage:
-            del storage[ref]
-
-    def _set_callback(self, field_type, func):
-        weakref_callback = _ctypes.Union.__getattribute__(
-            self,
-            '_weakref_callback'
-        )
-        if inspect.ismethod(func):
-            # This has to be done this way because WeakMethod is not hashable so
-            # it cannot be stored in a dictionary and the __hash__ method is
-            # read only so it can only be added upon class creation. So we
-            # dynamically construct the class pointing __hash__ to the
-            # methods __hash__
-            weakmethod = type(
-                'weakmethod', (weakref.WeakMethod,), {'__hash__': func.__hash__}
-            )
-            ref = weakmethod(func, weakref_callback)
-        elif inspect.isfunction(func):
-            ref = weakref.ref(func, weakref_callback)
-        else:
-            raise TypeError
-
-        if not hasattr(self, '_callback_storage'):
-            _ctypes.Union.__setattr__(self, '_callback_storage', {})
-
-        storage = _ctypes.Union.__getattribute__(self, '_callback_storage')
-
-        if ref not in storage:
-            func = field_type(func)
-            storage[ref] = func
-        else:
-            func = storage[ref]
-
-        return func
-
-    def __setattr__(self, key, value):
-        fields = _ctypes.Union.__getattribute__(self, '_fields_')
-        for field_name, field_type in fields:
-            if field_name == key:
-                if inspect.isfunction(value) or inspect.ismethod(value):
-                    set_callback = _ctypes.Union.__getattribute__(
-                        self,
-                        'set_callback'
-                    )
-                    value = set_callback(field_type, value)
-                elif isinstance(field_type, _PyCPointerType) and isinstance(
-                        type(value),
-                        (_PyCStructType, _PyCSimpleType)
-                ):
-                    value = _ctypes.pointer(value)
-                else:
-                    value = _convert_to_ctype(value, field_type)
-                break
-
-        _ctypes.Union.__setattr__(self, key, value)
-
-    def __getattribute__(self, item):
-        obj = _ctypes.Union.__getattribute__(self, item)
-
-        if item in ('_special_types_', '__dict__'):
-            return obj
-
-        if item in self._special_types_:
-            return _convert_to_py_type(obj, self._special_types_[item])
-
-        return _convert_to_py_type(obj)
 
 
 # This is here for the purposes of type hinting. Any returned values from
@@ -539,13 +329,17 @@ class _Union(_ctypes.Union, _PythonObjectCache, _ArrayWrapper):
 # able to act accordingly and no go out of bounds if modifying it and passing
 # it to a function that takes the same type. If that does get done it would
 # cause undefined behavior.
-class _IntMixin(object):
+class __IntMixin(object):
     value = None
     _c_obj = None
+
+    def __format__(self, format_spec):
+        return int.__format__(self.value, format_spec)
 
     def __neg__(self):
         value = self.value
         self.value = -value
+        return self
 
     def __add__(self, x):
         val1 = self.value
@@ -573,7 +367,7 @@ class _IntMixin(object):
         if isinstance(x, int) and self._c_obj is not None:
             array = _ctypes.cast(
                 self._c_obj,
-                _ctypes.POINTER(self.__class__ * x)
+                _POINTER(self.__class__ * x)
             ).contents
 
             res = []
@@ -819,6 +613,9 @@ class _IntMixin(object):
         return n
 
     def __eq__(self, x):
+        if not isinstance(x, (int, float, type(self))):
+            return False
+
         val1 = self.value
 
         if isinstance(x, (int, float)):
@@ -828,13 +625,13 @@ class _IntMixin(object):
         return val2 == val1
 
     def __ne__(self, x):
+        if not isinstance(x, (int, float, type(self))):
+            return False
+
         val1 = self.value
 
         if isinstance(x, (int, float)):
             return x != val1
-
-        val2 = x.value
-        return val2 != val1
 
     def __lt__(self, x):
         val1 = self.value
@@ -884,78 +681,339 @@ class _IntMixin(object):
         return bool(self.value)
 
 
-class uint8_t(_ctypes.c_uint8, _IntMixin, _PythonObjectCache, _ArrayWrapper):
+# ***************  primitives  ***************
+['~primitives~']  # NOQA
+# ********************************************
+
+
+class mem_pool_t(void_t):  # NOQA
     pass
 
 
-class uint16_t(_ctypes.c_uint16, _IntMixin, _PythonObjectCache, _ArrayWrapper):
+class _Structure(_ctypes.Structure, __PyObjectStore):
+
+    @classmethod
+    def __new__(cls, *args, **kwargs):
+        if cls not in cls.__objects__:
+            cls.__objects__[cls] = {}
+
+        if '__object__' in kwargs:
+            obj = kwargs.pop('__object__')
+
+            if type(type(obj)) == _PyCPointerType:
+                try:
+                    obj = obj.contents
+                except ValueError:
+                    pass
+            try:
+                address = _ctypes.addressof(obj)
+
+                print(cls.__name__, address)
+                if address not in cls.__objects__[cls]:
+                    cls.__objects__[cls][address] = (
+                        weakref.ref(obj, cls.__weakref_remove__)
+                    )
+
+                return cls.__objects__[cls][address]()
+            except:
+                pass
+
+        obj = super().__new__(cls, *args, **kwargs)
+        address = obj.__address__
+        cls.__objects__[cls][address] = weakref.ref(obj, cls.__weakref_remove__)
+        return obj
+
+    def __hash__(self):
+        return hash(_ctypes.addressof(self))
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        _ctypes.Structure.__setattr__(self, '__references__', {})
+
+    def __convert_to_ctype__(self, obj, type_):
+        if isinstance(obj, list):
+            ref_obj = tuple(obj)
+        else:
+            ref_obj = obj
+
+        if ref_obj in self.__references__:
+            return self.__references__[ref_obj]
+
+        pointer_count = _pointer_count(type_)
+        type_ = _strip_pointer(type_)
+
+        if isinstance(obj, (list, tuple)):
+            if not pointer_count:
+                raise TypeError('this field is not for an array')
+
+            if pointer_count == 2:
+                second_dim = 0
+                for item in obj:
+                    if isinstance(item, (list, tuple)):
+                        second_dim = max(len(item), second_dim)
+                    else:
+                        break
+
+                if second_dim:
+                    array = ((type_ * second_dim) * len(obj))()
+                    for i, item1 in enumerate(obj):
+                        for j, item2 in enumerate(item1):
+                            array[i][j] = item2
+
+                else:
+                    array = type_ * len(obj)
+                    array = array(*obj)
+            else:
+                array = type_ * len(obj)
+                array = array()
+                for i, item in enumerate(obj):
+                    array[i] = item
+
+            self.__references__[ref_obj] = array
+            return array
+
+        if type_ == void_t:
+            void_t.from_address()
+            pass
+
+        if type(type_) == _PyCArrayType:
+            value = type_(*obj)  # NOQA
+
+        if isinstance(obj, str):
+            new_obj = obj.encode('utf-8')
+
+            if pointer_count:
+                if new_obj.endswith(b'\x00'):
+                    new_obj += b'\x00'
+
+                array = type_ * len(new_obj)
+                value = array.from_buffer_copy(new_obj, 0)
+
+            elif type_ == void_t:
+                value = type_.from_buffer_copy(new_obj[0])
+            else:
+                value = type_(new_obj[0])
+
+            self.__references__[obj] = value
+            return value
+
+        if isinstance(obj, bytes) and pointer_count:
+            if type_ == void_t:
+                value = void_t.from_buffer_copy(obj, 0)
+            else:
+                value = (type_ * len(obj))(*obj)
+
+            self.__references__[obj] = value
+            return value
+
+        if isinstance(obj, bytearray) and pointer_count:
+            if type_ == void_t:
+                value = void_t.from_buffer(obj)
+            else:
+                type_ = type_ * len(obj)
+                value = type_.from_buffer(obj)
+
+            self.__references__[obj] = value
+            return value
+
+        if type_ == void_t:
+            try:
+                value = void_t.from_address(_ctypes.addressof(obj))
+            except:
+                try:
+                    value = void_t.from_address(value)
+                except:
+                    raise TypeError
+
+            self.__references__[obj] = value
+            return value
+
+        if pointer_count:
+            try:
+                value = _pointer(obj)
+            except:
+                value = _pointer(type_(obj))
+
+            self.__references__[obj] = value
+            return value
+
+        if (
+            type(type_) == _PyCSimpleType and
+            type(type(obj)) == _PyCSimpleType and
+            not isinstance(obj, type_)
+        ):
+            try:
+                value = obj.value
+                self.__references__[obj] = value
+                return value
+            except AttributeError:
+                pass
+
+        return obj
+
+    def __setattr__(self, key, value):
+        convert_to_ctype = (
+            _ctypes.Structure.__getattribute__(self, '__convert_to_ctype__')
+        )
+
+        try:
+            if value not in self.__references__:
+                pass
+        except TypeError:
+            print(type(value))
+        print('FIELD_STOP:')
+        fields = _ctypes.Structure.__getattribute__(self, '_fields_')
+        for field in fields:
+            if len(field) == 2:
+                field_name, field_type = field
+            else:
+                field_name, field_type = field[:-1]
+
+            if field_name != key:
+                continue
+
+            if field_name == 'stops':
+                print('FIELD_STOP:', field_type)
+
+        if isinstance(value, (list, tuple)) or value not in self.__references__:
+            fields = _ctypes.Structure.__getattribute__(self, '_fields_')
+            for field in fields:
+                if len(field) == 2:
+                    field_name, field_type = field
+                else:
+                    field_name, field_type = field[:-1]
+
+                if field_name != key:
+                    continue
+
+                if field_name == 'stops':
+                    print('FIELD_STOP:', field_type)
+
+                if inspect.isfunction(value) or inspect.ismethod(value):
+                    cb_func = field_type(value)
+                    self.__references__[value] = cb_func
+                    value = cb_func
+                else:
+                    value = convert_to_ctype(value, field_type)
+                break
+
+        _ctypes.Structure.__setattr__(self, key, value)
+
+    def __getattribute__(self, item):
+        try:
+            references = (
+                _ctypes.Structure.__getattribute__(self, '__references__')
+            )
+        except AttributeError:
+            _ctypes.Structure.__setattr__(self, '__references__', {})
+            references = (
+                _ctypes.Structure.__getattribute__(self, '__references__')
+            )
+
+        obj = _ctypes.Structure.__getattribute__(self, item)
+
+        if item.startswith('__') and item.endswith('__'):
+            return obj
+
+        for k, v in references.items():
+            if v == obj:
+                return k
+
+        fields = _ctypes.Structure.__getattribute__(self, '_fields_')
+
+        for field in fields:
+            if len(field) == 2:
+                field_name, field_type = field
+            else:
+                field_name, field_type = field[:-1]
+
+            if item != field_name:
+                continue
+
+            print('test:', obj, field_type)
+            return _convert_to_py_type(obj, field_type)
+
+        return obj
+
+
+class _Union(_ctypes.Union, __PyObjectStore):
+
+    def _weakref_callback(self, ref):
+        storage = _ctypes.Union.__getattribute__(self, '_callback_storage')
+        if ref in storage:
+            del storage[ref]
+
+    def _set_callback(self, field_type, func):
+        weakref_callback = _ctypes.Union.__getattribute__(
+            self,
+            '_weakref_callback'
+        )
+        if inspect.ismethod(func):
+            # This has to be done this way because WeakMethod is not hashable so
+            # it cannot be stored in a dictionary and the __hash__ method is
+            # read only so it can only be added upon class creation. So we
+            # dynamically construct the class pointing __hash__ to the
+            # methods __hash__
+            weakmethod = type(
+                'weakmethod', (weakref.WeakMethod,), {'__hash__': func.__hash__}
+            )
+            ref = weakmethod(func, weakref_callback)
+        elif inspect.isfunction(func):
+            ref = weakref.ref(func, weakref_callback)
+        else:
+            raise TypeError
+
+        if not hasattr(self, '_callback_storage'):
+            _ctypes.Union.__setattr__(self, '_callback_storage', {})
+
+        storage = _ctypes.Union.__getattribute__(self, '_callback_storage')
+
+        if ref not in storage:
+            func = field_type(func)
+            storage[ref] = func
+        else:
+            func = storage[ref]
+
+        return func
+
+    def __setattr__(self, key, value):
+        fields = _ctypes.Union.__getattribute__(self, '_fields_')
+        for field_name, field_type in fields:
+            if field_name == key:
+                if inspect.isfunction(value) or inspect.ismethod(value):
+                    set_callback = _ctypes.Union.__getattribute__(
+                        self,
+                        'set_callback'
+                    )
+                    value = set_callback(field_type, value)
+                elif isinstance(field_type, _PyCPointerType) and isinstance(
+                        type(value),
+                        (_PyCStructType, _PyCSimpleType)
+                ):
+                    value = _pointer(value)
+                else:
+                    value = _convert_to_ctype(value, field_type)
+                break
+
+        _ctypes.Union.__setattr__(self, key, value)
+
+    def __getattribute__(self, item):
+        obj = _ctypes.Union.__getattribute__(self, item)
+
+        if item in ('_special_types_', '__dict__'):
+            return obj
+
+        if item in self._special_types_:
+            return _convert_to_py_type(obj, self._special_types_[item])
+
+        return _convert_to_py_type(obj)
+
+
+class _lru_item_t(_Structure):
     pass
 
 
-class uint32_t(_ctypes.c_uint32, _IntMixin, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class uint64_t(_ctypes.c_uint64, _IntMixin, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class int8_t(_ctypes.c_int8, _IntMixin, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class int16_t(_ctypes.c_int16, _IntMixin, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class int32_t(_ctypes.c_int32, _IntMixin, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class int64_t(_ctypes.c_int64, _IntMixin, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class int_t(_ctypes.c_int, _IntMixin, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-class size_t(_ctypes.c_size_t, _IntMixin, _PythonObjectCache, _ArrayWrapper):
-    pass
-
-
-if sys.maxsize > 2 ** 32:
-    class uintptr_t(_ctypes.c_uint64, _IntMixin):
-        pass
-
-
-    class intptr_t(_ctypes.c_int64, _IntMixin):
-        pass
-
-else:
-    class uintptr_t(_ctypes.c_uint32, _IntMixin):
-        pass
-
-
-    class intptr_t(_ctypes.c_int32, _IntMixin):
-        pass
-
-_type_float_t = Union[float_t, float]
-_type_string_t = Union[string_t, str]
-_type_bool_t = Union[bool_t, bool]
-_type_uint8_t = Union[uint8_t, int]
-_type_uint16_t = Union[uint16_t, int]
-_type_uint32_t = Union[uint32_t, int]
-_type_uint64_t = Union[uint64_t, int]
-_type_int8_t = Union[int8_t, int]
-_type_int16_t = Union[int16_t, int]
-_type_int32_t = Union[int32_t, int]
-_type_int64_t = Union[int64_t, int]
-_type_int_t = Union[int_t, int]
-_type_char_t = Union[char_t, bytes, int]
-_type_uintptr_t = Union[uintptr_t, int]
-_type_intptr_t = Union[intptr_t, int]
-_type_size_t = Union[size_t, int]
+lru_item_t = _lru_item_t
 
 
 # this is kind of a goofy wrapper.
@@ -973,8 +1031,8 @@ _type_size_t = Union[size_t, int]
 # Here is an example.
 
 # this is where the types get set to the C function
-# _lib_lvgl.lv_switch_create.argtypes = CArgList(parent=_ctypes.POINTER(_obj_t))
-# _lib_lvgl.lv_switch_create.restype = _ctypes.POINTER(_obj_t)
+# _lib_lvgl.lv_switch_create.argtypes = CArgList(parent=_POINTER(_obj_t))
+# _lib_lvgl.lv_switch_create.restype = _POINTER(_obj_t)
 
 # and here is the python function
 # def switch_create(parent: obj_t) -> obj_t:
@@ -1014,6 +1072,7 @@ class __CArgList(object):
         return new_cls(param_types)
 
 
+
 def _strip_pointer(obj):
     new_obj = obj
 
@@ -1023,7 +1082,7 @@ def _strip_pointer(obj):
 
         new_obj = new_obj._type_  # NOQA
 
-    return obj
+    return new_obj
 
 
 def _pointer_count(obj):
@@ -1034,155 +1093,28 @@ def _pointer_count(obj):
             return count
 
         obj = obj._type_  # NOQA
-    return 0
+    return count
 
 
 def _convert_to_py_type(obj, type_=None, pointer_count=None):
-    if type_ is not None:
-        if isinstance(obj, void_t):
-            return void_t.from_buffer_py_obj(obj)
-
-        if type(type(obj)) == _PyCPointerType:
-            if pointer_count:
-                c_obj = obj
-
-                while pointer_count:
-                    pointer_count -= 1
-                    try:
-                        obj = obj.contents
-                    except ValueError:
-                        return type_()
-
-                obj = obj()
-                obj._c_obj = c_obj
-                return obj
-
-            else:
-                if type(type_) != _PyCPointerType:
-                    c_obj = obj
-                    obj = obj.contents()
-                    obj._c_obj = c_obj
-                    return obj
-
-                c_obj = obj
-                while type(type(obj)) == _PyCPointerType:
-                    obj = obj.contents
-
-                obj = obj()
-                obj._c_obj = c_obj
-                return obj
-
-        try:
-            res = []
-            count = 0
-            while True:
-                try:
-                    item = obj[count]
-                except ValueError:
-                    return res
-
-                while isinstance(type(item), _PyCPointerType):
-                    try:
-                        item = item.contents
-                    except ValueError:
-                        return res
-
-                try:
-                    item = item.value
-                except AttributeError:
-                    pass
-
-                if item:
-                    res.append(item)
-                else:
-                    break
-
-                count += 1
-
-        except TypeError:
-            try:
-                return obj.value
-            except AttributeError:
-                try:
-                    obj = obj()
-                except TypeError:
-                    pass
-
-                return obj
-
-        return res
-
-    while isinstance(type(obj), _PyCPointerType):
-        try:
-            obj = obj.contents
-        except ValueError:
-            obj = obj._type_()  # NOQA
+    if pointer_count:
+        if type_ == void_t:
             return obj
+
+        print(obj, type_)
+        tmp_obj = type_(__object__=obj)
+        setattr(tmp_obj, '__obj__', obj)
+        return tmp_obj
 
     try:
-        obj = obj.value
-        return obj
-    except AttributeError:
+        return obj.value
+    except:
         pass
 
-    obj = obj()
-    return obj
-
-
-_arrays = {}
-
-
-def _struct_convert_to_ctype(obj, type_):
-    if type(type_) == _PyCPointerType:
-        pointer_type = True
-        type_ = type_._type_  # NOQA
-    else:
-        pointer_type = False
-
-    if isinstance(obj, (list, tuple)):
-        return (type_ * len(obj))(*obj)
-
-    if type(type_) == _PyCFuncPtrType:
-        return obj
-
-    if type_ == void_t:
+    try:
+        obj = type(obj)(__object__=obj)
+    except:
         pass
-
-    if type_ == char_t:
-        if pointer_type:
-            if isinstance(obj, str):
-                obj = obj.encode('utf-8')
-                if not obj.endswith(b'\x00'):
-                    obj += b'\x00'
-
-            return (char_t * len(obj))(*obj)
-
-        if isinstance(obj, str):
-            obj = obj.encode('utf-8')
-
-        return char_t(obj[0])
-
-    if type(type_) == _PyCArrayType:
-        return (type_._type_ * len(obj))(*obj)  # NOQA
-
-    if isinstance(obj, bytes) and pointer_type:
-        return (type_ * len(obj))(*obj)
-
-    if (
-        type(type_) == _PyCSimpleType and
-        type(type(obj)) == _PyCSimpleType and
-        not isinstance(obj, type_)
-    ):
-        try:
-            return obj.value
-        except AttributeError:
-            pass
-
-    if type(type_) == _PyCStructType:
-        if pointer_type and isinstance(obj, type_):
-            return obj
-
-        return obj
 
     return obj
 
@@ -1191,80 +1123,56 @@ def _convert_to_ctype(obj, type_):
     if obj is None:
         return None
 
-    if type(type_) == _PyCPointerType:
-        pointer_type = True
-        type_ = type_._type_  # NOQA
-    else:
-        pointer_type = False
+    p_count = _pointer_count(type_)
+    type_ = _strip_pointer(type_)
 
-    if type(type_) == _PyCFuncPtrType:
-        return obj
+    if isinstance(obj, bytearray):
+        type_ = type_ * len(obj)
+        return type_.from_buffer(obj)
 
-    if type_ == void_t:
-        if not pointer_type:
-            if isinstance(obj, str):
-                obj = obj.encode('utf-8')
+    if isinstance(obj, str):
+        obj = obj.encode('utf-8')
 
-                if len(obj) > 1 and not obj.endswith(b'\x00'):
-                    obj += b'\x00'
+        if not obj.endswith(b'\x00'):
+            obj += b'\x00'
 
-                    obj = (char_t * len(obj))(*obj)
-                    return obj
-            elif isinstance(obj, bytearray):
-                obj = bytes(obj)
+        type_ = type_ * len(obj)
+        return type_(*obj)
 
-            elif isinstance(obj, (_ctypes.Structure, _ctypes.Union)):
-                return _ctypes.addressof(obj)
+    if isinstance(obj, bytes):
+        type_ = type_ * len(obj)
+        return type_(*obj)
 
-            if type(type(obj)) == _PyCArrayType:
-                print(obj)
+    if isinstance(obj, (list, tuple)):
+        type_ = type_ * len(obj)
+        return type_(*obj)
 
-                return _ctypes.addressof(obj)
+    if not isinstance(obj, type_):
+        if isinstance(obj, (_Structure, _Union)):
+            if (p_count and type_ == void_t) or type_ == void_t:
+                return _ctypes.byref(obj)
 
-            if isinstance(obj, int):
-                return obj
+            pointer = _ctypes.cast(_pointer(obj), _POINTER(type_))
+            if p_count:
+                return pointer
 
-            obj = (uint8_t * len(obj))(*obj)
-            return obj
+            return pointer.contents
 
-        if isinstance(obj, bytes) and pointer_type:
-            return (type_ * len(obj))(*obj)
+        if p_count:
+            try:
+                obj = type_(obj)
+            except:
+                obj = _ctypes.cast(_pointer(obj), _POINTER(type_)).contents
 
-        return obj
-
-    if type_ == char_t:
-        if pointer_type:
-            if isinstance(obj, str):
-                obj = obj.encode('utf-8')
-                if not obj.endswith(b'\x00'):
-                    obj += b'\x00'
-
-            return (char_t * len(obj))(*obj)
-        return char_t(obj[0])
-
-    if type(type_) == _PyCArrayType:
-        pass
-
-    if (
-        type(type_) == _PyCSimpleType and
-        type(type(obj)) == _PyCSimpleType and
-        not isinstance(obj, type_)
-    ):
-        try:
-            return obj.value
-        except AttributeError:
-            pass
-
-    if pointer_type and isinstance(obj, (list, tuple)):
-        return (type_ * len(obj))(*obj)
-
-    if type(type_) == _PyCStructType:
-        if pointer_type and isinstance(obj, type_):
             return _ctypes.byref(obj)
 
-        return obj
+    if p_count:
+        return _ctypes.byref(obj)
 
-    return obj
+    try:
+        return obj.value
+    except:
+        return obj
 
 
 def CFUNCTYPE(restype, *argtypes):
@@ -1282,15 +1190,16 @@ def CFUNCTYPE(restype, *argtypes):
 
         @classmethod
         def _callback(cls, *args):
+
+            print(cls._func_, args)
             args = list(args)
             py_args = []
             for i, arg in enumerate(args):
                 argtype = cls._argtypes_[i]
 
-                if argtype == void_t and isinstance(arg, void_t) and arg:
+                if argtype == void_t and isinstance(arg, void_t) and arg:  # NOQA
                     py_arg = arg.value
                 else:
-
                     py_arg = _convert_to_py_type(
                         arg,
                         _strip_pointer(argtype),
@@ -1308,6 +1217,9 @@ def CFUNCTYPE(restype, *argtypes):
             return _convert_to_ctype(res, cls._restype_)
 
     return _CallbackFunction
+
+
+lru_free_t = CFUNCTYPE(None, void_t)  # NOQA
 
 
 def main_loop():
@@ -1482,7 +1394,21 @@ class __fs_driver(object):
             )
             return FS_RES_NOT_IMP  # NOQA
 
-        path = path * 255
+        count = 0
+        chars = ''
+
+        while True:
+            char = path[count].value
+
+            if char == b'\x00':
+                break
+
+            chars += char.decode('utf-8')
+            count += 1
+
+        path = chars
+
+        print(repr(path))
 
         try:
             f = open(path, p_mode)
@@ -1528,6 +1454,8 @@ class __fs_driver(object):
             num_bytes_read  # NOQA
     ):
 
+        print('__fs_read_cb', fs_file, num_bytes_to_read, num_bytes_read)
+
         fileno = fs_file
 
         if fileno in self.__open_files:
@@ -1538,7 +1466,15 @@ class __fs_driver(object):
                 if not isinstance(data, bytes):
                     data = data.decode('utf-8')
 
-                _ctypes.memmove(_ctypes.addressof(buf), data, len(data))
+                _ctypes.memmove(buf, data, len(data))
+
+                output = bytearray(len(data))
+                tmp = _ctypes.cast(buf, _POINTER(uint8_t * len(data))).contents
+                for i in range(len(data)):
+                    output[i] = tmp[i].value
+                print(output)
+
+
                 num_bytes_read = len(data)  # NOQA
 
             except OSError as e:
@@ -1659,3 +1595,1083 @@ __fs_driver()
 # ************************************************
 
 
+spinbox_set_pos = spinbox_set_cursor_pos  # NOQA
+
+STYLE_CONST_PROPS_END = {
+    'prop_ptr': style_const_prop_id_inv,  # NOQA
+    'value': {'num': 0}
+}
+
+
+def STYLE_CONST_BORDER_COLOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BORDER_COLOR,  # NOQA
+        'value': {'color': val}
+    }
+
+
+def OPA_MIX3(a1, a2, a3):
+    return (int32_t(a1).value * a2 * a3) >> 16  # NOQA
+
+
+def STYLE_CONST_ARC_ROUNDED(val):
+    return {
+        'prop_ptr': _style_const_prop_id_ARC_ROUNDED,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_HEIGHT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_HEIGHT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_TEXT_LETTER_SPACE(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TEXT_LETTER_SPACE,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def _DPX_CALC(dpi, n):
+    if n == 0:
+        return 0
+    return MAX(((dpi * n + 80) / 160), 1)
+
+
+def ANIM_SET_EASE_IN_CUBIC(a):
+    return _PARA(a, 0.32, 0, 0.67, 0)
+
+
+def SMAX_OF(t):
+    return ((0x1 << ((_ctypes.sizeof(t) * 8) - 1)) - 1) | (
+                0x7 << ((_ctypes.sizeof(t) * 8) - 4))
+
+
+def COORD_IS_SPEC(x):
+    return _COORD_TYPE(x) == _COORD_TYPE_SPEC
+
+
+def CANVAS_BUF_SIZE_TRUE_COLOR_CHROMA_KEYED(w, h):
+    return IMG_BUF_SIZE_TRUE_COLOR_CHROMA_KEYED(w, h)
+
+
+def STYLE_CONST_GRID_ROW_DSC_ARRAY(val):
+    return {
+        'prop_ptr': STYLE_GRID_ROW_DSC_ARRAY,  # NOQA
+        'value': {'ptr': _ctypes.cast(_pointer(val), void_t)}  # NOQA
+    }
+
+
+def STYLE_CONST_OUTLINE_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_OUTLINE_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_OUT_BACK(a):
+    return _PARA(a, 0.68, - 0.6, 0.32, 1.6)
+
+
+def _LL_READ(list, i):  # NOQA
+    i = _ll_get_head(list)  # NOQA
+
+    while i is not None:
+        i = _ll_get_next(list, i)  # NOQA
+
+
+def _CONCAT(x, y):
+    return x + y
+
+
+def STYLE_CONST_BG_IMG_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_IMG_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def IS_SIGNED(t):
+    return t(-1).value < t(0).value
+
+
+def STYLE_CONST_BG_GRAD(val):
+    return {'prop_ptr': _style_const_prop_id_BG_GRAD, 'value': {'ptr': val}}  # NOQA
+
+
+def ANIM_SET_EASE_OUT_CUBIC(a):
+    return _PARA(a, 0.33, 1, 0.68, 1)
+
+
+def STYLE_CONST_MAX_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_MAX_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_ANIM_TIME(val):
+    return {
+        'prop_ptr': _style_const_prop_id_ANIM_TIME,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_OUT_CUBIC(a):
+    return _PARA(a, 0.65, 0, 0.35, 1)
+
+
+def UDIV255(x):
+    return (x * 0x8081) >> 0x17
+
+
+def STYLE_CONST_BORDER_POST(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BORDER_POST,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_TRANSFORM_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TRANSFORM_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_ANIM(val):
+    return {'prop_ptr': _style_const_prop_id_ANIM, 'value': {'ptr': val}}  # NOQA
+
+
+def STYLE_CONST_BG_DITHER_MODE(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_DITHER_MODE,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_SHADOW_SPREAD(val):
+    return {
+        'prop_ptr': _style_const_prop_id_SHADOW_SPREAD,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_MARGIN_BOTTOM(val):
+    return {
+        'prop_ptr': _style_const_prop_id_MARGIN_BOTTOM,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_TEXT_FONT(val):
+    return {'prop_ptr': _style_const_prop_id_TEXT_FONT, 'value': {'ptr': val}}  # NOQA
+
+
+def MAX3(a, b, c):
+    return MAX(MAX(a, b), c)
+
+
+def STYLE_CONST_SHADOW_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_SHADOW_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def CANVAS_BUF_SIZE_INDEXED_8BIT(w, h):
+    return IMG_BUF_SIZE_INDEXED_8BIT(w, h)
+
+
+def STYLE_CONST_PAD_ROW(val):
+    return {
+        'prop_ptr': _style_const_prop_id_PAD_ROW,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_PAD_COLUMN(val):
+    return {
+        'prop_ptr': _style_const_prop_id_PAD_COLUMN,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def _CONCAT3(x, y, z):
+    return x + y + z
+
+
+def STYLE_CONST_BORDER_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BORDER_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def DPX(n):
+    return _DPX_CALC(disp_get_dpi(None), n)  # NOQA
+
+
+def STYLE_CONST_GRID_Y_ALIGN(val):
+    return {'prop_ptr': STYLE_GRID_Y_ALIGN, 'value': {'num': grid_align_t(val)}}  # NOQA
+
+
+def STYLE_CONST_MARGIN_TOP(val):
+    return {
+        'prop_ptr': _style_const_prop_id_MARGIN_TOP,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_TRANSITION(val):
+    return {'prop_ptr': _style_const_prop_id_TRANSITION, 'value': {'ptr': val}}  # NOQA
+
+
+def STYLE_CONST_BG_COLOR(val):
+    return {'prop_ptr': _style_const_prop_id_BG_COLOR, 'value': {'color': val}}  # NOQA
+
+
+def STYLE_CONST_BG_IMG_RECOLOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_IMG_RECOLOR,  # NOQA
+        'value': {'color': val}
+    }
+
+
+def CANVAS_BUF_SIZE_TRUE_COLOR(w, h):
+    return IMG_BUF_SIZE_TRUE_COLOR(w, h)
+
+
+def STYLE_CONST_LINE_COLOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_LINE_COLOR,  # NOQA
+        'value': {'color': val}
+    }
+
+
+def IMG_BUF_SIZE_ALPHA_4BIT(w, h):
+    return ((w + 1) // 2) * h
+
+
+def CANVAS_BUF_SIZE_INDEXED_2BIT(w, h):
+    return IMG_BUF_SIZE_INDEXED_2BIT(w, h)
+
+
+def STYLE_CONST_TRANSFORM_PIVOT_X(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TRANSFORM_PIVOT_X,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def BEZIER_VAL_FLOAT(f):
+    return int32_t(f * BEZIER_VAL_MAX)  # NOQA
+
+
+def COLOR_FORMAT_IS_INDEXED(cf):
+    return COLOR_FORMAT_I1 <= cf <= COLOR_FORMAT_I8  # NOQA
+
+
+def CANVAS_BUF_SIZE_ALPHA_4BIT(w, h):
+    return IMG_BUF_SIZE_ALPHA_4BIT(w, h)
+
+
+def HOR_RES():
+    return disp_get_hor_res(disp_get_default())  # NOQA
+
+
+def STYLE_CONST_LAYOUT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_LAYOUT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_BG_IMG_TILED(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_IMG_TILED,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def _COORD_TYPE(x):
+    return x & _COORD_TYPE_MASK
+
+
+def STYLE_CONST_ALIGN(val):
+    return {
+        'prop_ptr': _style_const_prop_id_ALIGN,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def CANVAS_BUF_SIZE_ALPHA_2BIT(w, h):
+    return IMG_BUF_SIZE_ALPHA_2BIT(w, h)
+
+
+def STYLE_CONST_IMG_RECOLOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_IMG_RECOLOR,  # NOQA
+        'value': {'color': val}
+    }
+
+
+def STYLE_CONST_GRID_COLUMN_ALIGN(val):
+    return {
+        'prop_ptr': STYLE_GRID_COLUMN_ALIGN,  # NOQA
+        'value': {'num': grid_align_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_FLEX_CROSS_PLACE(val):
+    return {
+        'prop_ptr': STYLE_FLEX_CROSS_PLACE,  # NOQA
+        'value': {'num': flex_flow_t(val)}  # NOQA
+    }
+
+
+def CANVAS_BUF_SIZE_ALPHA_8BIT(w, h):
+    return IMG_BUF_SIZE_ALPHA_8BIT(w, h)
+
+
+def STYLE_CONST_GRID_ROW_ALIGN(val):
+    return {
+        'prop_ptr': STYLE_GRID_ROW_ALIGN,  # NOQA
+        'value': {'num': grid_align_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_GRID_CELL_COLUMN_SPAN(val):
+    return {
+        'prop_ptr': STYLE_GRID_CELL_COLUMN_SPAN,  # NOQA
+        'value': {'num': coord_t(val)}  # NOQA
+    }
+
+
+def IMG_BUF_SIZE_INDEXED_4BIT(w, h):
+    return IMG_BUF_SIZE_ALPHA_4BIT(w, h) + 4 * 16
+
+
+def STYLE_CONST_SHADOW_COLOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_SHADOW_COLOR,  # NOQA
+        'value': {'color': val}
+    }
+
+
+def _PARA(a, x1, y1, x2, y2):
+    a.parameter.bezier3 = _anim_bezier3_para_t(  # NOQA
+        BEZIER_VAL_FLOAT(x1),
+        BEZIER_VAL_FLOAT(y1),
+        BEZIER_VAL_FLOAT(x2),
+        BEZIER_VAL_FLOAT(y2)
+    )
+    return a
+
+
+def ANIM_SET_EASE_OUT_CIRC(a):
+    return _PARA(a, 0, 0.55, 0.45, 1)
+
+
+def STYLE_CONST_IMG_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_IMG_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_OUT_SINE(a):
+    return _PARA(a, 0.37, 0, 0.63, 1)
+
+
+def UMAX_OF(t):
+    return (
+        ((0x1 << ((_ctypes.sizeof(t) * 8) - 1)) - 1) |
+        (0xF << ((_ctypes.sizeof(t) * 8) - 4))
+    )
+
+
+def STYLE_CONST_OUTLINE_COLOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_OUTLINE_COLOR,  # NOQA
+        'value': {'color': val}
+    }
+
+
+def OPA_MIX2(a1, a2):
+    return (int32_t(a1).value * a2) >> 8  # NOQA
+
+
+def STYLE_CONST_BG_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_TEXT_COLOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TEXT_COLOR,  # NOQA
+        'value': {'color': val}
+    }
+
+
+def STYLE_CONST_TRANSFORM_ZOOM(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TRANSFORM_ZOOM,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_ARC_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_ARC_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_OUT_EXPO(a):
+    return _PARA(a, 0.16, 1, 0.3, 1)
+
+
+def STYLE_CONST_MIN_HEIGHT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_MIN_HEIGHT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_SHADOW_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_SHADOW_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_RADIUS(val):
+    return {
+        'prop_ptr': _style_const_prop_id_RADIUS,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def IMG_BUF_SIZE_ALPHA_2BIT(w, h):
+    return ((w + 3) // 4) * h
+
+
+def STYLE_CONST_TRANSLATE_X(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TRANSLATE_X,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_TEXT_ALIGN(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TEXT_ALIGN,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_QUINT(a):
+    return _PARA(a, 0.64, 0, 0.78, 0)
+
+
+def STYLE_CONST_TRANSFORM_ANGLE(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TRANSFORM_ANGLE,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_TEXT_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TEXT_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_BG_IMG_SRC(val):
+    return {'prop_ptr': _style_const_prop_id_BG_IMG_SRC, 'value': {'ptr': val}}  # NOQA
+
+
+def STYLE_CONST_TRANSFORM_HEIGHT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TRANSFORM_HEIGHT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_BACK(a):
+    return _PARA(a, 0.36, 0, 0.66, -0.56)
+
+
+def STYLE_CONST_PAD_TOP(val):
+    return {
+        'prop_ptr': _style_const_prop_id_PAD_TOP,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def CANVAS_BUF_SIZE_ALPHA_1BIT(w, h):
+    return IMG_BUF_SIZE_ALPHA_1BIT(w, h)
+
+
+def PCT(x):
+    if x < 0:
+        return COORD_SET_SPEC(1000 - x)
+    return COORD_SET_SPEC(x)
+
+
+def STYLE_CONST_ARC_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_ARC_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_LINE_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_LINE_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def CANVAS_BUF_SIZE_INDEXED_1BIT(w, h):
+    return IMG_BUF_SIZE_INDEXED_1BIT(w, h)
+
+
+def CLAMP(min, val, max):  # NOQA
+    return MAX(min, MIN(val, max))
+
+
+def STYLE_CONST_ARC_IMG_SRC(val):
+    return {'prop_ptr': _style_const_prop_id_ARC_IMG_SRC, 'value': {'ptr': val}}  # NOQA
+
+
+def STYLE_CONST_PAD_RIGHT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_PAD_RIGHT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_OUT_QUAD(a):
+    return _PARA(a, 0.45, 0, 0.55, 1)
+
+
+def STYLE_CONST_LINE_ROUNDED(val):
+    return {
+        'prop_ptr': _style_const_prop_id_LINE_ROUNDED,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def _LL_READ_BACK(list, i):  # NOQA
+    i = _ll_get_tail(list)  # NOQA
+
+    while i is not None:
+        i = _ll_get_prev(list, i)  # NOQA
+
+
+def VERSION_CHECK(x, y, z):
+    return (
+        x == LVGL_VERSION_MAJOR and
+        (
+            y < LVGL_VERSION_MINOR or
+            (y == LVGL_VERSION_MINOR and z <= LVGL_VERSION_PATCH)
+        )
+    )
+
+
+def kill_dependency(y):
+    return y
+
+
+def STYLE_CONST_X(val):
+    return {'prop_ptr': _style_const_prop_id_X, 'value': {'num': int32_t(val)}}  # NOQA
+
+
+def IMG_BUF_SIZE_INDEXED_2BIT(w, h):
+    return IMG_BUF_SIZE_ALPHA_2BIT(w, h) + 4 * 4
+
+
+def ANIM_SET_EASE_IN_EXPO(a):
+    return _PARA(a, 0.7, 0, 0.84, 0)
+
+
+def ANIM_SET_EASE_IN_OUT_QUINT(a):
+    return _PARA(a, 0.83, 0, 0.17, 1)
+
+
+def STYLE_CONST_CLIP_CORNER(val):
+    return {
+        'prop_ptr': _style_const_prop_id_CLIP_CORNER,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def CONCAT(x, y):
+    return _CONCAT(x, y)
+
+
+def STYLE_CONST_BORDER_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BORDER_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_GRID_X_ALIGN(val):
+    return {'prop_ptr': STYLE_GRID_X_ALIGN, 'value': {'num': grid_align_t(val)}}  # NOQA
+
+
+def CANVAS_BUF_SIZE_INDEXED_4BIT(w, h):
+    return IMG_BUF_SIZE_INDEXED_4BIT(w, h)
+
+
+def VER_RES():
+    return disp_get_ver_res(disp_get_default())  # NOQA
+
+
+def MAX4(a, b, c, d):
+    return MAX(MAX(a, b), MAX(c, d))
+
+
+def STYLE_CONST_TRANSFORM_PIVOT_Y(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TRANSFORM_PIVOT_Y,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def IMG_BUF_SIZE_TRUE_COLOR_CHROMA_KEYED(w, h):
+    return (COLOR_DEPTH // 8) * w * h
+
+
+def STYLE_CONST_BG_IMG_RECOLOR_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_IMG_RECOLOR_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def IMG_BUF_SIZE_ALPHA_8BIT(w, h):
+    return w * h
+
+
+def IMG_BUF_SIZE_ALPHA_1BIT(w, h):
+    return ((w + 7) // 8) * h
+
+
+def STYLE_CONST_MIN_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_MIN_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def COORD_IS_PCT(x):
+    return COORD_IS_SPEC(x) and _COORD_PLAIN(x) <= 2000
+
+
+def ANIM_SET_EASE_IN_QUART(a):
+    return _PARA(a, 0.5, 0, 0.75, 0)
+
+
+def STYLE_CONST_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_BG_GRAD_COLOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_GRAD_COLOR,  # NOQA
+        'value': {'color': val}
+    }
+
+
+def IMG_BUF_SIZE_INDEXED_1BIT(w, h):
+    return IMG_BUF_SIZE_ALPHA_1BIT(w, h) + 4 * 2
+
+
+def STYLE_CONST_LINE_DASH_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_LINE_DASH_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_OUT_BACK(a):
+    return _PARA(a, 0.34, 1.56, 0.64, 1)
+
+
+def STYLE_CONST_BORDER_SIDE(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BORDER_SIDE,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def MIN(a, b):
+    if a < b:
+        return a
+    return b
+
+
+def ANIM_SET_EASE_OUT_QUINT(a):
+    return _PARA(a, 0.22, 1, 0.36, 1)
+
+
+def STYLE_CONST_TEXT_LINE_SPACE(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TEXT_LINE_SPACE,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_BG_MAIN_STOP(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_MAIN_STOP,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_Y(val):
+    return {'prop_ptr': _style_const_prop_id_Y, 'value': {'num': int32_t(val)}}  # NOQA
+
+
+def MAX(a, b):
+    if a > b:
+        return a
+    return b
+
+
+def CONCAT3(x, y, z):
+    return _CONCAT3(x, y, z)
+
+
+def STYLE_CONST_TRANSLATE_Y(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TRANSLATE_Y,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_QUAD(a):
+    return _PARA(a, 0.11, 0, 0.5, 0)
+
+
+def STYLE_CONST_BLEND_MODE(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BLEND_MODE,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_MARGIN_LEFT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_MARGIN_LEFT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def IMG_BUF_SIZE_INDEXED_8BIT(w, h):
+    return IMG_BUF_SIZE_ALPHA_8BIT(w, h) + 4 * 256
+
+
+def STYLE_CONST_ANIM_SPEED(val):
+    return {
+        'prop_ptr': _style_const_prop_id_ANIM_SPEED,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_GRID_COLUMN_DSC_ARRAY(val):
+    return {
+        'prop_ptr': STYLE_GRID_COLUMN_DSC_ARRAY,  # NOQA
+        'value': {'ptr': _ctypes.cast(_pointer(val), void_t)}  # NOQA
+    }
+
+
+def COORD_GET_PCT(x):
+    if _COORD_PLAIN(x) > 1000:
+        return 1000 - _COORD_PLAIN(x)
+    return _COORD_PLAIN(x)
+
+
+def ANIM_SET_EASE_IN_SINE(a):
+    return _PARA(a, 0.12, 0, 0.39, 0)
+
+
+def GRID_FR(x):
+    return COORD_MAX - 100 + x
+
+
+def STYLE_CONST_BG_GRAD_DIR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_GRAD_DIR,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def IMG_BUF_SIZE_TRUE_COLOR(w, h):
+    return (COLOR_DEPTH // 8) * w * h
+
+
+def STYLE_CONST_SHADOW_OFS_Y(val):
+    return {
+        'prop_ptr': _style_const_prop_id_SHADOW_OFS_Y,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_ARC_COLOR(val):
+    return {'prop_ptr': _style_const_prop_id_ARC_COLOR, 'value': {'color': val}}  # NOQA
+
+
+def STYLE_CONST_SHADOW_OFS_X(val):
+    return {
+        'prop_ptr': _style_const_prop_id_SHADOW_OFS_X,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def COORD_SET_SPEC(x):
+    return x | _COORD_TYPE_SPEC
+
+
+def STYLE_CONST_GRID_CELL_ROW_POS(val):
+    return {'prop_ptr': STYLE_GRID_CELL_ROW_POS, 'value': {'num': coord_t(val)}}  # NOQA
+
+
+def STYLE_CONST_LINE_DASH_GAP(val):
+    return {
+        'prop_ptr': _style_const_prop_id_LINE_DASH_GAP,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_OUT_CIRC(a):
+    return _PARA(a, 0.85, 0, 0.15, 1)
+
+
+def STYLE_CONST_GRID_CELL_COLUMN_POS(val):
+    return {
+        'prop_ptr': STYLE_GRID_CELL_COLUMN_POS,  # NOQA
+        'value': {'num': coord_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_BASE_DIR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BASE_DIR,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_OUT_QUART(a):
+    return _PARA(a, 0.76, 0, 0.24, 1)
+
+
+def ANIM_SET_EASE_OUT_QUAD(a):
+    return _PARA(a, 0.5, 1, 0.89, 1)
+
+
+def MAX_OF(t):
+    if IS_SIGNED(t):
+        return SMAX_OF(t)
+
+    return UMAX_OF(t)
+
+
+def ANIM_SET_EASE_IN_CIRC(a):
+    return _PARA(a, 0.55, 0, 1, 0.45)
+
+
+def STYLE_CONST_COLOR_FILTER_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_COLOR_FILTER_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_OUTLINE_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_OUTLINE_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_FLEX_FLOW(val):
+    return {'prop_ptr': STYLE_FLEX_FLOW, 'value': {'num': flex_flow_t(val)}}  # NOQA
+
+
+def MIN3(a, b, c):
+    return MIN(MIN(a, b), c)
+
+
+def STYLE_CONST_MARGIN_RIGHT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_MARGIN_RIGHT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def IMG_BUF_SIZE_TRUE_COLOR_ALPHA(w, h):
+    return _COLOR_NATIVE_WITH_ALPHA_SIZE * w * h
+
+
+def COORD_IS_PX(x):
+    return _COORD_TYPE(x) == _COORD_TYPE_PX or _COORD_TYPE(
+        x
+        ) == _COORD_TYPE_PX_NEG
+
+
+def STYLE_CONST_IMG_RECOLOR_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_IMG_RECOLOR_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def COLOR_MAKE(r8, g8, b8):
+    return b8, g8, r8
+
+
+def _COORD_PLAIN(x):
+    return x & ~_COORD_TYPE_MASK
+
+
+def STYLE_CONST_FLEX_MAIN_PLACE(val):
+    return {
+        'prop_ptr': STYLE_FLEX_MAIN_PLACE,  # NOQA
+        'value': {'num': flex_flow_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_OUTLINE_PAD(val):
+    return {
+        'prop_ptr': _style_const_prop_id_OUTLINE_PAD,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_OUT_QUART(a):
+    return _PARA(a, 0.25, 1, 0.5, 1)
+
+
+def STYLE_CONST_PAD_BOTTOM(val):
+    return {
+        'prop_ptr': _style_const_prop_id_PAD_BOTTOM,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_IN_OUT_EXPO(a):
+    return _PARA(a, 0.87, 0, 0.13, 1)
+
+
+def MIN4(a, b, c, d):
+    return MIN(MIN(a, b), MIN(c, d))
+
+
+def STYLE_CONST_GRID_CELL_ROW_SPAN(val):
+    return {'prop_ptr': STYLE_GRID_CELL_ROWSPAN, 'value': {'num': coord_t(val)}}  # NOQA
+
+
+def STYLE_CONST_LINE_WIDTH(val):
+    return {
+        'prop_ptr': _style_const_prop_id_LINE_WIDTH,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_BG_GRAD_STOP(val):
+    return {
+        'prop_ptr': _style_const_prop_id_BG_GRAD_STOP,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def ABS(x):
+    if x > 0:
+        return x
+    return -x
+
+
+def STYLE_CONST_MAX_HEIGHT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_MAX_HEIGHT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_COLOR_FILTER_DSC(val):
+    return {
+        'prop_ptr': _style_const_prop_id_COLOR_FILTER_DSC,  # NOQA
+        'value': {'ptr': val}
+    }
+
+
+def STYLE_PROP_ID_MASK(prop):
+    return style_prop_t(prop & ~STYLE_PROP_META_MASK)  # NOQA
+
+
+def STYLE_CONST_OPA(val):
+    return {
+        'prop_ptr': _style_const_prop_id_OPA,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def CANVAS_BUF_SIZE_TRUE_COLOR_ALPHA(w, h):
+    return IMG_BUF_SIZE_TRUE_COLOR_ALPHA(w, h)
+
+
+def STYLE_CONST_PAD_LEFT(val):
+    return {
+        'prop_ptr': _style_const_prop_id_PAD_LEFT,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+def STYLE_CONST_FLEX_TRACK_PLACE(val):
+    return {
+        'prop_ptr': STYLE_FLEX_TRACK_PLACE,  # NOQA
+        'value': {'num': flex_flow_t(val)}  # NOQA
+    }
+
+
+def ANIM_SET_EASE_OUT_SINE(a):
+    return _PARA(a, 0.61, 1, 0.88, 1)
+
+
+def STYLE_CONST_TEXT_DECOR(val):
+    return {
+        'prop_ptr': _style_const_prop_id_TEXT_DECOR,  # NOQA
+        'value': {'num': int32_t(val)}  # NOQA
+    }
+
+
+KEYBOARD_CTRL_BTN_FLAGS = (
+    BTNMATRIX_CTRL_NO_REPEAT |  # NOQA
+    BTNMATRIX_CTRL_CLICK_TRIG |   # NOQA
+    BTNMATRIX_CTRL_CHECKED  # NOQA
+)
+
+INDEV_STATE_PR = INDEV_STATE_PRESSED  # NOQA
+INDEV_STATE_REL = INDEV_STATE_RELEASED  # NOQA
+
+BIDI_BASE_DIR_DEF = BASE_DIR_AUTO  # NOQA
+FONT_DEFAULT = font_montserrat_14  # NOQA
+
+COLOR_CHROMA_KEY = color_hex(0x00ff00)  # NOQA
+
+OBJ_FLAG_SNAPABLE = OBJ_FLAG_SNAPPABLE  # NOQA
+OBJ_FLAG_FLEX_IN_NEW_TRACK = OBJ_FLAG_LAYOUT_1  # NOQA

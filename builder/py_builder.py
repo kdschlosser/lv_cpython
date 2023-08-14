@@ -6,53 +6,9 @@ from pycparser import c_generator  # NOQA
 from pycparser import c_ast  # NOQA
 
 from . import utils
+from . import py_ctypes
 
 pragma_pack = None
-
-PRIMITIVES = {
-    'int8_t': 'int8_t',
-    'uint8_t': 'uint8_t',
-
-    'int16_t': 'int16_t',
-    'uint16_t': 'uint16_t',
-
-    'int32_t': 'int32_t',
-    'uint32_t': 'uint32_t',
-
-    'int64_t': 'int64_t',
-    'uint64_t': 'uint64_t',
-
-    'float': 'float_t',
-    'double': 'double_t',
-    'size_t': 'size_t',
-
-    'int': 'int_t',
-    'unsigned int': 'uint_t',
-
-    'long': 'long_t',
-    'unsigned long': 'ulong_t',
-
-    'long int': 'long_t',
-    'unsigned long int': 'long_t',
-
-    'long long': 'longlong_t',
-    'unsigned long long': 'ulonglong_t',
-
-    'long long int': 'longlong_t',
-    'unsigned long long int': 'ulonglong_t',
-
-    'char': 'char_t',
-    'unsigned char': 'uchar_t',
-
-    'short': 'short_t',
-    'unsigned short': 'ushort_t',
-
-    'short int': 'short_t',
-    'unsigned short int': 'ushort_t',
-
-    'bool': 'bool_t',
-}
-
 last_node = None
 
 
@@ -236,21 +192,16 @@ def visit_Decl(self, n, no_type=False):
             '__declspec(dllexport) ' if sys.platform.startswith('win') else ''
         )
 
-        func_decls.append(export + decl)
+        if export + decl not in func_decls:
+            func_decls.append(export + decl)
 
-        func_defs.append(export + data)
-        export_symbols.append(new_func_name)
+            func_defs.append(export + data)
+            export_symbols.append(new_func_name)
+
         return s
 
-    '''
-    <class 'pycparser.c_ast.Decl'>: extern const <class 'pycparser.c_ast.IdentifierType'>: lv_font_t lv_font_montserrat_8;
-    '''
     if isinstance(n.type, c_ast.TypeDecl):
-        # print(n.name)
-        # print(n.type.type)
-        # print(n.type.declname)
-
-        if n.name.startswith('lv_font_'):
+        if n.name.startswith('lv_font_') or 'style_const_prop' in n.name:
             type_ = n.type.type.names[0]
 
             export = (
@@ -258,8 +209,10 @@ def visit_Decl(self, n, no_type=False):
             )
 
             decl = f'{export} extern const {type_} * py_{n.name} = &{n.name};'
-            exported_variables.append(decl)
-            exported_variable_names.append(n.name)
+
+            if decl not in exported_variables:
+                exported_variables.append(decl)
+                exported_variable_names.append(n.name)
     return s
 
 
@@ -274,13 +227,30 @@ setattr(c_generator.CGenerator, 'visit_Decl', visit_Decl)
 
 generator = c_generator.CGenerator()
 
+used_primitives = []
 
-def get_py_type(name):
+
+def get_py_type(name, qual_name=None):
+    if qual_name is not None:
+        qual_name = qual_name.strip()
+
+        if qual_name in py_ctypes.PRIMITIVES:
+            primitive = py_ctypes.PRIMITIVES[qual_name]()
+            used_primitives.append(primitive)
+            return primitive
+
+        if qual_name in py_ctypes.__dict__:
+            primitive = py_ctypes.__dict__[qual_name]()
+            used_primitives.append(primitive)
+            return primitive
+
+        if not qual_name.endswith('_t') and qual_name + '_t' in py_ctypes.__dict__:
+            primitive = py_ctypes.__dict__[qual_name + '_t']()
+            used_primitives.append(primitive)
+            return primitive
+
     if not name:
         return name
-
-    if name in PRIMITIVES:
-        return PRIMITIVES[name]
 
     if name.startswith('_'):
         name = name[1:]
@@ -290,10 +260,10 @@ def get_py_type(name):
 
     if name.startswith('lv_'):
         return (
-            '"_{0}"'.format(name[3:]) if private else '"{0}"'.format(name[3:])
+            '_{0}'.format(name[3:]) if private else '{0}'.format(name[3:])
         )
 
-    return None if name.startswith('void') else f'"{name}"'
+    return f'{name}'
 
 
 def format_name(name):
@@ -318,6 +288,16 @@ def format_name(name):
 
 
 class Decl(c_ast.Decl):
+
+    @property
+    def qual_name(self):
+        quals = self.quals[:]
+        if 'const' in quals:
+            quals.remove('const')
+
+        quals = ' '.join(quals)
+
+        return quals
 
     def get_types(self):
         return self.type.get_types()
@@ -347,6 +327,16 @@ class {typedef_name}({typedef_type}):
     pass
 '''
 
+    @property
+    def qual_name(self):
+        quals = self.quals[:]
+        if 'const' in quals:
+            quals.remove('const')
+
+        quals = ' '.join(quals)
+
+        return quals
+
     def gen_py(self):
         s_name = format_name(self.name)
 
@@ -374,6 +364,8 @@ class {typedef_name}({typedef_type}):
 enum_namespace = {'INT32_MAX': 0x7FFFFFFF}
 current_enum_count = -1
 
+enum_types = []
+
 
 class Enumerator(c_ast.Enumerator):
     template1 = '''\
@@ -390,7 +382,6 @@ class Enumerator(c_ast.Enumerator):
         try:
             value = generator.visit(self.value)
         except RecursionError:
-            # print('ENUM_ERROR:', name)
             return None, None, ''
 
         if not value.strip():
@@ -435,12 +426,14 @@ class Enum(c_ast.Enum):
         current_enum_count = -1
         name = format_name(self.name)
         enumerators = []
+        t_name_not_found = False
 
         if name:
             t_name = find_int_type(name)
 
             if t_name is None:
                 t_name = name[1:] if name.startswith('_') else name
+                t_name_not_found = True
         else:
             t_name = None
 
@@ -459,6 +452,9 @@ class Enum(c_ast.Enum):
 
         code = '\n'.join(enumerators)
 
+        if t_name_not_found and code and (name in code or name == t_name):
+            code = f'\nclass {name}(int_t):\n    pass\n\n\n{code}'
+
         return name, None, code, 0
 
 
@@ -468,11 +464,33 @@ class TypeDecl(c_ast.TypeDecl):
     def _declname(self):
         return str(self.type)
 
+    @property
+    def is_const(self):
+        return 'const' in self.quals
+
+    @property
+    def qual_name(self):
+        quals = self.quals[:]
+        if 'const' in quals:
+            quals.remove('const')
+
+        quals = ' '.join(quals)
+
+        return quals
+
     def gen_py(self):
         declname = format_name(self.declname)
 
         if isinstance(self.type, IdentifierType):
-            return declname, self.type.gen_py()[-1], None, 0
+            quals = self.quals[:]
+            if 'const' in quals:
+                quals.remove('const')
+
+            quals = ' '.join(quals)
+            type_ = self.type.gen_py()[-1]
+            type_ = str(get_py_type(type_, f'{quals} {type_}'.strip()))
+
+            return declname, type_, None, 0
 
         if isinstance(self.type, (Struct, Union)):
             name, type_, code = self.type.gen_py()
@@ -525,6 +543,19 @@ class TypeDecl(c_ast.TypeDecl):
             if name and type_ and name != type_ and name not in int_types:
                 int_types[name] = type_
 
+                if type_[1:] == name:
+                    if name in code:
+                        if type_ not in py_int_type_names:
+                            py_int_type_names.append(type_)
+
+                        if name not in py_int_type_names:
+                            py_int_type_names.append(name)
+
+                        code = f'\nclass {type_}(int_t):\n    pass\n\n\n{name} = {type_}\n\n{code}'
+
+            if code not in py_enums:
+                py_enums.append(code)
+
             return name, type_, code, 0
 
         raise RuntimeError(f'{str(declname)} : {str(type(self.type))}')
@@ -533,12 +564,10 @@ class TypeDecl(c_ast.TypeDecl):
 class IdentifierType(c_ast.IdentifierType):
 
     def gen_py(self):
-        names = [get_py_type(name) for name in self.names]
+        if self.names is None:
+            return None, None, None
 
-        return (
-            (None, None, None) if self.names is None
-            else (None, None, ' '.join(str(name) for name in names))
-        )
+        return None, None, ' '.join(self.names)
 
     def get_raw_type(self):
         if self.names is not None:
@@ -560,30 +589,20 @@ class EllipsisParam(c_ast.EllipsisParam):
 
 
 def format_pointer(count, name):
+    if name is None and count:
+        name = 'void_t'
+    elif name is None:
+        return None
+
     if name == 'void_t' and count > 0:
         count -= 1
 
     if 'List' not in name:
-        return ('_ctypes.POINTER(' * count) + name + (')' * count)
+        return ('_POINTER(' * count) + name + (')' * count)
+
     count = name.count('List')
     name = name.split('List[')[-1].split(']')[0]
-    return ('_ctypes.POINTER(' * count) + name + (')' * count)
-
-
-def format_byref(count, name):
-    return f'_ctypes.byref({name})' if count else name
-
-
-def get_normalized_type_name(type_):
-    if type_.startswith('_'):
-        if type_[1:] in py_struct_names:
-            return type_[1:]
-        if type_[1:] in py_enum_names:
-            return type_[1:]
-        if type_[1:] in py_int_type_names:
-            return type_[1:]
-
-    return type_
+    return ('_POINTER(' * count) + name + (')' * count)
 
 
 class CFunction(object):
@@ -627,7 +646,7 @@ class FunctionRetval(object):
         )
         restype = format_pointer(
             self.pointer_count,
-            str(restype).replace('"', '')
+            str(restype)
         )
         return restype
 
@@ -636,7 +655,7 @@ class FunctionRetval(object):
         if self.type == 'void_t' and not self.pointer_count:
             return 'None'
 
-        return self.type.replace('"', '')
+        return self.type
 
 
 callback_storage_names = []
@@ -654,7 +673,7 @@ def _{name}_weakref_callback(ref):
 
 '''
 
-    callback_conversion_template = '''\
+    first_param_callback_template = '''\
     if inspect.ismethod({param_name}):
         # This has to be done this way because WeakMethod is not hashable so 
         # it cannot be stored in a dictionary aand the __hash__ method is read 
@@ -670,42 +689,95 @@ def _{name}_weakref_callback(ref):
         ref = weakref.ref({param_name}, _{name}_weakref_callback)
     else:
         raise TypeError
-
+            
     if ref not in _{name}_callback_storage:
-        {param_name} = {param_type}({param_name})
+        {param_name} = _lib_lvgl.{c_func_name}.argtypes.{param_name}({param_name})
         _{name}_callback_storage[ref] = {param_name}
     else:
         {param_name} = _{name}_callback_storage[ref]
+    '''
+
+    callback_conversion_template = '''\
+    if storage is not None:
+        tmp_param = {param_name}
+        {param_name} = _lib_lvgl.{c_func_name}.argtypes.{param_name}({param_name})
+        storage.__references__[tmp_param] = {param_name}
+    else:
+        if inspect.ismethod({param_name}):
+            # This has to be done this way because WeakMethod is not hashable so 
+            # it cannot be stored in a dictionary aand the __hash__ method is read 
+            # only so it can only be added upon class creation. So we dynamically
+            # construct the class pointing __hash__ to the methods __hash__  
+            weakmethod = type(
+                'weakmethod', 
+                (weakref.WeakMethod,), 
+                {{'__hash__': {param_name}.__hash__}}
+            )
+            ref = weakmethod({param_name}, _{name}_weakref_callback)
+        elif inspect.isfunction({param_name}):
+            ref = weakref.ref({param_name}, _{name}_weakref_callback)
+        else:
+            raise TypeError
+            
+        if ref not in _{name}_callback_storage:
+            {param_name} = _lib_lvgl.{c_func_name}.argtypes.{param_name}({param_name})
+            _{name}_callback_storage[ref] = {param_name}
+        else:
+            {param_name} = _{name}_callback_storage[ref]
 '''
 
     conversion_template = '''\
-    {param_name} = _convert_to_ctype(
-        {param_name}, 
-        _{lib_name}.{c_func_name}.argtypes.{param_name}
-    )
+    if storage is not None:
+        if isinstance({param_name}, list):
+            tmp_param = tuple({param_name})
+        else:
+            tmp_param = {param_name}
+            
+        {param_name} = _convert_to_ctype(
+            {param_name}, 
+            _lib_lvgl.{c_func_name}.argtypes.{param_name}
+        )
+        storage.__references__[tmp_param] = {param_name}
+    else:    
+        {param_name} = _convert_to_ctype(
+            {param_name}, 
+            _lib_lvgl.{c_func_name}.argtypes.{param_name}
+        )
 '''
+    first_param_conversion_template = '''\
+    {param_name} = _convert_to_ctype(
+            {param_name}, 
+            _lib_lvgl.{c_func_name}.argtypes.{param_name}
+        )
+    '''
 
-    def __init__(self, py_func_name, c_func_name, name, type_, pointer_count):
+    def __init__(self, py_func_name, c_func_name, name, type_, pointer_count, first_param_name):
+        self.first_param_name = first_param_name
         self.py_func_name = py_func_name
         self.c_func_name = c_func_name
         self.name = name
         self.pointer_count = pointer_count
 
-        if type_ is None:
-            type_ = 'Any'
+        if isinstance(type_, CBFunc):
+            self.cb_func = type_
+            self.type = None
+        else:
+            type_ = type_.replace('Any', 'void_t')
+            type_ = type_.replace('None', 'void_t')
 
-        type_ = type_.replace('"', '').replace('Any', 'void_t')
-        type_ = type_.replace('None', 'void_t')
-
-        self.type = type_
+            self.type = type_
+            self.cb_func = None
 
     @property
     def is_callback(self):
-        for item in ('_cb_t', '_f_t', '_xcb_t'):
-            if not str(self.type).endswith(item):
-                continue
-            return True
-        return False
+        if self.cb_func is None:
+            for item in ('_cb_t', '_f_t', '_xcb_t'):
+                if not str(self.type).endswith(item):
+                    continue
+                return True
+            return False
+
+        return True
 
     @property
     def callback_storage(self):
@@ -724,15 +796,22 @@ def _{name}_weakref_callback(ref):
 
     @property
     def py_arg(self):
-        type_ = self.type
-        if f'_type_{type_}' in int_typeing_names:
-            type_ = f'_type_{type_}'
+        if self.cb_func is None:
+            type_ = self.type
+            if f'_type_{type_}' in int_typeing_names:
+                type_ = f'_type_{type_}'
+        else:
+            type_ = self.cb_func.py_type
 
         return f'{self.name}: {type_}'
 
     @property
     def c_arg(self):
-        type_ = format_pointer(self.pointer_count, self.type)
+        if self.cb_func is None:
+            type_ = format_pointer(self.pointer_count, self.type)
+        else:
+            type_ = str(self.cb_func)
+
         return f'{self.name}={type_}'
 
     @property
@@ -743,17 +822,36 @@ def _{name}_weakref_callback(ref):
                 name = name[0]
             else:
                 name = name[1]
+            #
+            # if self.cb_func is None:
+            #     type_ = self.type
+            # else:
+            #     type_ = f'_lib_lvgl.{self.c_func_name}.argtypes.{self.name}'
+
+            if self.first_param_name == self.name:
+                return self.first_param_callback_template.format(
+                    param_name=self.name,
+                    name=name,
+                    c_func_name=self.c_func_name,
+                )
 
             return self.callback_conversion_template.format(
                 param_name=self.name,
                 name=name,
-                param_type=self.type
+                c_func_name=self.c_func_name,
+                first_param_name=self.first_param_name
+            )
+
+        if self.first_param_name == self.name:
+            return self.first_param_conversion_template.format(
+                param_name=self.name,
+                c_func_name=self.c_func_name
             )
 
         return self.conversion_template.format(
             param_name=self.name,
             c_func_name=self.c_func_name,
-            lib_name=lib_name
+            first_param_name=self.first_param_name
         )
 
 
@@ -767,10 +865,19 @@ class Function(object):
     )'''
 
     template = '''\
-{callback_storage}def {func_name}({params}) -> {ret_type}:
+{callback_storage}def {func_name}({params}) -> {ret_type}:{instance_check_first_param}
 {arg_conversions}
     {return_attr}_{lib_name}.{o_func_name}({param_names}){return_conversion}
 '''
+
+    instance_check_first_param = '''
+    if type(type({param_name})) == _PyCPointerType and isinstance({param_name}.contents, (_Structure, _Union)):
+        storage = {param_name}.contents
+    elif isinstance({param_name}, (_Structure, _Union)): 
+        storage = {param_name}
+    else:
+        storage = None
+    '''
 
     get_return_conversion = '''
     
@@ -786,15 +893,18 @@ class Function(object):
         self.c_func = CFunction(c_name)
         self.params = []
         self.restype = None
+        self.first_param_name = None
 
-    def append(self, name, type_, pointer_count=0):
+    def append(self, name, type_, pointer_count=0, first_param_name=None):
         param = FunctionParam(
             self.name,
             self.c_name,
             name,
             type_,
-            pointer_count
+            pointer_count,
+            first_param_name
         )
+        self.first_param_name = first_param_name
         self.params.append(param)
         self.c_func.append(param)
 
@@ -869,7 +979,15 @@ class Function(object):
 
         tmpl1 = str(self.c_func)
 
+        if self.first_param_name is None:
+            instance_check_first_param = ''
+        else:
+            instance_check_first_param = (
+                self.instance_check_first_param.format(param_name=self.first_param_name)
+            )
+
         tmpl2 = self.template.format(
+            instance_check_first_param=instance_check_first_param,
             callback_storage=callback_storage,
             func_name=self.name,
             params=params,
@@ -894,6 +1012,16 @@ class FuncDecl(c_ast.FuncDecl):
     def _declname(self):
         return self.type._declname  # NOQA
 
+    @property
+    def qual_name(self):
+        quals = self.quals[:]
+        if 'const' in quals:
+            quals.remove('const')
+
+        quals = ' '.join(quals)
+
+        return quals
+
     def get_types(self):
         return [format_name(arg._declname) for arg in self.args]  # NOQA
 
@@ -907,9 +1035,6 @@ class FuncDecl(c_ast.FuncDecl):
             name, type_, code, r_ptr = self.type.gen_py()
         else:
             raise RuntimeError(str(type(self.type)))
-
-        if type_ in ('None', None):
-            type_ = 'void_t'
 
         r_type = self.type
         while isinstance(r_type, PtrDecl):
@@ -937,7 +1062,6 @@ class FuncDecl(c_ast.FuncDecl):
             param_types = []
 
             for param in args:
-
                 if isinstance(param, (Decl, Typename)):
                     param_name = param.name
                     p_name, p_type, code, p_ptr = param.gen_py()
@@ -949,32 +1073,29 @@ class FuncDecl(c_ast.FuncDecl):
                     raise RuntimeError(type(param))
 
                 if param_name is None:
-                    if p_type not in ('None', 'void_t'):
+                    if p_type != 'void_t':
                         param_name_counter += 1
                         param_name = 'arg' + str(param_name_counter)
                         param_names.append(param_name)
 
-                if p_ptr and p_type in ('None', None):
-                    p_type = 'void_t'
+                elif param_name == 'in':
+                    param_name = 'in_'
+
+                if not p_ptr and p_type == 'void_t':
+                    p_type = None
 
                 param_types.append(
                     format_pointer(
                         p_ptr,
-                        p_type.replace('"', '')
+                        p_type
                     )
                 )
                 params.append(f'{param_name}: {p_type}')
 
-            if r_ptr and type_ in (None, 'None'):
-                type_ = 'void_t'
-
-            type_ = str(type_).replace('"', '')
+            if not r_ptr and type_ == 'void_t':
+                type_ = 'None'
 
             type_ = format_pointer(r_ptr, type_)
-
-            param_types = [
-                str(pt).replace('"', '') for pt in param_types
-            ]
 
             temp = CBFunc(
                 None,
@@ -982,10 +1103,11 @@ class FuncDecl(c_ast.FuncDecl):
                 param_types
             )
 
-            name = get_py_type(name).replace('"', '')
+            name = str(get_py_type(name, name))
             return name, temp, None, 0
         else:
             func = Function(name, o_func_name)
+            first_param_name = None
 
             for param in args:
                 if isinstance(param, (Decl, Typename)):
@@ -996,20 +1118,23 @@ class FuncDecl(c_ast.FuncDecl):
                 else:
                     raise RuntimeError(str(type(param)))
 
-                if param_name is None:
-                    if p_type not in ('None', 'void_t'):
+                if not isinstance(p_type, CBFunc):
+                    if param_name is None:
+                        if p_type != 'void_t':
+                            return None, None, None, 0
+
+                        continue
+
+                    if 'va_list' in p_type:
                         return None, None, None, 0
 
-                    continue
+                if p_name == 'in':
+                    p_name = 'in_'
 
-                if p_type is None:
-                    print('nested callback func:', param, type(param), p_name, name, o_func_name)
-                    continue
+                if first_param_name is None:
+                    first_param_name = p_name
 
-                if 'va_list' in p_type:
-                    return None, None, None, 0
-
-                func.append(p_name, p_type, p_ptr)
+                func.append(p_name, p_type, p_ptr, first_param_name)
 
             func.restype = FunctionRetval(type_, r_ptr)
 
@@ -1017,6 +1142,16 @@ class FuncDecl(c_ast.FuncDecl):
 
 
 class Typename(c_ast.Typename):
+
+    @property
+    def qual_name(self):
+        quals = self.quals[:]
+        if 'const' in quals:
+            quals.remove('const')
+
+        quals = ' '.join(quals)
+
+        return quals
 
     def get_type(self):
         return self.type._declname  # NOQA
@@ -1026,6 +1161,7 @@ class Typename(c_ast.Typename):
 
         if isinstance(self.type, (TypeDecl, PtrDecl)):
             name, type_, code, ptr = self.type.gen_py()
+
             if name:
                 return name, type_, code, ptr
 
@@ -1037,6 +1173,13 @@ class Typename(c_ast.Typename):
 class PtrDecl(c_ast.PtrDecl):
 
     @property
+    def is_const(self):
+        if isinstance(self.type, (TypeDecl, PtrDecl)):
+            return self.type.is_const
+
+        return False
+
+    @property
     def _declname(self):
         return self.type._declname  # NOQA
 
@@ -1045,17 +1188,29 @@ class PtrDecl(c_ast.PtrDecl):
 
     @property
     def pointer(self):
-        return f'_ctypes.POINTER({self.type._declname})'  # NOQA
+        return f'_POINTER({self.type._declname})'  # NOQA
 
     def get_types(self):
         if isinstance(self.type, (PtrDecl, FuncDecl)):
             return self.type.get_types
+
         return []
+
+    @property
+    def qual_name(self):
+        quals = self.quals[:]
+        if 'const' in quals:
+            quals.remove('const')
+
+        quals = ' '.join(quals)
+
+        return quals
 
     def gen_py(self):
         if isinstance(self.type, (TypeDecl, FuncDecl, PtrDecl)):
             name, type_, code, ptr = self.type.gen_py()
             ptr += 1
+
             return name, type_, code, ptr
 
         raise RuntimeError(str(type(self.type)))
@@ -1134,22 +1289,22 @@ class Struct(c_ast.Struct):
 
     property_template = '''\
         @property
-        def {field_name}(self) -> {field_type}:  # NOQA
+        def {field_name}(self) -> "{field_type}":  # NOQA
             ...
 
         @{field_name}.setter
-        def {field_name}(self, value: {field_type}):
+        def {field_name}(self, value: "{field_type}"):
             ...'''
 
     param_eval = '''\
         if {param_name} != _DefaultArg:
             kwargs['{param_name}'] = {param_name}'''
     param_template = (
-        '{field_name}: Optional[{field_type}] = _DefaultArg'
+        '{field_name}: Optional["{field_type}"] = _DefaultArg'
     )
 
     special_types_template = '''\
-        '{param_name}': {param_type}'''
+        '{param_name}': "{param_type}"'''
 
     template = '''\
 class {struct_name}(_{base_type}): {pack}{nested_structs}
@@ -1247,7 +1402,7 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
                                 nested_structs.append(code + f'\n\n{size}')
                                 # field_names.append(name)
                                 param_names.append(f'{field.name}={field.name}')
-                                p_field = f'{field.name}: Optional[_{field.name}]'
+                                p_field = f'{field.name}: Optional["_{field.name}"]'
                                 p_field += ' = _DefaultArg'
                                 params.append(p_field)
                                 field.name = f'{s_name}._{field.name}'
@@ -1266,7 +1421,7 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
                                 size = f"    setattr(_{field.name}, '__SIZE__', "
                                 size += f"_ctypes.sizeof(_{field.name}))"
                                 param_names.append(f'{field.name}={f_name}')
-                                p_field = f'{field.name}: Optional[{f_name}]'
+                                p_field = f'{field.name}: Optional["{f_name}"]'
                                 p_field += ' = _DefaultArg'
                                 params.append(p_field)
                                 py_properties.append(
@@ -1291,16 +1446,9 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
                     if not name:
                         raise RuntimeError(f'{repr(type_)} : {repr(code)}')
 
-                    for item in ('Any', 'List', 'bool'):
-                        if type_.startswith(item):
-                            break
-                    else:
-                        if '"' not in type_:
-                            type_ = '"' + type_ + '"'
-
                     param_names.append(name + '=' + name)
 
-                    if type_.replace('"', '').replace('Any', 'void_t') == 'va_list':
+                    if type_.replace('Any', 'void_t') == 'va_list':
                         return None, None, None
 
                     prop_type = type_
@@ -1315,19 +1463,38 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
                                 prop_type.replace(t[6:], t)
                                 break
 
+                    tmp_type = get_type_from_py_type(prop_type)
+                    old_type = prop_type
+                    prop_type = str(get_py_type(tmp_type, tmp_type))
+
+                    if tmp_type != prop_type:
+                        prop_type = old_type.replace(tmp_type, prop_type)
+                    else:
+                        prop_type = old_type
+
                     py_properties.append(
                         self.property_template.format(
                             field_name=name,
                             field_type=prop_type
                         )
                     )
+
+                    tmp_type = get_type_from_py_type(type_)
+                    old_type = type_
+                    type_ = str(get_py_type(tmp_type, tmp_type))
+
+                    if tmp_type != type_:
+                        type_ = old_type.replace(tmp_type, type_)
+                    else:
+                        type_ = old_type
+
                     fields.append(
                         StructField(
                             name,
                             field.bitsize,
                             format_pointer(
                                 ptr,
-                                type_.replace('"', '').replace('Any', 'void_t')
+                                type_
                             )
                         )
                     )
@@ -1368,6 +1535,7 @@ class {struct_name}(_{base_type}): {pack}{nested_structs}
             if nested_structs else ''
         )
         params.insert(0, 'self')
+        params.append('**_')
         if len(', '.join(params)) > 40:
             params = '\n        {0}\n    '.format(', \n        '.join(params))
         else:
@@ -1412,6 +1580,7 @@ class ArrayDecl(c_ast.ArrayDecl):
         return self.type._declname  # NOQA
 
     def gen_py(self):
+        print(self.dim_quals)
         if isinstance(self.type, TypeDecl):
             name, type_, code, ptr = self.type.gen_py()
             if code:
@@ -1484,7 +1653,7 @@ class CBFunc(object):
 
         real_restype = get_type_from_py_type(self.restype)
 
-        if self.restype == 'None':
+        if self.restype is None:
             restype = self.restype
         elif (
             not real_restype.startswith('_') and
@@ -1497,17 +1666,15 @@ class CBFunc(object):
         ):
             for t_def in py_typedefs:
                 if isinstance(t_def, TDef) and t_def.name == real_restype:
-                    restype = t_def.type.replace('"', '')
+                    restype = t_def.type
                     break
             else:
                 restype = real_restype
         else:
             restype = real_restype
 
-        if restype != 'None':
-            restype = (
-                '"' + get_type_from_py_type(restype).replace('"', '') + '"'
-            )
+        if restype is not None:
+            restype = get_type_from_py_type(restype)
 
         param_types = []
         for type_ in self.param_types:
@@ -1543,7 +1710,7 @@ class CBFunc(object):
                 type_ = temp_type.replace(real_type, type_)
 
             param_types.append(
-                '"' + get_type_from_py_type(type_).replace('"', '') + '"'
+                get_type_from_py_type(type_)
             )
 
         return template.format(
@@ -1554,7 +1721,7 @@ class CBFunc(object):
     def __str__(self):
         real_restype = get_type_from_py_type(self.restype)
 
-        if self.restype == 'None':
+        if self.restype is None:
             restype = self.restype
         elif (
             not real_restype.startswith('_') and
@@ -1671,14 +1838,14 @@ class RootTypedef(Typedef):
                             return
 
                         try:
-                            ret_type = get_py_type(s_type.type.names[0])
+                            ret_type = str(get_py_type(s_type.type.names[0], s_type.type.names[0]))
                         except:  # NOQA
-                            ret_type = get_py_type(s_type.type.name)
+                            ret_type = str(get_py_type(s_type.type.name, s_type.type.name))
 
-                        if ptr and ret_type in (None, 'None'):
-                            ret_type = 'void_t'
+                        if not ptr and ret_type == 'void_t':
+                            ret_type = None
 
-                        ret_type = str(ret_type).replace('"', '')
+                        ret_type = str(ret_type)
 
                         ret_type = format_pointer(ptr, ret_type)
 
@@ -1698,17 +1865,18 @@ class RootTypedef(Typedef):
                                     p_ptr = 1
 
                                     if isinstance(p_type, IdentifierType):
-                                        param_type = get_py_type(
+                                        param_type = str(get_py_type(
+                                            p_type.names[0],
                                             p_type.names[0]
-                                        )
+                                        ))
                                     elif isinstance(p_type, Struct):
-                                        param_type = get_py_type(p_type.name)
+                                        param_type = str(get_py_type(p_type.name, p_type.name))
                                     else:
                                         raise RuntimeError(str(type(p_type)))
 
                                 elif isinstance(p_type, TypeDecl):
                                     p_type = p_type.type
-                                    param_type = get_py_type(p_type.names[0])
+                                    param_type = str(get_py_type(p_type.names[0], p_type.names[0]))
                                 else:
                                     raise RuntimeError(str(type(p_type)))
 
@@ -1722,30 +1890,34 @@ class RootTypedef(Typedef):
                                     p_ptr += 1
 
                                 if isinstance(p_type, IdentifierType):
-                                    param_type = get_py_type(
+                                    param_type = str(get_py_type(
+                                        p_type.names[0],
                                         p_type.names[0]
-                                    )
+                                    ))
 
                                 elif isinstance(p_type, ArrayDecl):
                                     if p_ptr == 0:
                                         p_ptr = 1
 
-                                    param_type = get_py_type(
+                                    param_type = str(get_py_type(
+                                        p_type.type.type.names[0],
                                         p_type.type.type.names[0]
-                                    )
+                                    ))
 
                                 elif isinstance(p_type, TypeDecl):
                                     p_type = p_type.type
 
                                     if isinstance(p_type, IdentifierType):
-                                        param_type = get_py_type(
+                                        param_type = str(get_py_type(
+                                            p_type.names[0],
                                             p_type.names[0]
-                                        )
+                                        ))
 
                                     elif isinstance(p_type, Struct):
-                                        param_type = get_py_type(
+                                        param_type = str(get_py_type(
+                                            p_type.name,
                                             p_type.name
-                                        )
+                                        ))
 
                                     else:
                                         raise RuntimeError(
@@ -1757,8 +1929,8 @@ class RootTypedef(Typedef):
                             else:
                                 raise RuntimeError(str(type(param)))
 
-                            if p_ptr and param_type in ('None', None):
-                                param_type = 'void_t'
+                            if p_ptr and param_type == 'void_t':
+                                param_type = None
 
                             # if param_type.startswith('_'):
                             #     param_type = param_type[1:]
@@ -1769,23 +1941,19 @@ class RootTypedef(Typedef):
                             param_types.append(
                                 format_pointer(
                                     p_ptr,
-                                    param_type.replace('"', '')
+                                    param_type
                                 )
                             )
                             param_names.append(param_name)
-                            params.append(f'{param_name}: {param_type}')
-
-                        param_types = [
-                            str(pt).replace('"', '') for pt in param_types
-                        ]
+                            params.append(f'{param_name}: "{param_type}"')
 
                         temp = CBFunc(
-                            get_py_type(name).replace('"', ''),
+                            str(get_py_type(name, name)),
                             ret_type,
                             param_types
                         )
 
-                        name = get_py_type(name).replace('"', '')
+                        name = str(get_py_type(name, name))
 
                         if name not in func_pointer_names:
                             func_pointer_names.append(name)
@@ -1794,18 +1962,14 @@ class RootTypedef(Typedef):
                         return
 
         t_name = format_name(self.name)
-        # print(type(self.type))
         name, type_, code, ptr = self.type.gen_py()
 
         if name == 'vaformat_t':
             return
 
         if isinstance(self.type, TypeDecl):
-            if type_:
-                type_ = type_.replace('"', '')
-
             if code:
-                if code.startswith('class'):
+                if code.startswith('class') and not isinstance(self.type.type, Enum):
                     if (
                         name and type_ and
                         name not in py_struct_names and
@@ -1850,7 +2014,7 @@ class RootTypedef(Typedef):
                         return
 
                 elif '=' in code and name:
-                    if name and type_ and name == type_:
+                    if name and type_ and (type_ is None or name == type_):
                         type_ = 'int_t'
 
                         if name not in py_int_type_names:
@@ -1870,6 +2034,9 @@ class RootTypedef(Typedef):
 
                             int_typeing_names.append(int_type_name)
                             int_typing.append(int_type)
+
+                        if isinstance(self.type.type, Enum) and code not in py_enums:
+                            py_enums.append(code)
 
                         return
 
@@ -1927,15 +2094,13 @@ class RootTypedef(Typedef):
                 type_ and
                 t_name and
                 t_name == name and
-                type_.replace('"', '') != name
+                type_ != name
             ):
-                type_ = type_.replace('"', '')
-
                 if type_ in int_types:
                     if name not in py_int_type_names:
                         tdef = self.template.format(
                             typedef_name=name,
-                            typedef_type=type_.replace('"', '')
+                            typedef_type=type_
                         )
 
                         py_int_type_names.append(name)
@@ -1959,7 +2124,7 @@ class RootTypedef(Typedef):
                     t_name = name
 
                 if t_name not in py_typedef_names + py_int_type_names:
-                    code = '{name}: {type} = ...'.format(name=t_name, type=code)
+                    code = '{name}: "{type}" = ...'.format(name=t_name, type=code)
 
                     py_typedef_names.append(t_name)
                     py_typedefs.append(code)
@@ -1968,7 +2133,7 @@ class RootTypedef(Typedef):
                     '[', 1
                 )[-1][:-1].replace('"', '').strip()
 
-                code = '{name}: {type} = ({array_type} * {dim})()'.format(
+                code = '{name}: "{type}" = ({array_type} * {dim})()'.format(
                     name=name,
                     type=type_,
                     array_type=array_type,
@@ -2002,8 +2167,7 @@ class RootTypedef(Typedef):
                     )
             return
 
-        print(str(type(self.type)))
-        raise RuntimeError
+        print('ERROR:', str(self))
 
 
 int_types = {
@@ -2065,15 +2229,14 @@ class {name}({type}):
     pass
 '''
     variable_template = '''\
-__{py_name}_pointer = _ctypes.POINTER({c_type})
-{py_name} = __{py_name}_pointer.in_dll(_lib_lvgl, "{c_name}")'''
+__{py_name}_pointer = _POINTER({c_type})
+{py_name} = __{py_name}_pointer.in_dll(_lib_lvgl, "{c_name}").contents'''
 
     def gen_py(self):
         d_name = format_name(self.name)
 
         if isinstance(self.type, Enum):
             name, type_, code, _ = self.type.gen_py()
-
             if code:
                 def _check_code(c):
                     if ')\n_' in c:
@@ -2109,7 +2272,10 @@ __{py_name}_pointer = _ctypes.POINTER({c_type})
                             py_enums.append(code)
                         return
                     else:
-                        raise RuntimeError
+                        code = code.format(type='int_t')
+                        if _check_code(code):
+                            py_enums.append(code)
+                        return
 
                 if name and type_ and name != type_:
                     if name not in py_int_type_names:
@@ -2117,7 +2283,7 @@ __{py_name}_pointer = _ctypes.POINTER({c_type})
                         py_int_types.append(
                             self.int_type_template.format(name=name, type=type_)
                         )
-                        int_type = f'_type_{name} = Union[{name}, {type_}, int]'
+                        int_type = f'_type_{name} = Union["{name}", "{type_}", int]'
                         int_typing.append(int_type)
 
                 if _check_code(code):
@@ -2140,7 +2306,7 @@ __{py_name}_pointer = _ctypes.POINTER({c_type})
                 c_name = 'py_' + self.name
                 code = self.variable_template.format(
                     py_name=d_name,
-                    c_type=type_.replace('"', ''),
+                    c_type=type_,
                     c_name=c_name
                 )
 
@@ -2154,7 +2320,7 @@ __{py_name}_pointer = _ctypes.POINTER({c_type})
                 if not name and d_name:
                     name = d_name
 
-                code = '{name}: {type} = ...'.format(name=name, type=code)
+                code = '{name}: "{type}" = ...'.format(name=name, type=code)
 
                 if name not in py_type_names:
                     py_type_names.append(name)
@@ -2223,7 +2389,6 @@ class Pragma(c_ast.Pragma):
         super().__init__(string, coord)
 
     def gen_py(self):
-        # print('Pragma: ', self.string, self.coord)
         pass
 
 
@@ -2235,7 +2400,6 @@ class RootPragma(Pragma):
     def gen_py(self):
         global pragma_pack
 
-        # print(self.string)
         if '(' not in self.string:
             return
 
@@ -2255,7 +2419,6 @@ class StaticAssert(c_ast.StaticAssert):
         super().__init__(cond, message, coord)
 
     def gen_py(self):
-        # print('StaticAssert: ', self.cond, self.message, self.coord)
         pass
 
 
@@ -2265,9 +2428,7 @@ class RootStaticAssert(StaticAssert):
         super().__init__(cond, message, coord)
 
     def gen_py(self):
-        # print('RootStaticAssert: ', self.cond, self.message, self.coord)
         pass
-
 
 
 lib_name = 'lib_lvgl'
@@ -2344,7 +2505,6 @@ def patch_pycparser():
     setattr(ast.Node, '__repr__', cls_repr)  # NOQA
 
 
-
 def run(output_path, ast):
     global py_enums
     global py_int_types
@@ -2392,9 +2552,16 @@ def run(output_path, ast):
     template = template.replace('{', '{{').replace('}', '}}')
     template = template.replace("['~", '{').replace("~']", '}')
 
+    prims = []
+    for primitive in used_primitives:
+        primitive = primitive.get_decl()
+        if primitive:
+            prims.append(primitive)
+
     with open(os.path.join(output_path, '__init__.py'), 'w') as f:
         f.write(
             template.format(
+                primitives='\n'.join(prims),
                 int_types='\n\n'.join(str(item) for item in py_int_types),
                 int_typing='\n'.join(str(item) for item in int_typing),
                 enums='\n\n'.join(str(item) for item in py_enums),

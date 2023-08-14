@@ -22,6 +22,10 @@ extern BOOL WINAPI DllMain(
 DLL_MAIN = '''
 #include "dllmain.h"
 
+extern BOOL WINAPI DllMain(
+    HINSTANCE const instance, DWORD const reason, LPVOID const reserved
+);
+
 extern BOOL WINAPI DllMain (
     HINSTANCE const instance,  // handle to DLL module
     DWORD     const reason,    // reason for calling function
@@ -55,6 +59,39 @@ extern BOOL WINAPI DllMain (
 if not sys.platform.startswith('win'):
     DLLMAIN_H = ''
     DLL_MAIN = '#include "dllmain.h"\n\n'
+
+
+IGNORE_DIRS = (
+    'osal', 'micropython', 'arm2d', 'gd32_ipa',
+    'nxp', 'stm32_dma2d', 'swm341_dma2d', 'tiny_ttf',
+    'rlottie', 'freetype', 'ffmpeg'
+)
+IGNORE_FILES = (
+)
+
+
+def iter_sources(p):
+    res = []  # NOQA
+    folders = []
+    for f in os.listdir(p):  # NOQA
+        file = os.path.join(p, f)
+        if os.path.isdir(file):
+            if f in IGNORE_DIRS:
+                continue
+            if f == 'disp' and p.endswith('dev'):
+                continue
+
+            folders.append(file)
+        elif f not in IGNORE_FILES:
+            if not f.endswith('.h'):
+                continue
+
+            res.append(file)
+
+    for folder in folders:
+        res.extend(iter_sources(folder))
+
+    return res
 
 
 class build(_build):
@@ -148,12 +185,20 @@ class build(_build):
         # {macros}
         # define SDL_MAIN_HANDLED
         # #include {sdl_include}
-        lvgl_header_file = f'''
-#include "{_rel_path(lvgl_header_path)}"
-#include "{_rel_path(lvgl_src_path)}/disp/lv_disp_private.h"
-#include "{_rel_path(lvgl_src_path)}/indev/lv_indev_private.h"
 
+        files = iter_sources(lvgl_src_path)
+
+        lvgl_header_file = ''
+        print(lvgl_header_path)
+
+        dll_main_h = f'''
+#include "{_rel_path(lvgl_header_path)}"
+// #include "{_rel_path(lvgl_src_path)}/disp/lv_disp_private.h"
+// #include "{_rel_path(lvgl_src_path)}/indev/lv_indev_private.h"
 '''
+        for f in files:
+            lvgl_header_file += f'#include "{_rel_path(f)}"\n'
+            dll_main_h += f'#include "{_rel_path(f)}"\n'
 
         os.chdir(cwd)
 
@@ -187,7 +232,7 @@ class build(_build):
         # py_builder.export_symbols
 
         h_template = DLLMAIN_H
-        h_template += lvgl_header_file  # .replace(macros, '')
+        h_template += dll_main_h  # .replace(macros, '')
         h_template += '\n'.join(
             line for line in py_builder.func_decls if line.strip() != ';'
         ) + '\n'
@@ -195,6 +240,10 @@ class build(_build):
         h_template += '\n'.join(py_builder.exported_variables)
 
         c_template = DLL_MAIN
+        c_template += '\n'.join(
+            line for line in py_builder.func_decls if line.strip() != ';'
+        ) + '\n'
+
         c_template += '\n'.join(
             line for line in py_builder.func_defs if line.strip() != ';'
         )

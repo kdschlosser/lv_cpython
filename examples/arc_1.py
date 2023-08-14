@@ -33,7 +33,5 @@ start = time.time()
 while True:
     time.sleep(0.001)
     stop = time.time()
-    diff = int((stop * 1000) - (start * 1000))
-    start = stop
-    lv.tick_inc(diff)
+    lv.tick_inc(1)
     lv.task_handler()

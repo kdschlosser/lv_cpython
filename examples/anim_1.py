@@ -34,6 +34,7 @@ def sw_event_cb(e):
         lv.anim_set_values(a, lv.obj_get_x(label), 100)
         lv.anim_set_path_cb(a, lv.anim_path_overshoot)
     else:
+        print('WIDTH:', -lv.obj_get_width(label))
         lv.anim_set_values(a, lv.obj_get_x(label), - lv.obj_get_width(label))
         lv.anim_set_path_cb(a, lv.anim_path_ease_in)
 

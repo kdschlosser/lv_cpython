@@ -560,6 +560,8 @@ class segmented_display(object):
 
 
 def _build_gradient(begin_rgb, end_rgb, nb):
+    print(begin_rgb)
+    print(end_rgb)
     def rgb2hex(r, g, b):
         return (r & 0xFF) << 16 | (g & 0xFF) << 8 | (b & 0xFF)
 
@@ -663,7 +665,7 @@ class _tick(lv.obj_t):
         p1, p2 = self._points
         height = _get_distance(p1.x, p1.y, p2.x, p2.y)
 
-        parent = lv.obj_get_parent(self)
+        parent = lv.obj_get_parent(self.obj)
         lv.obj_update_layout(parent)
 
         center_x = int(lv.obj_get_width(parent) / 2)
@@ -895,23 +897,28 @@ class knob_ctrl(object):
         self.set_scale_ticks(101, 3, 8)
         self.set_scale_major_ticks(5, 3, 13)
 
-        grad_dsc = lv.grad_dsc_t()
-        grad_dsc.stops_count = 2
+        gradient = []
 
-        stop1 = lv.gradient_stop_t()
-        stop2 = lv.gradient_stop_t()
+        num_steps = int(len(self._ticks) * 0.7)
+        gradient.extend(
+            list(lv.color_hex(color) for color in _build_gradient((0, 255, 0), (0, 255, 0), num_steps))
+        )
 
-        stop1.color = lv.color_hex(0x00FF00)
-        stop2.color = lv.color_hex(0xFF0000)
+        num_steps = int(len(self._ticks) * 0.3)
+        gradient.extend(
+            list(
+                lv.color_hex(color) for color in
+                _build_gradient((0, 255, 0), (255, 0, 0), num_steps)
+                )
+        )
 
-        stop1.frac = int(255 * 0.7)
-        stop2.frac = 255
+        for i, tick in enumerate(self._ticks):
+            tick.set_style_line_color(gradient[i], 0)
 
-        grad_dsc.stops = [stop1, stop2]
 
         self._tick_match_value = True
         self._tick_fade = True
-        self.set_style_bg_grad(grad_dsc, lv.PART_TICKS)
+        # self.set_style_bg_grad(grad_dsc, lv.PART_TICKS)
         self.set_value(self._min_value)
 
     def __tick_fade(self, t):
@@ -1525,10 +1532,12 @@ class knob_ctrl(object):
         gradient = []
 
         last_color = None
-        stops = grad_desc.stops * grad_desc.stops_count
         time.sleep(1)
+
+        print(grad_desc.stops)
+        print(dir(grad_desc.stops))
         for i in range(grad_desc.stops_count):
-            stop = stops[i]
+            stop = grad_desc.stops[i]
             color = stop.color
             color = (color.red, color.green, color.blue)
 

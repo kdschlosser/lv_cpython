@@ -47,6 +47,8 @@ img_dsc = lv.img_dsc_t()
 img_dsc.data = img_data
 img_dsc.data_size = len(img_data)
 
+print(img_dsc.data)
+
 lv.img_set_src(obj, img_dsc)
 lv.obj_center(obj)
 lv.obj_set_size(obj, 400, 400)

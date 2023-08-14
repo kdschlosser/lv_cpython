@@ -109,6 +109,8 @@ def Fadeon_Animation(TargetObject, delay):
 def BTN_EQ_eventhandler(event_struct):
     obj = lv.event_get_target_obj(event_struct)
 
+    print('callback called')
+
     if lv.obj_has_state(obj, lv.STATE_CHECKED):
         Fadeoff_Animation(ui_Slider_group_left, 0)
         Fadeoff_Animation(ui_Slider_group_right, 200)
@@ -127,15 +129,31 @@ def BTN_EQ_eventhandler(event_struct):
         lv.obj_add_flag(ui_EQ_group, lv.OBJ_FLAG_HIDDEN)
 
 
-def Label_Cut_1_eventhandler(event_struct):
-    lv.obj_add_flag(ui_Audio_Player, lv.OBJ_FLAG_HIDDEN)
 
+def Label_Cut_1_eventhandler(event_struct):
+    print('callback called')
+
+    obj = lv.event_get_target_obj(event_struct)
+
+    if lv.obj_has_state(obj, lv.STATE_CHECKED):
+        Fadeoff_Animation(ui_Slider_group_left, 0)
+        Fadeoff_Animation(ui_Slider_group_right, 200)
+        Fadeoff_Animation(ui_Indicator_group, 100)
+        Fadeon_Animation(ui_EQ_group, 200)
+        Fadeon_Animation(ui_Tempo_group, 300)
+        lv.obj_clear_flag(ui_EQ_group, lv.OBJ_FLAG_HIDDEN)
+        lv.obj_clear_flag(ui_Tempo_group, lv.OBJ_FLAG_HIDDEN)
+    else:
+        Fadeon_Animation(ui_Slider_group_left, 0)
+        Fadeon_Animation(ui_Indicator_group, 100)
+        Fadeon_Animation(ui_Slider_group_right, 200)
+        Fadeoff_Animation(ui_Tempo_group, 100)
+        Fadeoff_Animation(ui_EQ_group, 0)
+        lv.obj_add_flag(ui_Tempo_group, lv.OBJ_FLAG_HIDDEN)
+        lv.obj_add_flag(ui_EQ_group, lv.OBJ_FLAG_HIDDEN)
 
 def Label_Cut_3_eventhandler(event_struct):
-    print('Label_Cut_3_eventhandler')
     lv.obj_add_flag(ui_Audio_Player, lv.OBJ_FLAG_HIDDEN)
-    print('Label_Cut_3_eventhandler')
-
 
 
 ui_Audio_Player = lv.obj_create(lv.scr_act())
@@ -168,9 +186,9 @@ lv.obj_set_height(ui_Slider_AB, 79)
 lv.obj_set_align(ui_Slider_AB,  lv.ALIGN_CENTER)
 lv.slider_set_mode(ui_Slider_AB, lv.SLIDER_MODE_SYMMETRICAL)
 
-if -100 < 100: 
+if -100 < 100:
     lv.slider_set_range(ui_Slider_AB, -100, 100)
-    
+
 lv.slider_set_value(ui_Slider_AB, 80, lv.ANIM_OFF)  # need refresh: -100,100
 
 if 'SYMMETRICAL' == 'RANGE':
@@ -225,6 +243,7 @@ lv.obj_set_y(ui_A, 0)
 lv.obj_set_align(ui_A,  lv.ALIGN_LEFT_MID)
 lv.obj_set_style_text_color(ui_A,  lv.color_hex(0x9395A1), lv.PART_MAIN | lv.STATE_DEFAULT )
 lv.obj_set_style_text_opa(ui_A, 255, lv.PART_MAIN| lv.STATE_DEFAULT )
+print('FONT', lv.font_montserrat_26)
 lv.obj_set_style_text_font(ui_A,  lv.font_montserrat_26, lv.PART_MAIN | lv.STATE_DEFAULT )
 
 ui_B = lv.label_create(ui_Footer)
@@ -358,6 +377,7 @@ lv.obj_set_align(ui_BTN_EQ,  lv.ALIGN_BOTTOM_RIGHT)
 lv.obj_add_flag(ui_BTN_EQ, lv.OBJ_FLAG_CHECKABLE)
 
 lv.obj_add_event(ui_BTN_EQ, BTN_EQ_eventhandler, lv.EVENT_VALUE_CHANGED, None)
+
 ui_Left_group = lv.obj_create(ui_Content_group)
 lv.obj_set_width(ui_Left_group, lv.pct(28))
 lv.obj_set_height(ui_Left_group, lv.pct(76))
@@ -731,15 +751,15 @@ lv.obj_set_width(ui_Indicator_Left, 33)
 lv.obj_set_height(ui_Indicator_Left, 289)
 lv.obj_set_align(ui_Indicator_Left,  lv.ALIGN_LEFT_MID)
 
-if 0 < 29: 
+if 0 < 29:
     lv.slider_set_range(ui_Indicator_Left, 0,29)
-    
-    
+
+
 lv.slider_set_value(ui_Indicator_Left, 10, lv.ANIM_OFF)  # need refresh: 0,29
 
 if 'NORMAL' == 'RANGE':
     lv.slider_set_left_value(ui_Indicator_Left, 0, lv.ANIM_OFF)
-                                     
+
 lv.obj_set_style_radius(ui_Indicator_Left,  4, lv.PART_MAIN | lv.STATE_DEFAULT )
 lv.obj_set_style_bg_color(ui_Indicator_Left,  lv.color_hex(0x272A33), lv.PART_MAIN | lv.STATE_DEFAULT )
 lv.obj_set_style_bg_opa(ui_Indicator_Left, 255, lv.PART_MAIN| lv.STATE_DEFAULT )
@@ -768,17 +788,17 @@ lv.obj_set_height(ui_Indicator_Right, 289)
 lv.obj_set_align(ui_Indicator_Right,  lv.ALIGN_RIGHT_MID)
 
 
-if 0 < 29: 
+if 0 < 29:
     lv.slider_set_range(ui_Indicator_Right, 0,29)
-    
+
 
 lv.slider_set_value(ui_Indicator_Right, 25, lv.ANIM_OFF)  # need refresh: 0,29
 
 
 if 'NORMAL' == 'RANGE':
     lv.slider_set_left_value(ui_Indicator_Right, 0, lv.ANIM_OFF)
-    
-    
+
+
 lv.obj_set_style_radius(ui_Indicator_Right,  4, lv.PART_MAIN | lv.STATE_DEFAULT )
 lv.obj_set_style_bg_color(ui_Indicator_Right,  lv.color_hex(0x272A33), lv.PART_MAIN | lv.STATE_DEFAULT )
 lv.obj_set_style_bg_opa(ui_Indicator_Right, 255, lv.PART_MAIN| lv.STATE_DEFAULT )

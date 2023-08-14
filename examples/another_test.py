@@ -51,9 +51,6 @@ lv.obj_set_style_bg_opa(ui_Arc2, 0, lv.PART_KNOB | lv.STATE_DEFAULT)
 lv.arc_set_rotation(ui_Arc2, 180)
 lv.obj_set_style_arc_rounded(ui_Arc2, False, lv.PART_INDICATOR | lv.STATE_DEFAULT)
 
-
-
-
 ui_Arc3 = lv.arc_create(ui_Screen1)
 lv.obj_set_width(ui_Arc3, 150)
 lv.obj_set_height(ui_Arc3, 150)
@@ -235,7 +232,7 @@ def timer_cb(_):
 
 
 timer = lv.timer_create_basic()
-lv.timer_set_period(timer, 30)
+lv.timer_set_period(timer, 1)
 lv.timer_set_cb(timer, timer_cb)
 
 lv.main_loop()
