@@ -1,17 +1,26 @@
-try:
-    import lvgl as lv
-except ImportError:
-    import os
-    import sys
-
-    base_path = os.path.dirname(__file__)
-    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
-
-    import lvgl as lv
-
+import os
+import sys
 import time
 
-lv.init()
+
+try:
+    base_path = os.path.dirname(__file__)
+    sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
+
+    import lvgl as lv
+
+
+    lv.init()
+
+except (ImportError, AttributeError):
+    sys.path.pop(0)
+
+    import lvgl as lv
+
+
+    lv.init()
+
+
 disp = lv.sdl_window_create(480, 320)
 group = lv.group_create()
 lv.group_set_default(group)
@@ -26,7 +35,6 @@ def anim_x(a, v):
 
 def anim_size(a, v):
     lv.obj_set_size(obj, v, v)
-
 
 #
 # Create a playback animation
@@ -64,12 +72,8 @@ lv.anim_set_custom_exec_cb(a2, anim_x)
 lv.anim_start(a2)
 
 
-start = time.time()
-
 while True:
-    stop = time.time()
-    diff = int((stop * 1000) - (start * 1000))
-    start = stop
-    lv.tick_inc(diff)
+    time.sleep(0.001)
+    lv.tick_inc(1)
     lv.task_handler()
 

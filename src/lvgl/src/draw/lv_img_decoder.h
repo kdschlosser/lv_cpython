@@ -77,7 +77,7 @@ typedef lv_res_t (*lv_img_decoder_open_f_t)(struct _lv_img_decoder_t * decoder, 
  * @return LV_RES_OK: ok; LV_RES_INV: failed
  */
 typedef lv_res_t (*lv_img_decoder_read_line_f_t)(struct _lv_img_decoder_t * decoder, struct _lv_img_decoder_dsc_t * dsc,
-                                                 lv_coord_t x, lv_coord_t y, lv_coord_t len, uint8_t buf[]);
+                                                 lv_coord_t x, lv_coord_t y, lv_coord_t len, uint8_t * buf);
 
 /**
  * Close the pending decoding. Free resources etc.

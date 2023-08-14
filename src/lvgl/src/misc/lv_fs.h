@@ -78,34 +78,21 @@ typedef enum {
     LV_FS_SEEK_END = 0x02,      /**< Set the position from the end of the file*/
 } lv_fs_whence_t;
 
-typedef bool (*lv_fs_drv_ready_cb_t)(struct _lv_fs_drv_t * drv);
-
-typedef void * (*lv_fs_drv_open_cb_t)(struct _lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode);
-typedef lv_fs_res_t (*lv_fs_drv_close_cb_t)(struct _lv_fs_drv_t * drv, void * file_p);
-typedef lv_fs_res_t (*lv_fs_drv_read_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, void * buf, uint32_t btr, uint32_t * br);
-typedef lv_fs_res_t (*lv_fs_drv_write_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, const void * buf, uint32_t btw, uint32_t * bw);
-typedef lv_fs_res_t (*lv_fs_drv_seek_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t pos, lv_fs_whence_t whence);
-typedef lv_fs_res_t (*lv_fs_drv_tell_cb_t)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t * pos_p);
-
-typedef void * (*lv_fs_drv_dir_open_cb_t)(struct _lv_fs_drv_t * drv, const char * path);
-typedef lv_fs_res_t (*lv_fs_drv_dir_read_cb_t)(struct _lv_fs_drv_t * drv, void * rddir_p, char * fn);
-typedef lv_fs_res_t (*lv_fs_drv_dir_close_cb_t)(struct _lv_fs_drv_t * drv, void * rddir_p);
-
 typedef struct _lv_fs_drv_t {
     char letter;
     uint16_t cache_size;
-    lv_fs_drv_ready_cb_t ready_cb;
+    bool (*ready_cb)(struct _lv_fs_drv_t * drv);
 
-    lv_fs_drv_open_cb_t open_cb;
-    lv_fs_drv_close_cb_t close_cb;
-    lv_fs_drv_read_cb_t read_cb;
-    lv_fs_drv_write_cb_t write_cb;
-    lv_fs_drv_seek_cb_t seek_cb;
-    lv_fs_drv_tell_cb_t tell_cb;
+    void * (*open_cb)(struct _lv_fs_drv_t * drv, const char * path, lv_fs_mode_t mode);
+    lv_fs_res_t (*close_cb)(struct _lv_fs_drv_t * drv, void * file_p);
+    lv_fs_res_t (*read_cb)(struct _lv_fs_drv_t * drv, void * file_p, void * buf, uint32_t btr, uint32_t * br);
+    lv_fs_res_t (*write_cb)(struct _lv_fs_drv_t * drv, void * file_p, const void * buf, uint32_t btw, uint32_t * bw);
+    lv_fs_res_t (*seek_cb)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t pos, lv_fs_whence_t whence);
+    lv_fs_res_t (*tell_cb)(struct _lv_fs_drv_t * drv, void * file_p, uint32_t * pos_p);
 
-    lv_fs_drv_dir_open_cb_t dir_open_cb;
-    lv_fs_drv_dir_read_cb_t dir_read_cb;
-    lv_fs_drv_dir_close_cb_t dir_close_cb;
+    void * (*dir_open_cb)(struct _lv_fs_drv_t * drv, const char * path);
+    lv_fs_res_t (*dir_read_cb)(struct _lv_fs_drv_t * drv, void * rddir_p, char * fn);
+    lv_fs_res_t (*dir_close_cb)(struct _lv_fs_drv_t * drv, void * rddir_p);
 
     void * user_data; /**< Custom file user data*/
 } lv_fs_drv_t;

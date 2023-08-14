@@ -44,11 +44,8 @@ typedef struct {
 } JRECT;
 
 /* Decompressor object structure */
-
-typedef size_t (*JDEC_infunc_xcb_t)(struct _JDEC * decomp, uint8_t * stream, size_t stream_len);
-typedef int (*JDEC_outfunc_xcb_t)(struct _JDEC * decomp, void * buf, JRECT * rect);
-
-typedef struct _JDEC {
+typedef struct _JDEC JDEC;
+struct _JDEC {
     size_t dctr;                /* Number of bytes available in the input buffer */
     uint8_t * dptr;             /* Current data read ptr */
     uint8_t * inbuf;            /* Bit stream input buffer */
@@ -77,15 +74,15 @@ typedef struct _JDEC {
     jd_yuv_t * mcubuf;          /* Working buffer for the MCU */
     void * pool;                /* Pointer to available memory pool */
     size_t sz_pool;             /* Size of momory pool (bytes available) */
-    JDEC_infunc_xcb_t infunc;   /* Pointer to jpeg stream input function */
+    size_t (*infunc)(JDEC *, uint8_t *, size_t); /* Pointer to jpeg stream input function */
     void * device;              /* Pointer to I/O device identifiler for the session */
-} JDEC;
+};
 
 
 
 /* TJpgDec API functions */
-JRESULT jd_prepare(JDEC * jd, JDEC_infunc_xcb_t infunc, void * pool, size_t sz_pool, void * dev);
-JRESULT jd_decomp(JDEC * jd, JDEC_outfunc_xcb_t outfunc, uint8_t scale);
+JRESULT jd_prepare(JDEC * jd, size_t (*infunc)(JDEC *, uint8_t *, size_t), void * pool, size_t sz_pool, void * dev);
+JRESULT jd_decomp(JDEC * jd, int (*outfunc)(JDEC *, void *, JRECT *), uint8_t scale);
 
 #endif /*LV_USE_SJPG*/
 

@@ -103,6 +103,7 @@ void lv_flex_init(void)
     LV_STYLE_FLEX_MAIN_PLACE = lv_style_register_prop(LV_STYLE_PROP_FLAG_LAYOUT_UPDATE);
     LV_STYLE_FLEX_CROSS_PLACE = lv_style_register_prop(LV_STYLE_PROP_FLAG_LAYOUT_UPDATE);
     LV_STYLE_FLEX_TRACK_PLACE = lv_style_register_prop(LV_STYLE_PROP_FLAG_LAYOUT_UPDATE);
+    LV_STYLE_FLEX_GROW = lv_style_register_prop(LV_STYLE_PROP_FLAG_LAYOUT_UPDATE);
 }
 
 void lv_obj_set_flex_flow(lv_obj_t * obj, lv_flex_flow_t flow)
@@ -420,7 +421,7 @@ static void children_repos(lv_obj_t * cont, flex_t * f, int32_t item_first_id, i
     /*Calculate the size of grow items first*/
     uint32_t i;
     bool grow_reiterate  = true;
-    while(grow_reiterate) {
+    while(grow_reiterate && t->grow_item_cnt) {
         grow_reiterate = false;
         lv_coord_t grow_value_sum = 0;
         lv_coord_t grow_max_size = t->track_main_size - t->track_fix_main_size;

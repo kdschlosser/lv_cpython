@@ -10,7 +10,8 @@
 #if LV_USE_SDL
 
 #include "../../core/lv_group.h"
-#include "../../core/lv_indev_private.h"
+#include "../../indev/lv_indev_private.h"
+#include "../../stdlib/lv_string.h"
 #include LV_SDL_INCLUDE_PATH
 
 /*********************
@@ -49,7 +50,7 @@ lv_indev_t * lv_sdl_mousewheel_create(void)
     }
 
     lv_indev_set_type(indev, LV_INDEV_TYPE_ENCODER);
-    lv_indev_set_read_cb(indev, sdl_mousewheel_read, NULL);
+    lv_indev_set_read_cb(indev, sdl_mousewheel_read);
     lv_indev_set_driver_data(indev, dsc);
 
     return indev;
@@ -99,8 +100,6 @@ void _lv_sdl_mousewheel_handler(SDL_Event * event)
 
     switch(event->type) {
         case SDL_MOUSEWHEEL:
-            // Scroll down (y = -1) means positive encoder turn,
-            // so invert it
 #ifdef __EMSCRIPTEN__
             /*Escripten scales it wrong*/
             if(event->wheel.y < 0) dsc->diff++;

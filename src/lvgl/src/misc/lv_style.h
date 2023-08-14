@@ -41,12 +41,13 @@ extern "C" {
 #define LV_STYLE_PROP_FLAG_LAYOUT_UPDATE            (1 << 2)  /*Requires layout update when changed*/
 #define LV_STYLE_PROP_FLAG_PARENT_LAYOUT_UPDATE     (1 << 3)  /*Requires layout update on parent when changed*/
 #define LV_STYLE_PROP_FLAG_LAYER_UPDATE             (1 << 4)  /*Affects layer handling*/
-#define LV_STYLE_PROP_FLAG_ALL                      (0x1F)     /*Indicating all flags*/
+#define LV_STYLE_PROP_FLAG_TRANSFORM                (1 << 5)  /*Affects the object's transformation*/
+#define LV_STYLE_PROP_FLAG_ALL                      (0x3F)    /*Indicating all flags*/
 
 /**
  * Other constants
  */
-#define LV_ZOOM_NONE                256        /*Value for not zooming the image*/
+#define LV_ZOOM_NONE            256        /*Value for not zooming the image*/
 LV_EXPORT_CONST_INT(LV_ZOOM_NONE);
 
 // *INDENT-OFF*
@@ -90,7 +91,6 @@ enum _lv_blend_mode_t {
     LV_BLEND_MODE_ADDITIVE,   /**< Add the respective color channels*/
     LV_BLEND_MODE_SUBTRACTIVE,/**< Subtract the foreground from the background*/
     LV_BLEND_MODE_MULTIPLY,   /**< Multiply the foreground and background*/
-    LV_BLEND_MODE_REPLACE,    /**< Replace background with foreground in the area*/
 };
 
 #ifdef DOXYGEN
@@ -175,6 +175,7 @@ typedef uint8_t lv_dither_mode_t;
  */
 typedef struct {
     lv_color_t color;   /**< The stop color */
+    lv_opa_t   opa;     /**< The opacity fo the color*/
     uint8_t    frac;    /**< The stop position in 1/255 unit */
 } lv_gradient_stop_t;
 
@@ -355,14 +356,6 @@ typedef struct {
 /**
  * Descriptor of a style (a collection of properties and values).
  */
-
-typedef union {
-    lv_style_value_t value1;
-    uint8_t * values_and_props;
-    const lv_style_const_prop_t * const_props;
-} lv_style_v_p_t;
-
-
 typedef struct {
 
 #if LV_USE_ASSERT_STYLE
@@ -371,7 +364,11 @@ typedef struct {
 
     /*If there is only one property store it directly.
      *For more properties allocate an array*/
-    lv_style_v_p_t v_p;
+    union {
+        lv_style_value_t value1;
+        uint8_t * values_and_props;
+        const lv_style_const_prop_t * const_props;
+    } v_p;
 
     uint16_t prop1;
     uint8_t has_group;

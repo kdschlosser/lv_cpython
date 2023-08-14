@@ -48,8 +48,6 @@
 #include "../../../lvgl.h"
 #if LV_USE_SJPG
 
-#include <string.h>
-
 #include "tjpgd.h"
 #include "lv_sjpg.h"
 #include "../../misc/lv_fs.h"
@@ -163,7 +161,7 @@ static lv_res_t decoder_info(lv_img_decoder_t * decoder, const void * src, lv_im
         uint8_t * raw_sjpeg_data = (uint8_t *)img_dsc->data;
         const uint32_t raw_sjpeg_data_size = img_dsc->data_size;
 
-        if(!strncmp((char *)raw_sjpeg_data, "_SJPG__", lv_strlen("_SJPG__"))) {
+        if(!strncmp((char *)raw_sjpeg_data, "_SJPG__", strlen("_SJPG__"))) {
 
             raw_sjpeg_data += 14; //seek to res info ... refer sjpeg format
             header->always_zero = 0;
@@ -363,7 +361,7 @@ static lv_res_t decoder_open(lv_img_decoder_t * decoder, lv_img_decoder_dsc_t * 
             sjpeg->sjpeg_data_size = ((lv_img_dsc_t *)(dsc->src))->data_size;
         }
 
-        if(!strncmp((char *) sjpeg->sjpeg_data, "_SJPG__", lv_strlen("_SJPG__"))) {
+        if(!strncmp((char *) sjpeg->sjpeg_data, "_SJPG__", strlen("_SJPG__"))) {
 
             data = sjpeg->sjpeg_data;
             data += 14;

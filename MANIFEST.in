@@ -1,0 +1,22 @@
+include README.md
+include LICENSE
+include pyproject.toml
+include setup.py
+include MANIFEST.in
+
+graft src
+graft lvgl
+graft examples
+graft builder
+graft assets
+
+prune build
+prune dist
+prune lvgl.egg-info
+prune src/lvgl/env_support
+prune src/lvgl/.devcontainer
+prune src/lvgl/scripts
+prune src/lvgl/tests
+prune src/lvgl/examples
+
+global-exclude *.pyc *.o *.yml

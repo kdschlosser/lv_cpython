@@ -27,7 +27,7 @@ extern "C" {
 /**
  * Type for async callback.
  */
-typedef void (*lv_async_cb_t)(void * user_data);
+typedef void (*lv_async_cb_t)(void *);
 
 /**********************
  * GLOBAL PROTOTYPES

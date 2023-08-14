@@ -2,14 +2,13 @@ import os
 import sys
 
 base_path = os.path.dirname(__file__)
-sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..', 'build')))
+sys.path.insert(0, os.path.abspath(os.path.join(base_path, '..')))
 
 import lvgl as lv
 
 
 import wx
 import threading
-import win_precise_time as wpt
 import ctypes
 import math
 import time
@@ -149,7 +148,6 @@ class Frame(wx.Frame):
         self.Bind(wx.EVT_KEY_DOWN, self.on_key_down)
         self.Bind(wx.EVT_KEY_UP, self.on_key_up)
 
-
         self.key = 0
         self.mouse_point = lv.point_t()
         self.mouse_point.x = 0
@@ -280,6 +278,7 @@ class Frame(wx.Frame):
         indev_data.key = self.key
 
     def get_mouse_state(self, indev_data):
+        print(indev_data)
         global mouse_event_waiting
         indev_data.state = self.state
         indev_data.point.x = self.mouse_point.x
@@ -294,6 +293,7 @@ class Frame(wx.Frame):
             point = evt.GetPosition()
             self.mouse_point.x = point.x
             self.mouse_point.y = point.y
+            lv.indev_read_timer_cb(mouse.read_timer)
             mouse_event_waiting = True
 
         evt.Skip()
@@ -305,6 +305,7 @@ class Frame(wx.Frame):
             point = evt.GetPosition()
             self.mouse_point.x = point.x
             self.mouse_point.y = point.y
+            lv.indev_read_timer_cb(mouse.read_timer)
             mouse_event_waiting = True
 
     def on_left_up(self, evt):
@@ -316,6 +317,7 @@ class Frame(wx.Frame):
             point = evt.GetPosition()
             self.mouse_point.x = point.x
             self.mouse_point.y = point.y
+            lv.indev_read_timer_cb(mouse.read_timer)
             mouse_event_waiting = True
 
         evt.Skip()
@@ -329,34 +331,21 @@ class Frame(wx.Frame):
             point = evt.GetPosition()
             self.mouse_point.x = point.x
             self.mouse_point.y = point.y
+            lv.indev_read_timer_cb(mouse.read_timer)
             mouse_event_waiting = True
 
         evt.Skip()
 
     def flush_lvgl(self, disp, area, px_map):
-        width = area.x2 - area.x1 + 1
-        height = area.y2 - area.y1 + 1
-        size = width * height
-
-        dbuf = px_map.as_buffer('uint8_t', size * 4)
-
         bmp = wx.Bitmap(*self.GetClientSize())
-        bmp.CopyFromBuffer(dbuf, wx.BitmapBufferFormat_RGBA)
+        bmp.CopyFromBuffer(_buf1, wx.BitmapBufferFormat_RGBA)
         self.draw_alpha(bmp)
 
         bmp.Destroy()
         del bmp
 
         lv.disp_flush_ready(disp)
-
-        self.count += 1
-
-        if not self.count % 300:
-            stop = time.time()
-            diff = (stop * 1000) - (self.start * 1000)
-            print(1 / (diff / 300 / 1000))
-            self.count = 0
-            self.start = time.time()
+        print('flushed')
 
 
 app = wx.App()
@@ -368,45 +357,36 @@ def keyboard_cb(_, data):
 
 
 def mouse_cb(_, data):
+    print(data)
     frame.get_mouse_state(data)
 
 
-last_tick = wpt.time_ns()
+def log_cb(level, message):
+    message = message * 1000
 
-
-def tick_cb(_):
-    global last_tick
-
-    curr_tick = wpt.time_ns()
-    diff = curr_tick - last_tick
-
-    int_diff = int(diff / 1000000)
-    remainder = diff - int_diff
-    curr_tick -= remainder
-    last_tick = curr_tick
-    lv.tick_inc(int_diff)
+    print(message)
 
 
 mouse_event_waiting = False
 
+_buf1 = bytearray(800 * 600 * 4)
+
+mouse = None
 
 def run():
+    global mouse
     lv.init()
 
-    tick_dsc = lv.tick_dsc_t()
-    lv.tick_set_cb(tick_dsc, tick_cb)
+    lv.log_register_print_cb(log_cb)
 
     disp = lv.disp_create(800, 600)
 
     lv.disp_set_flush_cb(disp, frame.flush_lvgl)
+    lv.disp_set_color_format(disp, lv.COLOR_FORMAT_XRGB8888)
+    _array_buf = lv.uint8_t * (800 * 600 * 4)
 
-    _buf1 = lv.color_t.as_array(size=800 * 600)
-
-    _buf1 = _buf1._obj
-
-    # _buf1 = _lib_lvgl.ffi.new('lv_color32_t[{0}]'.format())
     lv.disp_set_color_format(disp, lv.COLOR_FORMAT_ARGB8888)
-    lv.disp_set_draw_buffers(disp, _buf1,  None, 800 * 600, lv.DISP_RENDER_MODE_FULL)
+    lv.disp_set_draw_buffers(disp, _array_buf.from_buffer(_buf1),  None, 800 * 600, lv.DISP_RENDER_MODE_FULL)
 
     group = lv.group_create()
     lv.group_set_default(group)
@@ -414,256 +394,43 @@ def run():
     mouse = lv.indev_create()
     lv.indev_set_type(mouse, lv.INDEV_TYPE_POINTER)
     lv.indev_set_read_cb(mouse, mouse_cb)
-    lv.timer_del(mouse.read_timer)
+
+    import ctypes
+
+    print(mouse.disabled)
+    print(disp.prev_scr)
+    print()
+    # lv.timer_set_period(mouse.read_timer, 5)
 
     keyboard = lv.indev_create()
     lv.indev_set_type(keyboard, lv.INDEV_TYPE_KEYPAD)
     lv.indev_set_read_cb(keyboard, keyboard_cb)
-    lv.timer_set_period(keyboard.read_timer, 1)
+    # lv.timer_set_period(keyboard.read_timer, 5)
 
     lv.indev_set_group(keyboard, group)
 
-    _style = lv.style_t()
-    lv.style_init(_style)  # NOQA
-
-    lv.style_set_bg_color(_style, lv.color_hex(0x000000))  # NOQA
-    lv.style_set_bg_opa(_style, 0)  # NOQA
-    lv.style_set_border_color(_style, lv.color_hex(0x000000))  # NOQA
-    lv.style_set_border_opa(_style, 0)  # NOQA
-    lv.style_set_border_width(_style, 0)  # NOQA
-    lv.style_set_margin_bottom(_style, 0)  # NOQA
-    lv.style_set_margin_left(_style, 0)  # NOQA
-    lv.style_set_margin_right(_style, 0)  # NOQA
-    lv.style_set_margin_top(_style, 0)  # NOQA
-    lv.style_set_outline_color(_style, lv.color_hex(0x000000))  # NOQA
-    lv.style_set_outline_opa(_style, 0)  # NOQA
-    lv.style_set_outline_pad(_style, 0)  # NOQA
-    lv.style_set_outline_width(_style, 0)  # NOQA
-    lv.style_set_pad_left(_style, 0)  # NOQA
-    lv.style_set_pad_right(_style, 0)  # NOQA
-    lv.style_set_pad_top(_style, 0)  # NOQA
-    lv.style_set_pad_bottom(_style, 0)  # NOQA
-    lv.style_set_radius(_style, 0)  # NOQA
-    lv.style_set_shadow_color(_style, lv.color_hex(0x000000))  # NOQA
-    lv.style_set_shadow_opa(_style, 0)  # NOQA
-    lv.style_set_shadow_spread(_style, 0)  # NOQA
-    lv.style_set_shadow_width(_style, 0)  # NOQA
-    lv.style_set_shadow_ofs_x(_style, 0)  # NOQA
-    lv.style_set_shadow_ofs_y(_style, 0)  # NOQA
-
     screen = lv.scr_act()
-    lv.obj_set_style_bg_color(screen, lv.color_hex(0x000000), 0)
-    lv.obj_set_style_bg_opa(screen, 0, 0)
+    lv.obj_set_style_bg_color(screen, lv.color_hex(0x2D2D2D), 0)
+    lv.obj_set_style_bg_opa(screen, 255, 0)
+    lv.obj_set_scrollbar_mode(screen, lv.SCROLLBAR_MODE_OFF)
 
+    import knob
 
-    class Menu(lv.obj_t):
+    volume = knob.knob_ctrl(screen)
 
-        def __init__(self, parent, name):
+    lv.obj_center(volume.obj)
+    # volume.set_segment_display(True)
+    volume.set_size(500, 500)
 
-            super().__init__()
-            obj = lv.obj_create(parent)
-            obj.cast(self)
-            lv.obj_add_style(self, _style, 0)
-
-            lv.obj_set_style_border_opa(self, 150, 0)
-            lv.obj_set_style_border_color(self, lv.color_hex(0xFF0000), 0)
-            lv.obj_set_style_border_width(self, 5, 0)
-
-            lv.obj_set_style_border_opa(self, 225, lv.STATE_PRESSED)
-            lv.obj_set_style_border_color(self, lv.color_hex(0x0000FF), lv.STATE_PRESSED)
-            lv.obj_set_style_border_width(self, 8, lv.STATE_PRESSED)
-
-            lv.obj_set_style_bg_opa(self, 125, 0)
-            lv.obj_set_style_bg_color(self, lv.color_hex(0x000000), 0)
-
-            lv.obj_set_style_text_opa(self, 255, 0)
-            lv.obj_set_style_text_color(self, lv.color_hex(0xFF0000), 0)
-
-            self.label = label = lv.label_create(self)
-            lv.label_set_text(label, ' ' * 30)
-
-            lv.obj_set_style_text_font(label, lv.font_montserrat_20, 0)
-
-            lv.obj_align(label, lv.ALIGN_LEFT_MID, 20, 0)
-
-            self.children = []
-            lv.obj_add_flag(self, lv.OBJ_FLAG_HIDDEN)
-
-        def add_child(self, child):
-            self.children.append(child)
-
-        def set_text(self, text):
-            lv.label_set_text(self.label, text)
-
-        def show(self, value):
-            if value:
-                lv.obj_clear_flag(self, lv.OBJ_FLAG_HIDDEN)
-            else:
-                lv.obj_add_flag(self, lv.OBJ_FLAG_HIDDEN)
-
-    class MenuItem(lv.obj_t):
-
-        def __init__(self, parent):
-
-            super().__init__()
-            obj = lv.obj_create(parent)
-            obj.cast(self)
-            lv.obj_add_style(self, _style, 0)
-
-            lv.obj_set_style_border_opa(self, 150, 0)
-            lv.obj_set_style_border_color(self, lv.color_hex(0xFF0000), 0)
-            lv.obj_set_style_border_width(self, 5, 0)
-
-            lv.obj_set_style_border_opa(self, 225, lv.STATE_PRESSED)
-            lv.obj_set_style_border_color(
-                self,
-                lv.color_hex(0x0000FF),
-                lv.STATE_PRESSED
-                )
-            lv.obj_set_style_border_width(self, 8, lv.STATE_PRESSED)
-
-            lv.obj_set_style_bg_opa(self, 125, 0)
-            lv.obj_set_style_bg_color(self, lv.color_hex(0x000000), 0)
-
-            lv.obj_set_style_text_opa(self, 255, 0)
-            lv.obj_set_style_text_color(self, lv.color_hex(0xFF0000), 0)
-
-            self.label = label = lv.label_create(self)
-            lv.label_set_text(label, ' ' * 30)
-
-            lv.obj_set_style_text_font(label, lv.font_montserrat_20, 0)
-
-            lv.obj_align(label, lv.ALIGN_LEFT_MID, 20, 0)
-
-            lv.obj_add_flag(self, lv.OBJ_FLAG_HIDDEN)
-
-        def set_text(self, text):
-            lv.label_set_text(self.label, text)
-
-        def show(self, value):
-            if value:
-                lv.obj_clear_flag(self, lv.OBJ_FLAG_HIDDEN)
-            else:
-                lv.obj_add_flag(self, lv.OBJ_FLAG_HIDDEN)
-
-
-    class BinaryItem(MenuItem):
-        states = ['Off', 'On']
-
-        def __init__(self, parent, name):
-            MenuItem.__init__(self, parent)
-            self.name = name
-
-            self.state = 'Off'
-            self.type = bool
-            self.set_text(name + ': ' + self.state)
-
-        def set_state(self, state):
-            self.state = self.states[int(state)]
-            self.set_text(f'{self.name}: {self.state}')
-
-        def on_click(self, e):
-            self.set_state(not bool(self.states.index(self.state)))
-
-
-
-    class VariableItem(MenuItem):
-
-        def __init__(self, parent, name):
-            MenuItem.__init__(self, parent)
-            self.name = name
-
-            self.state = 'Off'
-            self.type = float
-            self.set_text(name + ': ' + self.state)
-
-            self.slider = lv.slider_create(self)
-
-            lv.obj_align(self.label, lv.ALIGN_TOP_LEFT, 20, 20)
-            lv.obj_align(self.slider, lv.ALIGN_BOTTOM_LEFT, 20, 20)
-
-            lv.slider_set_range(self.slider, 0, 1000)
-            lv.obj_add_event(self.slider, self.on_slider, lv.EVENT_VALUE_CHANGED)
-
-        def on_slider(self, e):
-            value = lv.slider_get_value(self.slider)
-            value /= 10.0
-            self.set_state(value)
-
-        def set_state(self, state):
-            self.state = 'Off' if state == 0.0 else round(state, 2)
-            self.set_text(f'{self.name}: {self.state}')
-
-    class ChoiceItem()
-    class ChoiceMenu(lv.obj_t):
-
-        def __init__(self, parent, menu_items):
-
-
-
-    class ChoiceItem(MenuItem):
-        states = []
-
-        def __init__(self, parent, name):
-            MenuItem.__init__(self, parent)
-            self.name = name
-            self.state = self.states[0]
-            self.type = bool
-            self.set_text(name + ': ' + self.state)
-            lv.obj_add_event(self, self.on_click, lv.EVENT_CLICKED)
-
-        def set_state(self, state):
-            self.state = self.states[int(state)]
-            self.set_text(f'{self.name}: {self.state}')
-
-        def on_click(self, e):
-            self.set_state(not bool(self.states.index(self.state)))
-
-    class BinarySwitch(BinaryItem):
-        pass
-
-    class MultilevelSwitch(VariableItem):
-        pass
-
-
-    class FanSwitch(ChoiceItem):
-        pass
-
-    menus = {
-        'MediaRoom': {
-            'Lights': {
-                'Swittch 1': {
-                    'state': 'On',
-                    'states': ['Off', 'On'],
-                    'value_type': bool
-                },
-                'Switch 2': {
-                    'state': 35.0,
-                    'value_type': float,
-                },
-            },
-
-        },
-        'Living Room': {},
-        'Master Suite': {},
-        'Spare Bedroom 1': {},
-        'Spare Bedroom 2': {},
-        'Hallway': {},
-        'Kitchen': {},
-        'Outside': {},
-        'Main Bathroom': {},
-        'HVAC': {}
-    }
-
-
-
-
+    print('running')
     while True:
-        wpt.sleep(0.001)
+        # start_time = time.time()
+        time.sleep(0.0001)
 
-        # lv.obj_invalidate(screen)
-        # lv.refr_now(disp)
+        lv.tick_inc(1)
         lv.task_handler()
+        # stop_time = time.time()
+        # print((stop_time - start_time) * 1000)
 
 
 t = threading.Thread(target=run)

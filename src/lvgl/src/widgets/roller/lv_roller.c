@@ -12,8 +12,10 @@
 #include "../../misc/lv_assert.h"
 #include "../../draw/lv_draw.h"
 #include "../../core/lv_group.h"
-#include "../../core/lv_indev.h"
-#include "../../core/lv_indev_scroll.h"
+#include "../../indev/lv_indev.h"
+#include "../../indev/lv_indev_scroll.h"
+#include "../../indev/lv_indev_private.h"
+#include "../../stdlib/lv_string.h"
 
 /*********************
  *      DEFINES
@@ -42,6 +44,7 @@ static lv_obj_t * get_label(const lv_obj_t * obj);
 static lv_coord_t get_selected_label_width(const lv_obj_t * obj);
 static void scroll_anim_ready_cb(lv_anim_t * a);
 static void set_y_anim(void * obj, int32_t v);
+static void transform_vect_recursive(lv_obj_t * roller, lv_point_t * vect);
 
 /**********************
  *  STATIC VARIABLES
@@ -176,7 +179,7 @@ void lv_roller_set_selected(lv_obj_t * obj, uint16_t sel_opt, lv_anim_enable_t a
             uint16_t act_opt = roller->sel_opt_id - current_page * real_option_cnt;
             int32_t sel_opt_signed = sel_opt;
             /*Huge jump? Probably from last to first or first to last option.*/
-            if(LV_ABS((int16_t)act_opt - sel_opt) > real_option_cnt / 2) {
+            if((uint16_t)LV_ABS((int16_t)act_opt - sel_opt) > real_option_cnt / 2) {
                 if(act_opt > sel_opt) sel_opt_signed += real_option_cnt;
                 else sel_opt_signed -= real_option_cnt;
             }
@@ -314,8 +317,9 @@ static void lv_roller_constructor(const lv_obj_class_t * class_p, lv_obj_t * obj
     LV_LOG_INFO("begin");
     lv_obj_t * label = lv_obj_class_create_obj(&lv_roller_label_class, obj);
     lv_obj_class_init_obj(label);
+#if LV_WIDGETS_HAS_DEFAULT_VALUE
     lv_roller_set_options(obj, "Option 1\nOption 2\nOption 3\nOption 4\nOption 5", LV_ROLLER_MODE_NORMAL);
-
+#endif
     LV_LOG_TRACE("finshed");
 }
 
@@ -355,6 +359,8 @@ static void lv_roller_event(const lv_obj_class_t * class_p, lv_event_t * e)
         lv_indev_t * indev = lv_indev_get_act();
         lv_point_t p;
         lv_indev_get_vect(indev, &p);
+
+        transform_vect_recursive(obj, &p);
         if(p.y) {
             lv_obj_t * label = get_label(obj);
             lv_obj_set_y(label, lv_obj_get_y(label) + p.y);
@@ -460,17 +466,17 @@ static void draw_main(lv_event_t * e)
     lv_obj_t * obj = lv_event_get_target(e);
     if(code == LV_EVENT_DRAW_MAIN) {
         /*Draw the selected rectangle*/
-        lv_draw_ctx_t * draw_ctx = lv_event_get_draw_ctx(e);
+        lv_layer_t * layer = lv_event_get_layer(e);
         lv_area_t sel_area;
         get_sel_area(obj, &sel_area);
         lv_draw_rect_dsc_t sel_dsc;
         lv_draw_rect_dsc_init(&sel_dsc);
         lv_obj_init_draw_rect_dsc(obj, LV_PART_SELECTED, &sel_dsc);
-        lv_draw_rect(draw_ctx, &sel_dsc, &sel_area);
+        lv_draw_rect(layer, &sel_dsc, &sel_area);
     }
     /*Post draw when the children are drawn*/
     else if(code == LV_EVENT_DRAW_POST) {
-        lv_draw_ctx_t * draw_ctx = lv_event_get_draw_ctx(e);
+        lv_layer_t * layer = lv_event_get_layer(e);
 
         lv_draw_label_dsc_t label_dsc;
         lv_draw_label_dsc_init(&label_dsc);
@@ -481,7 +487,7 @@ static void draw_main(lv_event_t * e)
         get_sel_area(obj, &sel_area);
         lv_area_t mask_sel;
         bool area_ok;
-        area_ok = _lv_area_intersect(&mask_sel, draw_ctx->clip_area, &sel_area);
+        area_ok = _lv_area_intersect(&mask_sel, &layer->clip_area, &sel_area);
         if(area_ok) {
             lv_obj_t * label = get_label(obj);
             if(lv_label_get_recolor(label)) label_dsc.flag |= LV_TEXT_FLAG_RECOLOR;
@@ -520,10 +526,11 @@ static void draw_main(lv_event_t * e)
             label_sel_area.y2 = label_sel_area.y1 + res_p.y;
 
             label_dsc.flag |= LV_TEXT_FLAG_EXPAND;
-            const lv_area_t * clip_area_ori = draw_ctx->clip_area;
-            draw_ctx->clip_area = &mask_sel;
-            lv_draw_label(draw_ctx, &label_dsc, &label_sel_area, lv_label_get_text(label), NULL);
-            draw_ctx->clip_area = clip_area_ori;
+            const lv_area_t clip_area_ori = layer->clip_area;
+            layer->clip_area = mask_sel;
+            label_dsc.text = lv_label_get_text(label);
+            lv_draw_label(layer, &label_dsc, &label_sel_area);
+            layer->clip_area = clip_area_ori;
         }
     }
 }
@@ -539,15 +546,15 @@ static void draw_label(lv_event_t * e)
     lv_obj_init_draw_label_dsc(roller, LV_PART_MAIN, &label_draw_dsc);
     if(lv_label_get_recolor(label_obj)) label_draw_dsc.flag |= LV_TEXT_FLAG_RECOLOR;
 
-    lv_draw_ctx_t * draw_ctx = lv_event_get_draw_ctx(e);
+    lv_layer_t * layer = lv_event_get_layer(e);
 
     /*If the roller has shadow or outline it has some ext. draw size
      *therefore the label can overflow the roller's boundaries.
      *To solve this limit the clip area to the "plain" roller.*/
-    const lv_area_t * clip_area_ori = draw_ctx->clip_area;
+    const lv_area_t clip_area_ori = layer->clip_area;
     lv_area_t roller_clip_area;
-    if(!_lv_area_intersect(&roller_clip_area, draw_ctx->clip_area, &roller->coords)) return;
-    draw_ctx->clip_area = &roller_clip_area;
+    if(!_lv_area_intersect(&roller_clip_area, &layer->clip_area, &roller->coords)) return;
+    layer->clip_area = roller_clip_area;
 
     lv_area_t sel_area;
     get_sel_area(roller, &sel_area);
@@ -557,25 +564,27 @@ static void draw_label(lv_event_t * e)
     clip2.y1 = label_obj->coords.y1;
     clip2.x2 = label_obj->coords.x2;
     clip2.y2 = sel_area.y1;
-    if(_lv_area_intersect(&clip2, draw_ctx->clip_area, &clip2)) {
-        const lv_area_t * clip_area_ori2 = draw_ctx->clip_area;
-        draw_ctx->clip_area = &clip2;
-        lv_draw_label(draw_ctx, &label_draw_dsc, &label_obj->coords, lv_label_get_text(label_obj), NULL);
-        draw_ctx->clip_area = clip_area_ori2;
+    if(_lv_area_intersect(&clip2, &layer->clip_area, &clip2)) {
+        const lv_area_t clip_area_ori2 = layer->clip_area;
+        layer->clip_area = clip2;
+        label_draw_dsc.text = lv_label_get_text(label_obj);
+        lv_draw_label(layer, &label_draw_dsc, &label_obj->coords);
+        layer->clip_area = clip_area_ori2;
     }
 
     clip2.x1 = label_obj->coords.x1;
     clip2.y1 = sel_area.y2;
     clip2.x2 = label_obj->coords.x2;
     clip2.y2 = label_obj->coords.y2;
-    if(_lv_area_intersect(&clip2, draw_ctx->clip_area, &clip2)) {
-        const lv_area_t * clip_area_ori2 = draw_ctx->clip_area;
-        draw_ctx->clip_area = &clip2;
-        lv_draw_label(draw_ctx, &label_draw_dsc, &label_obj->coords, lv_label_get_text(label_obj), NULL);
-        draw_ctx->clip_area = clip_area_ori2;
+    if(_lv_area_intersect(&clip2, &layer->clip_area, &clip2)) {
+        const lv_area_t clip_area_ori2 = layer->clip_area;
+        layer->clip_area = clip2;
+        label_draw_dsc.text = lv_label_get_text(label_obj);
+        lv_draw_label(layer, &label_draw_dsc, &label_obj->coords);
+        layer->clip_area = clip_area_ori2;
     }
 
-    draw_ctx->clip_area = clip_area_ori;
+    layer->clip_area = clip_area_ori;
 }
 
 static void get_sel_area(lv_obj_t * obj, lv_area_t * sel_area)
@@ -716,7 +725,19 @@ static lv_res_t release_handler(lv_obj_t * obj)
 
             lv_coord_t label_unit = font_h + line_space;
             lv_coord_t mid        = obj->coords.y1 + (obj->coords.y2 - obj->coords.y1) / 2;
-            lv_coord_t label_y1 = label->coords.y1 + lv_indev_scroll_throw_predict(indev, LV_DIR_VER);
+
+            lv_point_t p = indev->pointer.scroll_throw_vect_ori;
+            transform_vect_recursive(obj, &p);
+
+            lv_coord_t scroll_throw = indev->scroll_throw;
+            lv_coord_t sum = 0;
+            int32_t v = p.y;
+            while(v) {
+                sum += v;
+                v = v * (100 - scroll_throw) / 100;
+            }
+
+            lv_coord_t label_y1 = label->coords.y1 + sum;
             int32_t id = (mid - label_y1) / label_unit;
 
             if(id < 0) id = 0;
@@ -792,10 +813,26 @@ static void scroll_anim_ready_cb(lv_anim_t * a)
     inf_normalize(obj);
 }
 
-
 static void set_y_anim(void * obj, int32_t v)
 {
     lv_obj_set_y(obj, v);
+}
+
+
+static void transform_vect_recursive(lv_obj_t * roller, lv_point_t * vect)
+{
+    int16_t angle = 0;
+    int32_t zoom = 256;
+    lv_obj_t * parent = roller;
+    while(parent) {
+        angle += lv_obj_get_style_transform_angle(parent, 0);
+        int32_t zoom_act = lv_obj_get_style_transform_zoom_safe(parent, 0);
+        zoom = (zoom * zoom_act) >> 8;
+        parent = lv_obj_get_parent(parent);
+    }
+    lv_point_t pivot = { 0, 0 };
+
+    lv_point_transform(vect, -angle, 256 * 256 / zoom, &pivot);
 }
 
 #endif

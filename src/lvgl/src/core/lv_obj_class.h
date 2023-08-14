@@ -47,22 +47,17 @@ typedef enum {
     LV_OBJ_CLASS_THEME_INHERITABLE_TRUE,
 } lv_obj_class_theme_inheritable_t;
 
-
-typedef void (*lv_obj_class_constructor_cb_t)(const struct _lv_obj_class_t * class_p, struct _lv_obj_t * obj);
-typedef void (*lv_obj_class_destructor_cb_t)(const struct _lv_obj_class_t * class_p, struct _lv_obj_t * obj);
-typedef void (*lv_obj_class_event_cb_t)(const struct _lv_obj_class_t * class_p,
-                     struct _lv_event_t * e);  /**< Widget type specific event function*/
-
+typedef void (*lv_obj_class_event_cb_t)(struct _lv_obj_class_t * class_p, struct _lv_event_t * e);
 /**
  * Describe the common methods of every object.
  * Similar to a C++ class.
  */
 typedef struct _lv_obj_class_t {
     const struct _lv_obj_class_t * base_class;
-    lv_obj_class_constructor_cb_t constructor_cb;
-    lv_obj_class_destructor_cb_t destructor_cb;
-    lv_obj_class_event_cb_t event_cb;
-
+    void (*constructor_cb)(const struct _lv_obj_class_t * class_p, struct _lv_obj_t * obj);
+    void (*destructor_cb)(const struct _lv_obj_class_t * class_p, struct _lv_obj_t * obj);
+    void (*event_cb)(const struct _lv_obj_class_t * class_p,
+                     struct _lv_event_t * e);  /**< Widget type specific event function*/
     void * user_data;
     lv_coord_t width_def;
     lv_coord_t height_def;

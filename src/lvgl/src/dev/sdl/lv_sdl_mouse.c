@@ -10,6 +10,7 @@
 #if LV_USE_SDL
 
 #include "../../core/lv_group.h"
+#include "../../stdlib/lv_string.h"
 
 #include LV_SDL_INCLUDE_PATH
 /*********************
@@ -54,7 +55,7 @@ lv_indev_t * lv_sdl_mouse_create(void)
     }
 
     lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
-    lv_indev_set_read_cb(indev, sdl_mouse_read, NULL);
+    lv_indev_set_read_cb(indev, sdl_mouse_read);
     lv_indev_set_driver_data(indev, dsc);
 
     return indev;
@@ -135,17 +136,17 @@ void _lv_sdl_mouse_handler(SDL_Event * event)
 
         case SDL_FINGERUP:
             indev_dev->left_button_down = false;
-            indev_dev->last_x = hor_res * (lv_coord_t)event->tfinger.x / zoom;
-            indev_dev->last_y = ver_res * (lv_coord_t)event->tfinger.y / zoom;
+            indev_dev->last_x = (int16_t)((float)hor_res * event->tfinger.x / zoom);
+            indev_dev->last_y = (int16_t)((float)ver_res * event->tfinger.y / zoom);
             break;
         case SDL_FINGERDOWN:
             indev_dev->left_button_down = true;
-            indev_dev->last_x = hor_res * (lv_coord_t)event->tfinger.x / zoom;
-            indev_dev->last_y = ver_res * (lv_coord_t)event->tfinger.y / zoom;
+            indev_dev->last_x = (int16_t)((float)hor_res * event->tfinger.x / zoom);
+            indev_dev->last_y = (int16_t)((float)ver_res * event->tfinger.y / zoom);
             break;
         case SDL_FINGERMOTION:
-            indev_dev->last_x = hor_res * (lv_coord_t)event->tfinger.x / zoom;
-            indev_dev->last_y = ver_res * (lv_coord_t)event->tfinger.y / zoom;
+            indev_dev->last_x = (int16_t)((float)hor_res * event->tfinger.x / zoom);
+            indev_dev->last_y = (int16_t)((float)ver_res * event->tfinger.y / zoom);
             break;
     }
 }

@@ -1,11 +1,14 @@
 [project]
 name = "lvgl"
-version = "0.1.1b"
+version = "0.2.0b"
 description = "README.md"
 authors = [{name = "Kevin G. Schlosser"}, {name="Many other contributors"}]
 maintainers = [{name = "Kevin G. Schlosser"}]
 classifiers = [
     "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3.6",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
@@ -26,8 +29,7 @@ classifiers = [
 keywords = ["LVGL", "LV", "lvgl", "lv", "graphics", "gui", "gui framework"]
 license = {file = "LICENSE"}
 readme = "README.md"
-requires-python = ">=3.9"
-dependencies=["cffi>=1.15.1"]
+requires-python = ">=3.6"
 
 
 [project.urls]
@@ -45,6 +47,5 @@ requires=[
     "pyMSVC>=0.5.3;sys_platform=='win32'",
     "requests>=2.3.0;sys_platform=='win32'",
     "pycparser>=2.21",
-    "cffi>=1.15.1"
 ]
 build-backend="setuptools.build_meta"

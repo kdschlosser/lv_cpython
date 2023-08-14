@@ -268,18 +268,6 @@ unsigned encode(const std::string & filename,
 #ifdef LODEPNG_COMPILE_DECODER
 /*Settings for zlib decompression*/
 typedef struct _LodePNGDecompressSettings LodePNGDecompressSettings;
-
-
-
-typedef unsigned(*LodePNGDecompressSettings_custom_zlib_xcb_t)(unsigned char **, size_t *,
-                       const unsigned char *, size_t,
-                       const LodePNGDecompressSettings *);
-
-typedef unsigned(*LodePNGDecompressSettings_custom_inflate_xcb_t)(unsigned char **, size_t *,
-                          const unsigned char *, size_t,
-                          const LodePNGDecompressSettings *);
-                          
-     
 struct _LodePNGDecompressSettings {
     /* Check LodePNGDecoderSettings for more ignorable errors such as ignore_crc */
     unsigned ignore_adler32; /*if 1, continue and don't give an error message if the Adler32 checksum is corrupted*/
@@ -291,15 +279,18 @@ struct _LodePNGDecompressSettings {
     ignored by the PNG decoder, but is used by the deflate/zlib decoder and can be used by custom ones.
     Set to 0 to impose no limit (the default).*/
     size_t max_output_size;
-       
+
     /*use custom zlib decoder instead of built in one (default: null).
     Should return 0 if success, any non-0 if error (numeric value not exposed).*/
-    LodePNGDecompressSettings_custom_zlib_xcb_t custom_zlib;
-    
+    unsigned(*custom_zlib)(unsigned char **, size_t *,
+                           const unsigned char *, size_t,
+                           const LodePNGDecompressSettings *);
     /*use custom deflate decoder instead of built in one (default: null)
     if custom_zlib is not null, custom_inflate is ignored (the zlib format uses deflate).
     Should return 0 if success, any non-0 if error (numeric value not exposed).*/
-    LodePNGDecompressSettings_custom_inflate_xcb_t custom_inflate;
+    unsigned(*custom_inflate)(unsigned char **, size_t *,
+                              const unsigned char *, size_t,
+                              const LodePNGDecompressSettings *);
 
     const void * custom_context; /*optional custom settings for custom functions*/
 };
@@ -314,18 +305,6 @@ Settings for zlib compression. Tweaking these settings tweaks the balance
 between speed and compression ratio.
 */
 typedef struct _LodePNGCompressSettings LodePNGCompressSettings;
-
-
-
-typedef unsigned(*LodePNGCompressSettings_custom_zlib_xcb_t)(unsigned char **, size_t *,
-                       const unsigned char *, size_t,
-                       const LodePNGCompressSettings *);
-
-typedef unsigned(*LodePNGCompressSettings_custom_deflate_xcb_t)(unsigned char **, size_t *,
-                          const unsigned char *, size_t,
-                          const LodePNGCompressSettings *);
-                          
-
 struct _LodePNGCompressSettings { /*deflate = compress*/
     /*LZ77 related settings*/
     unsigned btype; /*the block type for LZ (0, 1, 2 or 3, see zlib standard). Should be 2 for proper compression.*/
@@ -335,14 +314,16 @@ struct _LodePNGCompressSettings { /*deflate = compress*/
     unsigned nicematch; /*stop searching if >= this length found. Set to 258 for best compression. Default: 128*/
     unsigned lazymatching; /*use lazy matching: better compression but a bit slower. Default: true*/
 
-
     /*use custom zlib encoder instead of built in one (default: null)*/
-    LodePNGCompressSettings_custom_zlib_xcb_t custom_zlib;
-
+    unsigned(*custom_zlib)(unsigned char **, size_t *,
+                           const unsigned char *, size_t,
+                           const LodePNGCompressSettings *);
     /*use custom deflate encoder instead of built in one (default: null)
     if custom_zlib is used, custom_deflate is ignored since only the built in
     zlib function will call custom_deflate*/
-    LodePNGCompressSettings_custom_deflate_xcb_t custom_deflate;
+    unsigned(*custom_deflate)(unsigned char **, size_t *,
+                              const unsigned char *, size_t,
+                              const LodePNGCompressSettings *);
 
     const void * custom_context; /*optional custom settings for custom functions*/
 };

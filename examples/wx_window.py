@@ -9,7 +9,6 @@ import lvgl as lv
 
 import wx
 import threading
-import win_precise_time as wpt
 import ctypes
 import time
 
@@ -260,12 +259,12 @@ class Frame(wx.Frame):
         evt.Skip()
 
     def get_keyboard_state(self, indev_data):
-        indev_data.key = self.key
+        indev_data.contents.key = self.key
 
     def get_mouse_state(self, indev_data):
         indev_data.state = self.state
-        indev_data.point.x = self.mouse_point.x
-        indev_data.point.y = self.mouse_point.y
+        indev_data.contents.point.x = self.mouse_point.x
+        indev_data.contents.point.y = self.mouse_point.y
 
     def on_mouse_leave(self, evt):
         if self.HasCapture():
@@ -304,14 +303,18 @@ class Frame(wx.Frame):
         evt.Skip()
 
     def flush_lvgl(self, disp, area, px_map):
-        width = area.x2 - area.x1 + 1
-        height = area.y2 - area.y1 + 1
-        size = width * height
+        print('mouse cb')
 
-        dbuf = px_map.as_buffer('uint8_t', size * 4)
+        import ctypes
+        width = area.contents.x2 - area.contents.x1 + 1
+        height = area.contents.y2 - area.contents.y1 + 1
+        size = width * height * lv.color_t.__SIZE__
 
-        bmp = wx.Bitmap(width, height)
-        bmp.CopyFromBuffer(dbuf, wx.BitmapBufferFormat_RGBA)
+        array = ctypes.cast(px_map, ctypes.POINTER((ctypes.c_ubyte * size))).contents
+        array = bytes(array)
+        bmp = wx.Bitmap.FromBufferRGBA(width, height, array)
+        # wx.Bitmap(width, height)
+        # bmp.CopyFromBuffer(array, wx.BitmapBufferFormat_RGBA)
         self.draw_alpha(bmp)
 
         lv.disp_flush_ready(disp)
@@ -334,45 +337,95 @@ def keyboard_cb(_, data):
     frame.get_keyboard_state(data)
 
 
+upper right parcel
+bottom left = 39.53382474892872, -105.3435258056878
+top left = 39.5367372373607, -105.34203003819114
+top right = 39.53668860973968, -105.33516342992291
+bottom right = 39.53018430548781, -105.33540103617521
+bottom right (bottom left) = 39.53005748158588, -105.33955912359458
+bottom right (top left) = 39.53380261120658, -105.33877798271865
+
+
+main parcel
+
+8480
+bottom right = 39.52274736578246, -105.34300684236187
+top left = 39.53711983758532, -105.35140904936372
+bottom left = 39.52247771473773, -105.35079501656158
+0.01464212284759, 0.00061403280214
+
+L corner = 39.5335264900994, -105.34730736296096
+top right = 39.5370647139351, -105.34695906521614
+L outside = 39.53382474892872, -105.3435258056878
+
+height, width
+
+
+
+
+6214, 7101
+
+
+9040 = 666
+
+8960=888
+
+8080=101010
+
+
+8760=131313
+8640=161616
+8480=202020
+
+9240
+219, 6941
+341, 7074
+
+9200
+89, 4352
+301, 4552
+365, 4700
+379, 4827
+311, 4929
+117, 5013
+198, 6551
+351, 6761
+552, 6916
+666, 7064
+
+
+
+9160
+74, 4125
+363, 4339
+583, 4820
+488, 5081
+141, 5298
+153, 5821
+212, 6077
+481, 5623
+599, 6580
+904, 7044
+
+
+9120
+
+
+
 def mouse_cb(_, data):
-    print('mouse cb')
     frame.get_mouse_state(data)
-
-
-last_tick = wpt.time_ns()
-
-
-def tick_cb(_):
-    global last_tick
-
-    curr_tick = wpt.time_ns()
-    diff = curr_tick - last_tick
-
-    int_diff = int(diff / 1000000)
-    remainder = diff - int_diff
-    curr_tick -= remainder
-    last_tick = curr_tick
-    lv.tick_inc(int_diff)
 
 
 def run():
     lv.init()
 
-    tick_dsc = lv.tick_dsc_t()
-    lv.tick_set_cb(tick_dsc, tick_cb)
-
-    disp = lv.disp_create(480, 320)
+    disp = lv.disp_create(800, 600)
 
     lv.disp_set_flush_cb(disp, frame.flush_lvgl)
-
-    _buf1 = lv.color_t.as_array(size=800 * 600)
-    print(_buf1)
-
-    _buf1 = _buf1._obj
-
-    # _buf1 = _lib_lvgl.ffi.new('lv_color32_t[{0}]'.format())
-
-    lv.disp_set_draw_buffers(disp, _buf1,  None, 480 * 320, lv.DISP_RENDER_MODE_FULL)
+    lv.disp_set_color_format(disp, lv.COLOR_FORMAT_XRGB8888)
+    _buf1 = (lv.color_t * (801 * 601))()
+    # _buf2 = (lv.color_t * (800 * 600))()
+    lv.disp_set_draw_buffers(disp, _buf1,  None, 801 * 601, lv.DISP_RENDER_MODE_FULL)
 
     group = lv.group_create()
     lv.group_set_default(group)
@@ -418,7 +471,8 @@ def run():
     lv.obj_add_event(
         arc,
         lambda e: value_changed_event_cb(e, label),
-        lv.EVENT_VALUE_CHANGED
+        lv.EVENT_VALUE_CHANGED,
+        None
     )
 
     # Manually update the label for the first time
@@ -427,18 +481,19 @@ def run():
     val = 0
     inc = 1
 
-    while True:
-        wpt.sleep(0.01)
-        # val += inc
-        #
-        # if val in (0, 100):
-        #     inc = -inc
-        #
-        # lv.arc_set_value(arc, val)
-        # lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)
+    import time
 
-        # lv.obj_invalidate(screen)
-        # lv.refr_now(disp)
+    while True:
+        time.sleep(0.0001)
+        val += inc
+
+        if val in (0, 100):
+            inc = -inc
+
+        lv.arc_set_value(arc, val)
+        lv.obj_send_event(arc, lv.EVENT_VALUE_CHANGED, None)
+
+        lv.tick_inc(1)
         lv.task_handler()
 
 

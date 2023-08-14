@@ -31,7 +31,11 @@ extern "C" {
 #define LV_LABEL_DOT_NUM 3
 #define LV_LABEL_POS_LAST 0xFFFF
 #define LV_LABEL_TEXT_SELECTION_OFF LV_DRAW_LABEL_NO_TXT_SEL
+#if LV_WIDGETS_HAS_DEFAULT_VALUE
 #define LV_LABEL_DEFAULT_TEXT "Text"
+#else
+#define LV_LABEL_DEFAULT_TEXT ""
+#endif
 
 LV_EXPORT_CONST_INT(LV_LABEL_DOT_NUM);
 LV_EXPORT_CONST_INT(LV_LABEL_POS_LAST);
@@ -56,15 +60,14 @@ typedef _lv_label_long_mode_t lv_label_long_mode_t;
 typedef uint8_t lv_label_long_mode_t;
 #endif /*DOXYGEN*/
 
-typedef union {
-    char * tmp_ptr; /*Pointer to the allocated memory containing the character replaced by dots*/
-    char tmp[LV_LABEL_DOT_NUM + 1]; /*Directly store the characters if <=4 characters*/
-} lv_label_dot_t;
 
 typedef struct {
     lv_obj_t obj;
     char * text;
-    lv_label_dot_t dot;
+    union {
+        char * tmp_ptr; /*Pointer to the allocated memory containing the character replaced by dots*/
+        char tmp[LV_LABEL_DOT_NUM + 1]; /*Directly store the characters if <=4 characters*/
+    } dot;
     uint32_t dot_end;  /*The real text length, used in dot mode*/
 
 #if LV_LABEL_LONG_TXT_HINT

@@ -110,3 +110,161 @@ flashing if using the MicroPython API and beforer porting if using the C API.
 
 check out the examples folder to see how the C API is used. For MicroPython 
 there are examples in the documentation for LVGL.
+
+
+***IMPORTANT***
+----------
+
+Because of how the CFFI backend works you cannot let objects passed to LVGL go 
+out of scope unless the object originates from LVGL.
+
+Here is an example of what is the wrong way and what is the right way. This is
+the single most important rule because it will cause the program to error.
+
+This code is wrong and the program will crash.
+
+```python
+import lvgl as lv
+import time
+
+
+lv.init()
+disp = lv.sdl_window_create(480, 320)
+mouse = lv.sdl_mouse_create()
+keyboard = lv.sdl_keyboard_create()
+
+
+def anim_x(a, v):
+    lv.obj_set_x(label, v)
+
+
+def sw_event_cb(e, label):
+    sw = lv.event_get_target_obj(e)
+
+    anim = lv.anim_t()
+    lv.anim_init(anim)
+    lv.anim_set_var(anim, label)
+    lv.anim_set_time(anim, 500)
+
+    if lv.obj_has_state(sw, lv.STATE_CHECKED):
+        lv.anim_set_values(anim, lv.obj_get_x(label), 100)
+        lv.anim_set_path_cb(anim, lv.anim_path_overshoot)
+    else:
+        lv.anim_set_values(anim, lv.obj_get_x(label), -lv.obj_get_width(label))
+        lv.anim_set_path_cb(anim, lv.anim_path_ease_in)
+
+    lv.anim_set_custom_exec_cb(anim, anim_x)
+    lv.anim_start(anim)
+
+
+label = lv.label_create(lv.scr_act())
+lv.label_set_text(label, "Hello animations!")
+lv.obj_set_pos(label, 100, 10)
+
+
+sw = lv.switch_create(lv.scr_act())
+lv.obj_center(sw)
+lv.obj_add_state(sw, lv.STATE_CHECKED)
+lv.obj_add_event(sw, lambda e: sw_event_cb(e, label), lv.EVENT_VALUE_CHANGED)
+
+
+start = time.time()
+
+while True:
+    stop = time.time()
+    diff = int((stop * 1000) - (start * 1000))
+    if diff >= 1:
+        start = stop
+        lv.tick_inc(diff)
+        lv.task_handler()
+
+```
+
+The reason why it will crash is because of this line
+
+```python
+anim = lv.anim_t()
+```
+which is located in the `sw_event_cb` function. This is creating an LVGL 
+object in the local namespace for the function and once the function exits that 
+object gets ,arked for garbage collection because it has gone out of scope. 
+Everything that passes between LVGL and Python aand Python to LVGL is a pointer 
+to a memory address. If the object gets garbage collected it is no longer 
+available at that memory address and that is why the error occurs. In order to
+keep the object active this is what needs to be done.
+
+```python
+import lvgl as lv
+import time
+
+
+lv.init()
+disp = lv.sdl_window_create(480, 320)
+mouse = lv.sdl_mouse_create()
+keyboard = lv.sdl_keyboard_create()
+
+
+def anim_x(a, v):
+    lv.obj_set_x(label, v)
+
+anim = None
+
+def sw_event_cb(e, label):
+    global anim
+    
+    sw = lv.event_get_target_obj(e)
+
+    anim = lv.anim_t()
+    lv.anim_init(anim)
+    lv.anim_set_var(anim, label)
+    lv.anim_set_time(anim, 500)
+
+    if lv.obj_has_state(sw, lv.STATE_CHECKED):
+        lv.anim_set_values(anim, lv.obj_get_x(label), 100)
+        lv.anim_set_path_cb(anim, lv.anim_path_overshoot)
+    else:
+        lv.anim_set_values(anim, lv.obj_get_x(label), -lv.obj_get_width(label))
+        lv.anim_set_path_cb(anim, lv.anim_path_ease_in)
+
+    lv.anim_set_custom_exec_cb(anim, anim_x)
+    lv.anim_start(anim)
+
+
+label = lv.label_create(lv.scr_act())
+lv.label_set_text(label, "Hello animations!")
+lv.obj_set_pos(label, 100, 10)
+
+
+sw = lv.switch_create(lv.scr_act())
+lv.obj_center(sw)
+lv.obj_add_state(sw, lv.STATE_CHECKED)
+lv.obj_add_event(sw, lambda e: sw_event_cb(e, label), lv.EVENT_VALUE_CHANGED)
+
+
+start = time.time()
+
+while True:
+    stop = time.time()
+    diff = int((stop * 1000) - (start * 1000))
+    if diff >= 1:
+        start = stop
+        lv.tick_inc(diff)
+        lv.task_handler()
+
+```
+
+That is all there is to it. Now the object gets saved to the global namespace 
+for the module aand when the function exits the object does not get marked for 
+garbage collection. Once the object has been used in whatever manner it is 
+supposed to be used in and you are sure it is not attached aanywhere to LVGL 
+then you can delete the object. The best way to handle these kinds of things 
+is by using a dictionary where the object is the key and the value would be 
+an integer that you can increase aand decrease each time the object has been 
+put into or taken out of use. Most things are taken care of in the wrapper 
+code for the binding. I am not able to handle all caases like the one above. 
+Registering any kind of a callback is one of the areas I was able to handle the 
+issue in a graaceful manner. That is because the callbacks get put into a 
+structure and since There are wrappers around those structures I am able to 
+keep a reference to the callback function alive by storing it in the wrapper 
+for the structure.
+
